@@ -1,0 +1,59 @@
+# --- Editors / OS ---
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# --- Java / Maven ---
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+dependency-reduced-pom.xml
+
+# --- Node / Frontend ---
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+coverage/
+
+# --- Python / ML ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- Data (large / generated) ---
+ml-service/data/raw/*
+!ml-service/data/raw/.gitkeep
+ml-service/data/processed/*
+!ml-service/data/processed/.gitkeep
+ml-service/models/*.pkl
+ml-service/models/*.joblib
+
+# --- Runtime / infra ---
+.env
+.env.local
+docker-compose.override.yml
+*.pem
+*.key
+
+# --- Optional: keep training artifacts if wanted (uncomment to track)
+# !ml-service/models/anomaly-model-v1.pkl
+# !ml-service/models/failure-risk-v1.pkl
+
+# --- Reports ---
+reports/
+playwright-report/
+test-results/
