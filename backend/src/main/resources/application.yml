@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: forgesense-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${BACKEND_PORT:8080}
+  shutdown: graceful
+
+forgesense:
+  demo-mode: ${FORGESENSE_DEMO_MODE:true}
+  ml:
+    url: ${FORGESENSE_ML_URL:http://localhost:8001}
+    timeout-ms: 1500
+    # expected model versions — if the ML service reports a different version,
+    # predictions are still accepted but labeled "model drift/mismatch" in the UI
+    anomaly-model-version: anomaly-model-v1
+    failure-model-version: failure-risk-v1
+  streaming:
+    kafka:
+      enabled: ${FORGESENSE_STREAMING_KAFKA_ENABLED:false}
+    topics:
+      raw: forge.telemetry.raw
+      normalized: forge.telemetry.normalized
+      machine-state: forge.machine.state
+      predictions: forge.ml.predictions
+      anomalies: forge.anomalies
+      alerts: forge.alerts
+      maintenance: forge.maintenance
+      simulation-commands: forge.simulation.commands
+  telemetry:
+    max-staleness-seconds: 60
+    max-jitter-seconds: 5
+    heartbeat-interval-ms: 200
+  machine:
+    offline-after-seconds: 30
+    predict-every-ms: 1000
+  simulation:
+    poll-enabled: true
+  security:
+    enabled: ${FORGESENSE_SECURITY_ENABLED:true}
+    # demo-only signing key — replace with a strong secret in production
+    jwt-secret: forgesense-demo-jwt-signing-key-do-not-use-in-production-0123456789
+    jwt-expiration-seconds: 86400
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,beans,loggers
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db,mlService
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    com.forgesense: INFO
+    org.apache.kafka: WARN
+    org.hibernate.SQL: WARN

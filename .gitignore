@@ -49,6 +49,9 @@ docker-compose.override.yml
 *.pem
 *.key
 
+# --- Backend runtime databases ---
+backend/data/
+
 # --- Optional: keep training artifacts if wanted (uncomment to track)
 # !ml-service/models/anomaly-model-v1.pkl
 # !ml-service/models/failure-risk-v1.pkl

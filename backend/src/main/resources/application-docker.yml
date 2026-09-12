@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:forgesense}
+    username: ${POSTGRES_USER:forgesense}
+    password: ${POSTGRES_PASSWORD:forgesense_dev_pw}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.value.default.type: com.forgesense.common.domain.EventEnvelope
+    consumer:
+      group-id: forgesense-backend
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: latest
+      properties:
+        spring.json.value.default.type: com.forgesense.common.domain.EventEnvelope
+        spring.json.trusted.packages: "*"
+
+forgesense:
+  streaming:
+    kafka:
+      enabled: true
+  cache:
+    adapter: redis
