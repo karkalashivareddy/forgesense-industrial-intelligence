@@ -41,6 +41,7 @@ ml-service/data/processed/*
 !ml-service/data/processed/.gitkeep
 ml-service/models/*.pkl
 ml-service/models/*.joblib
+ml-service/models/*.npy
 
 # --- Runtime / infra ---
 .env
