@@ -164,7 +164,8 @@ async function refresh() {
 }
 function setApi(ok) {
     document.getElementById('apiStatus').className = 'dot ' + (ok ? 'up' : 'down');
-    document.getElementById('apiStatusText').textContent = ok ? 'connected' : 'disconnected';
+    document.getElementById('apiStatusText').textContent =
+        ok ? 'connected (REST poll 3s)' : 'disconnected';
 }
 
 function renderFleet() {
@@ -212,7 +213,7 @@ async function renderDetail(m) {
       <div class="row"><b>Status</b><span>${m.status ?? '—'}</span></div>
       <div class="row"><b>Health score</b><span class="hp ${cls}">${Math.round(m.healthScore ?? 100)}</span></div>
       <div class="row"><b>Anomaly score</b><span>${((a) * 100).toFixed(1)}%</span></div>
-      <div class="row"><b>Failure risk (48h)</b><span>${((m.failureRisk ?? 0) * 100).toFixed(1)}%</span></div>
+      <div class="row"><b>Failure risk score</b><span>${((m.failureRisk ?? 0) * 100).toFixed(1)}%</span></div>
       <div class="row"><b>Model</b><span>${mode}</span></div>
       <canvas id="spark" width="380" height="54"></canvas>
       <div class="factors">${factors}</div>`;

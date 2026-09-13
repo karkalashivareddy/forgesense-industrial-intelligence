@@ -3,60 +3,121 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ForgeSense · AI Factory Floor Intelligence</title>
+<title>ForgeSense · Industrial Intelligence Control Room</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<header>
-  <div class="brand"><span class="logo">⚙</span> ForgeSense
-    <span class="tag">AI Factory Floor Intelligence</span></div>
-  <div class="status">
-    <span id="apiStatus" class="dot down"></span><span id="apiStatusText">connecting…</span>
-    <span class="sep"></span>ML <span id="mlMode">—</span>
-    <span class="sep"></span><span id="clock"></span>
-    <span class="sep"></span><button id="reconnectBtn" title="Reconnect / re-login">Reconnect</button>
+<header class="topbar" role="banner">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">⚙</span>
+    <span class="brand-name">ForgeSense</span>
+    <span class="tag">Industrial Intelligence</span>
+  </div>
+  <div class="factory-chip">
+    <span class="fc-name">FACTORY ALPHA</span>
+    <span id="factoryState" class="fc-state st-muted">—</span>
+  </div>
+  <div class="topbar-status" role="status">
+    <span class="pill" id="sysStatus" title="Data transport + freshness"><span id="sysDot" class="dot dot-down"></span><span id="sysStatusText">connecting…</span></span>
+    <span class="pill" id="thrPill" title="Telemetry events ingested in the last 60 seconds">⇅ <b id="thrRate">—</b>/min</span>
+    <span class="pill" title="Machine learning service"><span id="mlDot" class="dot dot-down"></span>ML <span id="mlModel">—</span></span>
+    <span class="sep"></span>
+    <span id="clock" class="clock">--:--:--</span>
+    <span class="sep"></span>
+    <span class="user" id="userChip">—</span>
+    <button id="cmdBtn" class="icon-btn" title="Command palette (Ctrl+K)" aria-label="Command palette">⌘</button>
+    <button id="inspToggle" class="icon-btn" title="Toggle machine inspector" aria-label="Toggle inspector">◧</button>
   </div>
 </header>
 
-<main>
-  <section id="scenePanel">
-    <div id="sceneContainer"></div>
-    <div id="sceneLegend">
-      <span><i class="sw healthy"></i>Healthy</span>
-      <span><i class="sw watch"></i>Watch</span>
-      <span><i class="sw anomaly"></i>Anomaly</span>
-      <span><i class="sw down"></i>Down</span>
+<div class="shell">
+  <nav class="rail" aria-label="Control room sections">
+    <button class="rail-btn" data-route="command"><span class="idx">01</span>Command Center</button>
+    <button class="rail-btn" data-route="factory"><span class="idx">02</span>Factory Twin</button>
+    <button class="rail-btn" data-route="fleet"><span class="idx">03</span>Fleet</button>
+    <button class="rail-btn" data-route="alerts"><span class="idx">04</span>Alerts</button>
+    <button class="rail-btn" data-route="predictions"><span class="idx">05</span>Predictions</button>
+    <button class="rail-btn" data-route="simulation"><span class="idx">06</span>Simulation</button>
+    <button class="rail-btn" data-route="maintenance"><span class="idx">07</span>Maintenance</button>
+    <button class="rail-btn" data-route="analytics"><span class="idx">08</span>Analytics</button>
+    <button class="rail-btn" data-route="system"><span class="idx">09</span>System</button>
+    <div class="rail-foot">
+      <button class="rail-link" data-action="shortcuts" title="Keyboard shortcuts">⌨ Shortcuts</button>
+      <span class="rail-ver">·synthetic demo·</span>
     </div>
-  </section>
+  </nav>
 
-  <aside id="sidePanel">
-    <div class="card">
-      <h2>Fleet Overview</h2>
-      <div id="fleetStats" class="stats"></div>
-      <table id="machineTable">
-        <thead><tr><th>Machine</th><th>Type</th><th>Health</th><th>Risk</th><th>State</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
+  <main id="workspace">
+    <section id="view-command" class="view" data-route="command"></section>
+    <section id="view-factory" class="view" data-route="factory">
+      <div id="sceneContainer" role="img" aria-label="Interactive 3D digital twin of Factory Alpha"></div>
+      <div id="factoryHud">
+        <div id="zoneChips" aria-label="Zone filters"></div>
+        <div class="hud-spacer"></div>
+        <button id="fitBtn" class="hud-btn" title="Reset camera (R)">Fit factory</button>
+        <button id="topBtn" class="hud-btn" title="Top view">Top view</button>
+      </div>
+      <div id="sceneLegend" aria-label="Status legend">
+        <span><i class="sw sw-good"></i>Normal</span>
+        <span><i class="sw sw-warn"></i>Degraded / Warning</span>
+        <span><i class="sw sw-critical"></i>Critical</span>
+        <span><i class="sw sw-maint"></i>Maintenance</span>
+        <span><i class="sw sw-down"></i>Offline</span>
+      </div>
+      <div id="depLegend" aria-label="Dependency legend">
+        <span><i class="dep dep-material"></i>Material</span>
+        <span><i class="dep dep-power"></i>Power</span>
+        <span><i class="dep dep-cooling"></i>Cooling</span>
+        <span><i class="dep dep-service"></i>Service</span>
+      </div>
+      <div id="simBanner" class="sim-banner hidden">SIMULATION MODE — scenario visualization only, no physical control</div>
+    </section>
+    <section id="view-fleet" class="view" data-route="fleet"></section>
+    <section id="view-alerts" class="view" data-route="alerts"></section>
+    <section id="view-predictions" class="view" data-route="predictions"></section>
+    <section id="view-simulation" class="view" data-route="simulation"></section>
+    <section id="view-maintenance" class="view" data-route="maintenance"></section>
+    <section id="view-analytics" class="view" data-route="analytics"></section>
+    <section id="view-system" class="view" data-route="system"></section>
+  </main>
 
-    <div class="card">
-      <h2 id="detailTitle">Machine Detail</h2>
-      <div id="detailBody" class="placeholder">Select a machine in the 3D view or the table.</div>
-    </div>
-
-    <div class="card grow">
-      <h2>Live Event Feed</h2>
-      <div id="eventFeed" class="feed"></div>
-    </div>
-
-    <div class="card">
-      <h2>Active Alerts</h2>
-      <div id="alertFeed" class="feed"></div>
-    </div>
+  <aside id="inspector" class="inspector" aria-label="Machine inspector" aria-hidden="true">
+    <header class="insp-head">
+      <div class="insp-title-wrap">
+        <span id="inspBreadcrumb" class="insp-breadcrumb muted">Factory Alpha</span>
+        <h2 id="inspTitle" class="insp-title">Machine Inspector</h2>
+      </div>
+      <button id="inspClose" class="icon-btn" aria-label="Close inspector">✕</button>
+    </header>
+    <div id="inspTabs" class="tabs" role="tablist" aria-label="Inspector sections"></div>
+    <div id="inspBody" class="insp-body"><div class="empty">Select a machine to inspect it. Use the 3D twin, fleet table, alerts, or Ctrl+K.</div></div>
   </aside>
-</main>
+</div>
 
-<footer>ForgeSense controls rooms &amp; sim labs, not the actual machines — all values are synthetic.</footer>
+<footer id="statusbar" class="statusbar" role="contentinfo">
+  <div id="svcLine" class="svc">● Backend <span id="svcBackend">…</span></div>
+  <div class="svc">● ML <span id="svcMl">…</span></div>
+  <div class="svc">● Kafka <span id="svcKafka">…</span></div>
+  <div class="svc">● PostgreSQL <span id="svcPg">…</span></div>
+  <div class="svc">● Redis <span id="svcRedis">…</span></div>
+  <div class="svc">Events <span id="svcEvents">—</span></div>
+  <div class="svc">Last telemetry <span id="svcLastTel">—</span></div>
+  <div class="svc">Basis <span id="svcBasis">—</span></div>
+  <div class="statusbar-right">ForgeSense is a control-room &amp; simulation environment over synthetic telemetry; it does not control real machines.</div>
+</footer>
+
+<div id="palette" class="panel-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="paletteTitle">
+  <div class="palette">
+    <header class="palette-head">
+      <h2 id="paletteTitle" class="visually-hidden">Command palette</h2>
+      <input id="paletteInput" type="text" placeholder="Search commands, machines, alerts… (Esc to close)" autocomplete="off" spellcheck="false" aria-label="Command palette search" />
+    </header>
+    <ul id="paletteList" role="listbox" aria-label="Commands"></ul>
+    <footer class="palette-foot">↑↓ navigate · Enter run · Esc close</footer>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden" role="alert" aria-live="polite"></div>
 
 <script type="importmap">
 {
@@ -66,6 +127,6 @@
   }
 }
 </script>
-<script type="module" src="app.js"></script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
