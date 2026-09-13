@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ForgeSense · AI Factory Floor Intelligence</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">⚙</span> ForgeSense
+    <span class="tag">AI Factory Floor Intelligence</span></div>
+  <div class="status">
+    <span id="apiStatus" class="dot down"></span><span id="apiStatusText">connecting…</span>
+    <span class="sep"></span>ML <span id="mlMode">—</span>
+    <span class="sep"></span><span id="clock"></span>
+    <span class="sep"></span><button id="reconnectBtn" title="Reconnect / re-login">Reconnect</button>
+  </div>
+</header>
+
+<main>
+  <section id="scenePanel">
+    <div id="sceneContainer"></div>
+    <div id="sceneLegend">
+      <span><i class="sw healthy"></i>Healthy</span>
+      <span><i class="sw watch"></i>Watch</span>
+      <span><i class="sw anomaly"></i>Anomaly</span>
+      <span><i class="sw down"></i>Down</span>
+    </div>
+  </section>
+
+  <aside id="sidePanel">
+    <div class="card">
+      <h2>Fleet Overview</h2>
+      <div id="fleetStats" class="stats"></div>
+      <table id="machineTable">
+        <thead><tr><th>Machine</th><th>Type</th><th>Health</th><th>Risk</th><th>State</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2 id="detailTitle">Machine Detail</h2>
+      <div id="detailBody" class="placeholder">Select a machine in the 3D view or the table.</div>
+    </div>
+
+    <div class="card grow">
+      <h2>Live Event Feed</h2>
+      <div id="eventFeed" class="feed"></div>
+    </div>
+
+    <div class="card">
+      <h2>Active Alerts</h2>
+      <div id="alertFeed" class="feed"></div>
+    </div>
+  </aside>
+</main>
+
+<footer>ForgeSense controls rooms &amp; sim labs, not the actual machines — all values are synthetic.</footer>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
