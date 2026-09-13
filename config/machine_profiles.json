@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "description": "Single source of truth for the ForgeSense fleet: per-type sensor operating profiles, the machine catalog, zones, lines and dependency graph. Consumed by the backend (DataSeeder + MachineProfileCatalog), the ML service (z-score profiles) and the telemetry simulator (baselines). Values are engineering nameplate/nominal operating points, not measurements.",
+  "ambient": {
+    "airTemperature": { "label": "Ambient temperature", "unit": "C", "mean": 22.0, "std": 3.0, "min": -40.0, "max": 60.0 }
+  },
+  "machineTypes": {
+    "CNC_MILL": {
+      "label": "CNC Mill",
+      "sensors": {
+        "temperature": { "label": "Temperature", "unit": "C", "mean": 55.0, "std": 4.0, "min": 0.0, "max": 130.0, "warnHigh": 67.0, "critHigh": 79.0 },
+        "vibration": { "label": "Vibration", "unit": "mm/s", "mean": 0.85, "std": 0.12, "min": 0.0, "max": 10.0, "warnHigh": 1.21, "critHigh": 1.57 },
+        "rpm": { "label": "Rotational speed", "unit": "rpm", "mean": 2400.0, "std": 90.0, "min": 0.0, "max": 6000.0, "warnHigh": 2670.0, "critHigh": 2940.0 },
+        "torque": { "label": "Torque", "unit": "Nm", "mean": 40.0, "std": 6.0, "min": 0.0, "max": 300.0, "warnHigh": 58.0, "critHigh": 76.0 },
+        "current": { "label": "Current", "unit": "A", "mean": 18.0, "std": 2.5, "min": 0.0, "max": 100.0, "warnHigh": 25.5, "critHigh": 33.0 },
+        "power": { "label": "Power", "unit": "kW", "mean": 8.6, "std": 1.2, "min": 0.0, "max": 120.0, "warnHigh": 12.2, "critHigh": 15.8 },
+        "voltage": { "label": "Voltage", "unit": "V", "mean": 480.0, "std": 8.0, "min": 300.0, "max": 600.0, "warnHigh": 504.0, "critHigh": 528.0 },
+        "frequency": { "label": "Frequency", "unit": "Hz", "mean": 60.0, "std": 0.4, "min": 45.0, "max": 65.0, "warnHigh": 61.2, "critHigh": 62.4 }
+      }
+    },
+    "INDUSTRIAL_MOTOR": {
+      "label": "Industrial Motor",
+      "sensors": {
+        "temperature": { "label": "Temperature", "unit": "C", "mean": 68.0, "std": 4.5, "min": 0.0, "max": 130.0, "warnHigh": 81.5, "critHigh": 95.0 },
+        "vibration": { "label": "Vibration", "unit": "mm/s", "mean": 0.60, "std": 0.10, "min": 0.0, "max": 10.0, "warnHigh": 0.90, "critHigh": 1.20 },
+        "rpm": { "label": "Rotational speed", "unit": "rpm", "mean": 1470.0, "std": 35.0, "min": 0.0, "max": 3000.0, "warnHigh": 1575.0, "critHigh": 1680.0 },
+        "current": { "label": "Current", "unit": "A", "mean": 24.0, "std": 3.0, "min": 0.0, "max": 100.0, "warnHigh": 33.0, "critHigh": 42.0 },
+        "power": { "label": "Power", "unit": "kW", "mean": 11.5, "std": 1.5, "min": 0.0, "max": 120.0, "warnHigh": 16.0, "critHigh": 20.5 },
+        "voltage": { "label": "Voltage", "unit": "V", "mean": 480.0, "std": 8.0, "min": 300.0, "max": 600.0, "warnHigh": 504.0, "critHigh": 528.0 },
+        "frequency": { "label": "Frequency", "unit": "Hz", "mean": 60.0, "std": 0.4, "min": 45.0, "max": 65.0, "warnHigh": 61.2, "critHigh": 62.4 }
+      }
+    },
+    "HYDRAULIC_PUMP": {
+      "label": "Hydraulic Pump",
+      "sensors": {
+        "temperature": { "label": "Temperature", "unit": "C", "mean": 58.0, "std": 4.0, "min": 0.0, "max": 130.0, "warnHigh": 70.0, "critHigh": 82.0 },
+        "vibration": { "label": "Vibration", "unit": "mm/s", "mean": 1.35, "std": 0.18, "min": 0.0, "max": 10.0, "warnHigh": 1.89, "critHigh": 2.43 },
+        "pressure": { "label": "Pressure", "unit": "bar", "mean": 6.2, "std": 0.35, "min": 0.0, "max": 12.0, "warnHigh": 7.25, "critHigh": 8.30 },
+        "rpm": { "label": "Rotational speed", "unit": "rpm", "mean": 1750.0, "std": 45.0, "min": 0.0, "max": 3000.0, "warnHigh": 1885.0, "critHigh": 2020.0 },
+        "current": { "label": "Current", "unit": "A", "mean": 30.0, "std": 3.5, "min": 0.0, "max": 120.0, "warnHigh": 40.5, "critHigh": 51.0 },
+        "power": { "label": "Power", "unit": "kW", "mean": 14.5, "std": 2.0, "min": 0.0, "max": 120.0, "warnHigh": 20.5, "critHigh": 26.5 },
+        "flow": { "label": "Flow", "unit": "L/min", "mean": 120.0, "std": 14.0, "min": 0.0, "max": 400.0, "warnHigh": 162.0, "critHigh": 204.0 },
+        "voltage": { "label": "Voltage", "unit": "V", "mean": 480.0, "std": 8.0, "min": 300.0, "max": 600.0, "warnHigh": 504.0, "critHigh": 528.0 },
+        "frequency": { "label": "Frequency", "unit": "Hz", "mean": 60.0, "std": 0.4, "min": 45.0, "max": 65.0, "warnHigh": 61.2, "critHigh": 62.4 }
+      }
+    },
+    "CONVEYOR_DRIVE_MOTOR": {
+      "label": "Conveyor Drive Motor",
+      "sensors": {
+        "temperature": { "label": "Temperature", "unit": "C", "mean": 56.0, "std": 4.0, "min": 0.0, "max": 130.0, "warnHigh": 68.0, "critHigh": 80.0 },
+        "vibration": { "label": "Vibration", "unit": "mm/s", "mean": 0.80, "std": 0.12, "min": 0.0, "max": 10.0, "warnHigh": 1.16, "critHigh": 1.52 },
+        "rpm": { "label": "Rotational speed", "unit": "rpm", "mean": 960.0, "std": 25.0, "min": 0.0, "max": 3000.0, "warnHigh": 1035.0, "critHigh": 1110.0 },
+        "torque": { "label": "Torque", "unit": "Nm", "mean": 70.0, "std": 9.0, "min": 0.0, "max": 300.0, "warnHigh": 97.0, "critHigh": 124.0 },
+        "current": { "label": "Current", "unit": "A", "mean": 22.0, "std": 3.0, "min": 0.0, "max": 100.0, "warnHigh": 31.0, "critHigh": 40.0 },
+        "power": { "label": "Power", "unit": "kW", "mean": 8.0, "std": 1.2, "min": 0.0, "max": 120.0, "warnHigh": 11.6, "critHigh": 15.2 },
+        "voltage": { "label": "Voltage", "unit": "V", "mean": 480.0, "std": 8.0, "min": 300.0, "max": 600.0, "warnHigh": 504.0, "critHigh": 528.0 },
+        "frequency": { "label": "Frequency", "unit": "Hz", "mean": 60.0, "std": 0.4, "min": 45.0, "max": 65.0, "warnHigh": 61.2, "critHigh": 62.4 }
+      }
+    },
+    "COMPRESSOR": {
+      "label": "Compressor",
+      "sensors": {
+        "temperature": { "label": "Temperature", "unit": "C", "mean": 62.0, "std": 4.5, "min": 0.0, "max": 130.0, "warnHigh": 75.5, "critHigh": 89.0 },
+        "vibration": { "label": "Vibration", "unit": "mm/s", "mean": 1.10, "std": 0.15, "min": 0.0, "max": 10.0, "warnHigh": 1.55, "critHigh": 2.00 },
+        "pressure": { "label": "Pressure", "unit": "bar", "mean": 8.4, "std": 0.40, "min": 0.0, "max": 12.0, "warnHigh": 9.60, "critHigh": 10.80 },
+        "rpm": { "label": "Rotational speed", "unit": "rpm", "mean": 1200.0, "std": 30.0, "min": 0.0, "max": 3000.0, "warnHigh": 1290.0, "critHigh": 1380.0 },
+        "current": { "label": "Current", "unit": "A", "mean": 41.0, "std": 4.0, "min": 0.0, "max": 120.0, "warnHigh": 53.0, "critHigh": 65.0 },
+        "power": { "label": "Power", "unit": "kW", "mean": 26.0, "std": 3.0, "min": 0.0, "max": 120.0, "warnHigh": 35.0, "critHigh": 44.0 },
+        "flow": { "label": "Flow", "unit": "L/min", "mean": 95.0, "std": 12.0, "min": 0.0, "max": 400.0, "warnHigh": 131.0, "critHigh": 167.0 },
+        "voltage": { "label": "Voltage", "unit": "V", "mean": 480.0, "std": 8.0, "min": 300.0, "max": 600.0, "warnHigh": 504.0, "critHigh": 528.0 },
+        "frequency": { "label": "Frequency", "unit": "Hz", "mean": 60.0, "std": 0.4, "min": 45.0, "max": 65.0, "warnHigh": 61.2, "critHigh": 62.4 }
+      }
+    },
+    "ROBOTIC_ARM": {
+      "label": "Robotic Arm",
+      "sensors": {
+        "temperature": { "label": "Temperature", "unit": "C", "mean": 45.0, "std": 3.5, "min": 0.0, "max": 130.0, "warnHigh": 55.5, "critHigh": 66.0 },
+        "vibration": { "label": "Vibration", "unit": "mm/s", "mean": 0.50, "std": 0.08, "min": 0.0, "max": 10.0, "warnHigh": 0.74, "critHigh": 0.98 },
+        "torque": { "label": "Torque", "unit": "Nm", "mean": 28.0, "std": 4.0, "min": 0.0, "max": 300.0, "warnHigh": 40.0, "critHigh": 52.0 },
+        "current": { "label": "Current", "unit": "A", "mean": 8.0, "std": 1.2, "min": 0.0, "max": 100.0, "warnHigh": 11.6, "critHigh": 15.2 },
+        "power": { "label": "Power", "unit": "kW", "mean": 3.2, "std": 0.6, "min": 0.0, "max": 120.0, "warnHigh": 5.0, "critHigh": 6.8 },
+        "voltage": { "label": "Voltage", "unit": "V", "mean": 480.0, "std": 8.0, "min": 300.0, "max": 600.0, "warnHigh": 504.0, "critHigh": 528.0 },
+        "frequency": { "label": "Frequency", "unit": "Hz", "mean": 60.0, "std": 0.4, "min": 45.0, "max": 65.0, "warnHigh": 61.2, "critHigh": 62.4 }
+      }
+    },
+    "COOLING_UNIT": {
+      "label": "Cooling Unit",
+      "sensors": {
+        "temperature": { "label": "Temperature", "unit": "C", "mean": 42.0, "std": 3.5, "min": 0.0, "max": 130.0, "warnHigh": 52.5, "critHigh": 63.0 },
+        "vibration": { "label": "Vibration", "unit": "mm/s", "mean": 0.70, "std": 0.10, "min": 0.0, "max": 10.0, "warnHigh": 1.00, "critHigh": 1.30 },
+        "pressure": { "label": "Pressure", "unit": "bar", "mean": 2.4, "std": 0.25, "min": 0.0, "max": 12.0, "warnHigh": 3.15, "critHigh": 3.90 },
+        "current": { "label": "Current", "unit": "A", "mean": 15.0, "std": 2.0, "min": 0.0, "max": 100.0, "warnHigh": 21.0, "critHigh": 27.0 },
+        "power": { "label": "Power", "unit": "kW", "mean": 6.5, "std": 1.0, "min": 0.0, "max": 120.0, "warnHigh": 9.5, "critHigh": 12.5 },
+        "flow": { "label": "Flow", "unit": "L/min", "mean": 420.0, "std": 40.0, "min": 0.0, "max": 800.0, "warnHigh": 540.0, "critHigh": 660.0 },
+        "voltage": { "label": "Voltage", "unit": "V", "mean": 480.0, "std": 8.0, "min": 300.0, "max": 600.0, "warnHigh": 504.0, "critHigh": 528.0 },
+        "frequency": { "label": "Frequency", "unit": "Hz", "mean": 60.0, "std": 0.4, "min": 45.0, "max": 65.0, "warnHigh": 61.2, "critHigh": 62.4 }
+      }
+    },
+    "GENERATOR": {
+      "label": "Generator",
+      "sensors": {
+        "temperature": { "label": "Temperature", "unit": "C", "mean": 75.0, "std": 5.0, "min": 0.0, "max": 130.0, "warnHigh": 90.0, "critHigh": 105.0 },
+        "vibration": { "label": "Vibration", "unit": "mm/s", "mean": 1.55, "std": 0.20, "min": 0.0, "max": 10.0, "warnHigh": 2.15, "critHigh": 2.75 },
+        "rpm": { "label": "Rotational speed", "unit": "rpm", "mean": 1500.0, "std": 30.0, "min": 0.0, "max": 3000.0, "warnHigh": 1590.0, "critHigh": 1680.0 },
+        "current": { "label": "Current", "unit": "A", "mean": 55.0, "std": 6.0, "min": 0.0, "max": 150.0, "warnHigh": 73.0, "critHigh": 91.0 },
+        "power": { "label": "Power", "unit": "kW", "mean": 24.0, "std": 3.0, "min": 0.0, "max": 120.0, "warnHigh": 33.0, "critHigh": 42.0 },
+        "voltage": { "label": "Voltage", "unit": "V", "mean": 440.0, "std": 8.0, "min": 300.0, "max": 600.0, "warnHigh": 464.0, "critHigh": 488.0 },
+        "frequency": { "label": "Frequency", "unit": "Hz", "mean": 60.0, "std": 0.3, "min": 45.0, "max": 65.0, "warnHigh": 60.9, "critHigh": 61.8 }
+      }
+    }
+  },
+  "zones": [
+    { "code": "MACHINING", "name": "Machining", "order": 1 },
+    { "code": "ASSEMBLY", "name": "Assembly", "order": 2 },
+    { "code": "PACKAGING", "name": "Packaging", "order": 3 },
+    { "code": "UTILITIES", "name": "Utilities", "order": 4 }
+  ],
+  "lines": [
+    { "code": "LINE-A", "name": "Machining → Assembly", "order": 1 },
+    { "code": "LINE-B", "name": "Packaging & Utilities", "order": 2 }
+  ],
+  "machines": [
+    { "machineId": "M-101", "name": "CNC Mill A", "type": "CNC_MILL", "zone": "MACHINING", "line": "LINE-A", "criticality": "CRITICAL", "throughputPerHour": 80.0, "operatingHours": 12450.0, "description": "High-speed vertical machining center (CNC Mill)." },
+    { "machineId": "M-102", "name": "Packaging Motor", "type": "INDUSTRIAL_MOTOR", "zone": "PACKAGING", "line": "LINE-B", "criticality": "MEDIUM", "throughputPerHour": 120.0, "operatingHours": 8920.0, "description": "Packaging line drive motor." },
+    { "machineId": "M-103", "name": "Hydraulic Pump", "type": "HYDRAULIC_PUMP", "zone": "UTILITIES", "line": "LINE-B", "criticality": "HIGH", "throughputPerHour": 90.0, "operatingHours": 20110.0, "description": "Central hydraulic power unit." },
+    { "machineId": "M-104", "name": "Conveyor Drive Motor", "type": "CONVEYOR_DRIVE_MOTOR", "zone": "MACHINING", "line": "LINE-A", "criticality": "HIGH", "throughputPerHour": 200.0, "operatingHours": 30550.0, "description": "Main conveyor drive motor feeding assembly." },
+    { "machineId": "M-105", "name": "Compressor", "type": "COMPRESSOR", "zone": "UTILITIES", "line": "LINE-B", "criticality": "HIGH", "throughputPerHour": 60.0, "operatingHours": 16420.0, "description": "Air compressor supplying pneumatic systems." },
+    { "machineId": "M-106", "name": "Robotic Arm", "type": "ROBOTIC_ARM", "zone": "ASSEMBLY", "line": "LINE-A", "criticality": "CRITICAL", "throughputPerHour": 150.0, "operatingHours": 13800.0, "description": "Assembly robotic arm (4-axis)." },
+    { "machineId": "M-107", "name": "Cooling Unit", "type": "COOLING_UNIT", "zone": "UTILITIES", "line": "LINE-B", "criticality": "HIGH", "throughputPerHour": 40.0, "operatingHours": 24880.0, "description": "Coolant circulation unit for CNC and drive motors." },
+    { "machineId": "M-108", "name": "Generator", "type": "GENERATOR", "zone": "UTILITIES", "line": "LINE-B", "criticality": "CRITICAL", "throughputPerHour": 100.0, "operatingHours": 41330.0, "description": "Backup generator supplying critical loads." }
+  ],
+  "dependencies": [
+    { "upstream": "M-101", "downstream": "M-104", "relationType": "MATERIAL", "propagationFactor": 0.90, "delayMinutes": 12.0 },
+    { "upstream": "M-104", "downstream": "M-106", "relationType": "MATERIAL", "propagationFactor": 0.80, "delayMinutes": 8.0 },
+    { "upstream": "M-103", "downstream": "M-102", "relationType": "MATERIAL", "propagationFactor": 0.85, "delayMinutes": 15.0 },
+    { "upstream": "M-104", "downstream": "M-102", "relationType": "MATERIAL", "propagationFactor": 0.70, "delayMinutes": 10.0 },
+    { "upstream": "M-105", "downstream": "M-106", "relationType": "SERVICE", "propagationFactor": 0.60, "delayMinutes": 6.0 },
+    { "upstream": "M-108", "downstream": "M-105", "relationType": "POWER", "propagationFactor": 0.95, "delayMinutes": 2.0 },
+    { "upstream": "M-108", "downstream": "M-107", "relationType": "POWER", "propagationFactor": 0.90, "delayMinutes": 2.0 },
+    { "upstream": "M-107", "downstream": "M-101", "relationType": "COOLING", "propagationFactor": 0.75, "delayMinutes": 20.0 },
+    { "upstream": "M-107", "downstream": "M-104", "relationType": "COOLING", "propagationFactor": 0.65, "delayMinutes": 20.0 }
+  ]
+}

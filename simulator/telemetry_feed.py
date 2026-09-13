@@ -1,10 +1,25 @@
-"""ForgeSense factory-floor telemetry feed.
+"""ForgeSense factory-floor telemetry feed (v2).
 
-Streams synthetic-but-physically-plausible telemetry for every machine in
-the fleet to the backend ingest endpoint. Runs forever until Ctrl+C; each
-machine drifts slowly with a sinusoidal seasonal component and small noise,
-and can be given a degradation trend via --degrade M-101.
+Streams synthetic-but-physically-plausible telemetry for every machine in the
+fleet from the authoritative ``config/machine_profiles.json`` catalog.  Each
+machine reads its per-type nominal sensor values (mean/mu, sigma, operating
+limits) from that catalog and drifts slowly around them with Gaussian noise
+and a mild seasonal component.
+
+Field names use the canonical long keys consumed by the backend ingest API
+(temperature, vibration, pressure, rpm, torque, current, voltage, power,
+flow, frequency, airTemperature, operatingHours) — never the short aliases.
+
+Usage:
+
+    python -m telemetry_feed                 # steady-state healthy feed
+    python -m telemetry_feed --degrade M-101  # trend one machine to failure
+    python -m telemetry_feed --bare          # omit optional sensors (drives
+                                             # missing-sensor handling)
+Runs forever until Ctrl+C.
 """
+from __future__ import annotations
+
 import argparse
 import json
 import math
@@ -14,59 +29,68 @@ import signal
 import sys
 import time
 import urllib.request
+from pathlib import Path
 
-MACHINES = {
-    "M-101": {"type": "CNC_MILL", "temp": 55.0, "vib": 0.85, "rpm": 2400, "torque": 40.0,
-              "current": 18.0, "voltage": 480, "power": 8.6, "frequency": 60.0, "airTemp": 22.0},
-    "M-102": {"type": "INDUSTRIAL_MOTOR", "temp": 62.0, "vib": 1.0, "rpm": 1750, "current": 24.0,
-              "voltage": 480, "power": 11.2, "frequency": 60.0, "airTemp": 24.0},
-    "M-103": {"type": "HYDRAULIC_PUMP", "temp": 48.0, "vib": 1.2, "pressure": 4.6, "rpm": 1450,
-              "current": 17.0, "power": 8.0, "flow": 92.0, "airTemp": 22.0},
-    "M-104": {"type": "CONVEYOR_DRIVE_MOTOR", "temp": 55.0, "vib": 0.6, "rpm": 1760, "current": 7.0,
-              "voltage": 480, "power": 3.2, "frequency": 60.0, "airTemp": 21.0},
-    "M-105": {"type": "COMPRESSOR", "temp": 72.0, "vib": 1.8, "pressure": 7.1, "rpm": 1480,
-              "current": 32.0, "power": 17.8, "flow": 150.0, "airTemp": 24.0},
-    "M-106": {"type": "ROBOTIC_ARM", "temp": 38.0, "vib": 0.4, "rpm": 2100, "torque": 12.0,
-              "current": 6.5, "voltage": 230, "power": 1.8, "airTemp": 21.0},
-    "M-107": {"type": "COOLING_UNIT", "temp": 33.0, "vib": 0.3, "rpm": 1200, "current": 9.0,
-              "voltage": 480, "power": 4.4, "frequency": 60.0, "airTemp": 25.0},
-    "M-108": {"type": "GENERATOR", "temp": 68.0, "vib": 0.7, "rpm": 1800, "current": 58.0,
-              "voltage": 480, "power": 27.0, "frequency": 60.0, "airTemp": 23.0},
-}
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from profiles import Catalog, load_catalog, profiles_path  # noqa: E402
 
-NOISE = 0.02
-AUTH = {"username": "admin", "password": os.environ.get("FORGESENSE_DEV_PASSWORD", "forgesense-dev")}
-BASE = os.environ.get("FORGESENSE_BACKEND", "http://localhost:8080")
+# canonical JSON keys understood by the backend TelemetrySample
+SENSOR_KEYS = [
+    "temperature", "vibration", "pressure", "rpm", "torque", "current",
+    "voltage", "power", "flow", "frequency", "airTemperature",
+]
+
+_AUTH = {"username": "admin", "password": os.environ.get("FORGESENSE_DEV_PASSWORD", "forgesense-dev")}
+_BASE = os.environ.get("FORGESENSE_BACKEND", "http://localhost:8080")
 
 
 def _post(path, payload, token=None):
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    req = urllib.request.Request(f"{BASE}{path}", data=json.dumps(payload).encode(),
+    req = urllib.request.Request(f"{_BASE}{path}", data=json.dumps(payload).encode(),
                                  headers=headers, method="POST")
     with urllib.request.urlopen(req, timeout=10) as resp:
         return json.loads(resp.read())
 
 
 def login():
-    return _post("/api/v1/auth/login", AUTH)["accessToken"]
+    return _post("/api/v1/auth/login", _AUTH)["accessToken"]
+
+
+def _round_value(key, value):
+    return round(value, 2) if key in ("vibration", "airTemperature") else round(value, 1)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--interval", type=float, default=5.0, help="seconds between batches")
     ap.add_argument("--degrade", nargs="*", default=[], help="machine ids to trend toward failure")
+    ap.add_argument("--degrade-seconds", type=float, default=90.0,
+                    help="time to ramp a degraded machine to its failure envelope")
+    ap.add_argument("--bare", action="store_true",
+                    help="omit optional sensors so the backend/ML report missingSensors")
+    ap.add_argument("--omit", nargs="*", default=[], help="extra sensor keys to omit")
     args = ap.parse_args()
-    token = login()
-    print(f"Feed started -> {BASE}/api/v1/telemetry/ingest (interval {args.interval}s). Ctrl+C to stop.",
-          flush=True)
 
-    state = {mid: dict(cfg) for mid, cfg in MACHINES.items()}
+    catalog = Catalog(load_catalog(), profiles_path())
+    machines = catalog.keys()
+    if args.degrade:
+        unknown = [m for m in args.degrade if m not in machines]
+        if unknown:
+            print(f"unknown machine ids: {unknown}; known: {machines}", file=sys.stderr)
+            return 2
+
+    token = login()
+    print(f"Feed started -> {_BASE}/api/v1/telemetry/ingest (interval {args.interval}s, "
+          f"{len(machines)} machines from {catalog.profile_source})", flush=True)
+
+    omit = set(args.omit) | ({"airTemperature", "frequency", "voltage"} if args.bare else set())
+    state = {mid: dict(catalog.baseline(mid)) for mid in machines}
     degrade = {mid: 0.0 for mid in args.degrade}
-    seq = {mid: 0 for mid in MACHINES}
+    seq = {mid: 0 for mid in machines}
     t0 = time.time()
-    phase = {mid: i * 1.7 for i, mid in enumerate(MACHINES)}
+    phase = {mid: i * 1.7 for i, mid in enumerate(machines)}
     stop = False
 
     def _sigint(_s, _f):
@@ -76,30 +100,48 @@ def main():
     signal.signal(signal.SIGINT, _sigint)
 
     while not stop:
-        for mid, s in state.items():
+        for mid in machines:
+            meta = catalog.meta(mid)
             t = time.time() - t0
-            seasonal = math.sin(t / 17 + phase[mid]) * 0.04
-            for key in ("temp", "vib", "pressure", "rpm", "current", "power", "flow", "torque"):
-                if key not in s:
-                    continue
-                base = MACHINES[mid].get(key, 0.0)
-                if base == 0.0:
-                    continue
-                s[key] = base * (1.0 + seasonal + random.gauss(0, NOISE))
+            seasonal = math.sin(t / 17 + phase[mid]) * 0.30
+            d = 0.0
             if mid in degrade:
-                degrade[mid] += args.interval / 90.0  # full failure over ~90s
-                d = min(degrade[mid], 1.0)
-                s["temp"] = MACHINES[mid]["temp"] * (1 + seasonal + 0.55 * d)
-                s["vib"] = MACHINES[mid]["vib"] * (1 + seasonal + 3.2 * d)
+                degrade[mid] = min(degrade[mid] + args.interval / max(args.degrade_seconds, 1.0), 1.0)
+                d = degrade[mid]
+
+            for key in SENSOR_KEYS:
+                if key not in meta or key in omit:
+                    continue
+                m = meta[key]["mean"]
+                s = meta[key]["std"]
+                lo, hi = meta[key]["min"], meta[key]["max"]
+                value = m + random.gauss(0, s) * 0.25 + seasonal * s
+                if d > 0.0:
+                    if key in ("vibration", "temperature"):
+                        value += d * 3.2 * s
+                    elif key in ("rpm", "current", "power"):
+                        value += d * 1.2 * s
+                    elif key in ("pressure", "flow", "torque"):
+                        value += d * 0.8 * s
+                state[mid][key] = min(max(value, lo), hi)
 
             seq[mid] += 1
-            payload = {"machineId": mid, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                       "sequence": seq[mid]}
-            payload.update({k: round(v, 4) if isinstance(v, float) else v
-                            for k, v in s.items() if k != "type" and v != 0.0})
+            payload = {
+                "machineId": mid,
+                "machineType": catalog.type_of(mid),
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "sequence": seq[mid],
+                "operatingHours": round(
+                    catalog.machine(mid).get("operatingHours", 10000.0) + t / 3600.0, 2),
+            }
+            for key in SENSOR_KEYS:
+                if key in omit or key not in state[mid]:
+                    continue
+                payload[key] = _round_value(key, state[mid][key])
+
             try:
                 r = _post("/api/v1/telemetry/ingest", payload, token)
-                print(f"{mid} seq={seq[mid]} ok={r.get('accepted')}", flush=True)
+                print(f"{mid} seq={seq[mid]} accepted={r.get('accepted')}", flush=True)
             except Exception as exc:  # noqa: BLE001 - feed must keep running
                 print(f"{mid} failed: {exc}", flush=True)
                 time.sleep(2)
@@ -107,6 +149,7 @@ def main():
         time.sleep(args.interval)
 
     print("Stopped.", flush=True)
+    return 0
 
 
 if __name__ == "__main__":
