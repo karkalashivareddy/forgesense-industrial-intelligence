@@ -36,30 +36,34 @@ public class TwinService {
         this.eventBus = eventBus;
     }
 
+    private void copyFrom(Machine m, MachineTwin t) {
+        t.setName(m.getName());
+        t.setMachineType(m.getType().name());
+        t.setZoneCode(m.getZone().getCode());
+        t.setLineCode(m.getProductionLine().getCode());
+        t.setStatus(m.getStatus() != null ? m.getStatus() : MachineState.NORMAL);
+        t.setFailureRisk(m.getFailureRisk() == null ? 0.03 : m.getFailureRisk());
+        t.setAnomalyScore(m.getAnomalyScore() == null ? 0.05 : m.getAnomalyScore());
+        t.setHealthScore(m.getHealthScore() == null ? 98 : m.getHealthScore());
+        t.setModelVersion(m.getModelVersion());
+    }
+
     /** Rebuild/refresh the twin shell from the persisted machine. */
     public MachineTwin register(Machine m) {
         return twins.compute(m.getMachineId(), (k, existing) -> {
             MachineTwin t = existing != null ? existing : new MachineTwin(m.getMachineId());
-            t.setName(m.getName());
-            t.setMachineType(m.getType().name());
-            t.setZoneCode(m.getZone().getCode());
-            t.setLineCode(m.getProductionLine().getCode());
-            t.setStatus(m.getStatus() != null ? m.getStatus() : MachineState.NORMAL);
-            t.setFailureRisk(m.getFailureRisk() == null ? 0.03 : m.getFailureRisk());
-            t.setAnomalyScore(m.getAnomalyScore() == null ? 0.05 : m.getAnomalyScore());
-            t.setHealthScore(m.getHealthScore() == null ? 98 : m.getHealthScore());
-            t.setModelVersion(m.getModelVersion());
+            copyFrom(m, t);
             return t;
         });
     }
 
     public MachineTwin twin(String machineId) {
         return twins.computeIfAbsent(machineId, id -> {
-            Machine m = machineRepository.findByMachineId(id).orElse(null);
-            if (m == null) {
-                throw new IllegalArgumentException("Unknown machine: " + id);
-            }
-            return register(m);
+            Machine m = machineRepository.findByMachineId(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown machine: " + id));
+            MachineTwin t = new MachineTwin(m.getMachineId());
+            copyFrom(m, t);
+            return t;
         });
     }
 
