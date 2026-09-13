@@ -22,7 +22,7 @@ import java.util.UUID;
 
 /**
  * Alert lifecycle:
- * NEW → ACKNOWLEDGED → INVESTIGATING → RESOLVED
+ * NEW -> ACKNOWLEDGED -> INVESTIGATING -> RESOLVED
  * Persists every transition, broadcasts over WebSocket and appends to the
  * operational timeline.
  */
@@ -48,10 +48,21 @@ public class AlertService {
     public Alert ensureAlert(MachineTwin twin, AlertSeverity severity, String type, String headline,
                              String description, Assessment assessment, String triggeredBy) {
         Alert existing = alertRepository.findFirstByMachineIdAndStatusInOrderByOpenedAtDesc(
-                twin.getMachineId(), List.of(AlertStatus.NEW, AlertStatus.ACKNOWLEDGED, AlertStatus.INVESTIGATING))
-                .filter(a -> a.getSeverity() == severity)
+                        twin.getMachineId(),
+                        List.of(AlertStatus.NEW, AlertStatus.ACKNOWLEDGED, AlertStatus.INVESTIGATING))
                 .orElse(null);
         if (existing != null) {
+            existing.setSeverity(severity);
+            existing.setType(type);
+            existing.setHeadline(headline);
+            existing.setDescription(description);
+            existing.setRiskAtCreation(twin.getFailureRisk());
+            existing.setFactorsSummary(serializeFactors(assessment));
+            existing.setRecommendedAction(assessment == null
+                    ? "Investigate contributing factors and schedule inspection."
+                    : assessment.recommendations() == null || assessment.recommendations().isEmpty()
+                    ? "Investigate contributing factors and schedule inspection."
+                    : String.join(" ", assessment.recommendations()));
             return existing;
         }
 
@@ -161,7 +172,7 @@ public class AlertService {
 
     private static String truncate(String s) {
         if (s == null || s.length() <= 80) return s == null ? "" : s;
-        return s.substring(0, 80) + "…";
+        return s.substring(0, 80) + "...";
     }
 
     private Alert require(UUID id) {

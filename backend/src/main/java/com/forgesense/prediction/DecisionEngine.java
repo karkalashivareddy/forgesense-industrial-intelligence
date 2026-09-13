@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
  * - validates the transition through the state machine
  * - triggers alerts, impact analysis and maintenance recommendations.
  *
- * This layer answers "what do we DO about the prediction" — it is deliberately
+ * This layer answers "what do we DO about the prediction" - it is deliberately
  * separated from ML inference (see docs/SYSTEM_DESIGN.md decision engine).
  */
 @Service
@@ -58,7 +58,7 @@ public class DecisionEngine {
         if (current != target) {
             try {
                 MachineState from = current;
-                MachineState to = MachineStateMachine.apply(current, target);
+                MachineState to = MachineStateMachine.walk(current, target);
                 twin.setStatus(to);
                 twinService.emitStateChanged(twin, from, to);
                 log.info("{} state {} -> {}", twin.getMachineId(), from, to);
