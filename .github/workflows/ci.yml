@@ -59,5 +59,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Syntax-check app.js
-        run: node --check app.js
+      - name: Syntax-check all frontend modules
+        run: |
+          for f in $(find js -name '*.js'); do
+            node --check "$f" || exit 1
+          done
+      - name: Run node:test suite (pure logic)
+        run: node --test test/util.test.mjs
