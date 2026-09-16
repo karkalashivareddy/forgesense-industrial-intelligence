@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reject tracked local credential defaults
         run: |
-          if git grep -nE 'forgesense_dev_pw|forgesense-demo-jwt-signing-key|forgeSence-DemoPW|default forgesense-dev'; then
+          if git grep -nE 'forgesense_dev_pw|forgesense-demo-jwt-signing-key|forgeSence-DemoPW|default forgesense-dev' -- ':!.github/workflows/ci.yml'; then
             echo "Tracked local credential material found"
             exit 1
           fi
