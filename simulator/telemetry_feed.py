@@ -40,7 +40,10 @@ SENSOR_KEYS = [
     "voltage", "power", "flow", "frequency", "airTemperature",
 ]
 
-_AUTH = {"username": "admin", "password": os.environ.get("FORGESENSE_DEV_PASSWORD", "forgesense-dev")}
+_DEV_PASSWORD = os.environ.get("FORGESENSE_DEV_PASSWORD")
+if not _DEV_PASSWORD:
+    raise RuntimeError("FORGESENSE_DEV_PASSWORD must be configured before running the simulator")
+_AUTH = {"username": "admin", "password": _DEV_PASSWORD}
 _BASE = os.environ.get("FORGESENSE_BACKEND", "http://localhost:8080")
 
 

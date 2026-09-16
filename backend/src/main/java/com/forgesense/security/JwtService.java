@@ -11,16 +11,19 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 /**
- * Signs and verifies JWT access tokens. The dev secret comes from config; a
- * fresh key is used when the configured secret is too short so the demo always
- * boots. Tokens carry username + roles as claims.
+ * Signs and verifies JWT access tokens. Secure profiles require an explicit
+ * environment-provided secret. Security-disabled test/dev profiles use an
+ * ephemeral in-memory key so no reusable credential is shipped in source.
  */
 @Service
 public class JwtService {
 
     private final ForgeSenseProperties props;
+    private final SecretKey ephemeralKey = Keys.hmacShaKeyFor(
+            UUID.randomUUID().toString().replace("-", "").repeat(2).getBytes(StandardCharsets.UTF_8));
 
     public JwtService(ForgeSenseProperties props) {
         this.props = props;
@@ -46,9 +49,13 @@ public class JwtService {
 
     private SecretKey key() {
         String secret = props.security() == null ? null : props.security().jwtSecret();
-        if (secret == null || secret.length() < 32) {
-            // 48+ char deterministic demo key so the app always boots
-            secret = "forgesense-demo-jwt-signing-key-do-not-use-in-production-0123456789";
+        boolean securityEnabled = props.security() == null || props.security().enabled();
+        if (secret == null || secret.isBlank()) {
+            if (!securityEnabled) return ephemeralKey;
+            throw new IllegalStateException("FORGESENSE_JWT_SECRET must be configured when security is enabled");
+        }
+        if (secret.length() < 32) {
+            throw new IllegalStateException("FORGESENSE_JWT_SECRET must contain at least 32 characters");
         }
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }

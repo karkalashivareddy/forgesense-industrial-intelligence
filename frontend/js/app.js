@@ -33,7 +33,11 @@ function $id(s) { return document.getElementById(s); }
 
 /* ---------- login ---------- */
 async function bootLogin() {
-  const pw = decodePw() || 'forgesense-dev';
+  const pw = decodePw();
+  if (!pw) {
+    showLogin();
+    return;
+  }
   for (const u of ['operator', 'engineer', 'admin']) {
     try {
       await login(u, pw);
@@ -45,7 +49,7 @@ async function bootLogin() {
 }
 
 function showLogin() {
-  const input = el('input', { type: 'password', placeholder: 'password (default forgesense-dev)',
+  const input = el('input', { type: 'password', placeholder: 'configured operator password',
     onkeydown: async e => {
       if (e.key === 'Enter') {
         const u = document.getElementById('loginUser').value;
@@ -67,7 +71,7 @@ function showLogin() {
         try { await login(userSel.value, input.value); set({ user: userSel.value, roles: getRoles() }); overlay.remove(); }
         catch { input.style.borderColor = '#f25c4c'; }
       } }, 'Connect'),
-      el('div', { class: 'muted small', style: { marginTop: '8px' } }, 'Demo users: operator · engineer · admin. Passwords come from the backend bootstrap password (default forgesense-dev).')));
+      el('div', { class: 'muted small', style: { marginTop: '8px' } }, 'Demo users: operator · engineer · admin. Passwords come from FORGESENSE_DEV_PASSWORD.')));
   document.body.appendChild(overlay);
   input.focus();
 }

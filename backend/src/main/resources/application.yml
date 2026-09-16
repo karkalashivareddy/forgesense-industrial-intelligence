@@ -42,8 +42,7 @@ forgesense:
     poll-enabled: true
   security:
     enabled: ${FORGESENSE_SECURITY_ENABLED:true}
-    # demo-only signing key — replace with a strong secret in production
-    jwt-secret: forgesense-demo-jwt-signing-key-do-not-use-in-production-0123456789
+    jwt-secret: ${FORGESENSE_JWT_SECRET:}
     jwt-expiration-seconds: 86400
 
 management:

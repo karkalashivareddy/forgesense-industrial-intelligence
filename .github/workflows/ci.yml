@@ -6,6 +6,19 @@ on:
   pull_request:
 
 jobs:
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject tracked local credential defaults
+        run: |
+          if git grep -nE 'forgesense_dev_pw|forgesense-demo-jwt-signing-key|forgeSence-DemoPW|default forgesense-dev'; then
+            echo "Tracked local credential material found"
+            exit 1
+          fi
+          test ! -f .env
+
   backend:
     name: Backend (Spring Boot 4)
     runs-on: ubuntu-latest

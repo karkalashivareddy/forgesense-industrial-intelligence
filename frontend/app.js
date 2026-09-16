@@ -23,7 +23,7 @@ async function api(path, opts = {}) {
 }
 async function login() {
     const pass = localStorage.getItem('forgesense.pw') ||
-        (window.prompt('ForgeSense admin password (dev default: forgesense-dev)') || 'forgesense-dev');
+        (window.prompt('ForgeSense admin password (configured by the operator)') || '');
     const r = await api('/api/v1/auth/login', {
         method: 'POST', _retry: true,
         body: JSON.stringify({ username: 'admin', password: pass })

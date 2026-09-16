@@ -56,7 +56,7 @@ cp .env.example .env             # Linux/macOS
 Copy-Item .env.example .env      # PowerShell
 ```
 
-At minimum, set `FORGESENSE_DEV_PASSWORD` and `FORGESENSE_SECURITY_JWT_SECRET` in `.env`. Use a strong, unique JWT secret outside local development. Then run:
+At minimum, set `FORGESENSE_DEV_PASSWORD` and `FORGESENSE_JWT_SECRET` in `.env`. Use a strong, unique value for every secret. Then run:
 
 ```bash
 docker compose up --build
@@ -170,6 +170,8 @@ docs/          Architecture, data flow, deployment, ownership, and system design
 - [Architecture](docs/ARCHITECTURE.md)
 - [Data flow](docs/DATA_FLOW.md)
 - [System design](docs/SYSTEM_DESIGN.md)
+- [Engineering decisions](docs/ENGINEERING_DECISIONS.md)
+- [Interview guide](docs/INTERVIEW_GUIDE.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [Project specification](docs/PROJECT_SPECIFICATION.md)
 

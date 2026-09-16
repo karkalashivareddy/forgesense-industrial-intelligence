@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:forgesense}
     username: ${POSTGRES_USER:forgesense}
-    password: ${POSTGRES_PASSWORD:forgesense_dev_pw}
+    password: ${POSTGRES_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: update
