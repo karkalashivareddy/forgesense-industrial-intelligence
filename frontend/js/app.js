@@ -1,4 +1,4 @@
-import { API_BASE, getRoles, login, decodePw } from './api.js';
+import { API_BASE, getRoles, login } from './api.js';
 import { store, subscribe, selectMachine, startPolling, refreshMaintenance, set } from './state.js';
 import { el, esc, int, timeAgo, fleetSummary } from './util.js';
 import { register, boot as bootRouter, go, onRoute } from './router.js';
@@ -32,21 +32,7 @@ const SHORTCUTS = [
 function $id(s) { return document.getElementById(s); }
 
 /* ---------- login ---------- */
-async function bootLogin() {
-  const pw = decodePw();
-  if (!pw) {
-    showLogin();
-    return;
-  }
-  for (const u of ['operator', 'engineer', 'admin']) {
-    try {
-      await login(u, pw);
-      set({ user: u, roles: getRoles() });
-      return;
-    } catch { /* try next */ }
-  }
-  showLogin();
-}
+async function bootLogin() { showLogin(); }
 
 function showLogin() {
   const input = el('input', { type: 'password', placeholder: 'configured operator password',

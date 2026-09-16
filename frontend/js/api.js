@@ -50,7 +50,3 @@ export async function api(path, opts = {}) {
 export function post(path, body) {
   return api(path, { method: 'POST', body: JSON.stringify(body || {}) });
 }
-
-export function decodePw() {
-  return localStorage.getItem('forgesense.pw') || '';
-}

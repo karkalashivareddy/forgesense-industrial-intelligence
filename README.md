@@ -22,7 +22,7 @@ flowchart LR
     PR --> G[Grafana]
 ```
 
-The Docker Compose topology also provisions Kafka, PostgreSQL, Redis, the ML service, the telemetry simulator, the frontend, Prometheus, and Grafana. The backend can use an in-process event bus for development and Kafka for the Compose profile.
+The Docker Compose topology provisions Kafka, PostgreSQL, Redis, the ML service, the frontend, Prometheus, and Grafana. The telemetry simulator is a standalone Python script (`simulator/telemetry_feed.py`) that pushes to the ingest API — run it separately. The backend can use an in-process event bus for development and Kafka for the Compose profile.
 
 ## Key capabilities
 

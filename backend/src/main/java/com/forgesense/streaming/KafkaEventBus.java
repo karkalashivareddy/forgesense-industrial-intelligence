@@ -2,11 +2,11 @@ package com.forgesense.streaming;
 
 import com.forgesense.common.config.ForgeSenseProperties;
 import com.forgesense.common.domain.EventEnvelope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
-
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Kafka-backed event bus (used by the docker profile).
@@ -14,6 +14,8 @@ import java.util.concurrent.CompletableFuture;
 @Component
 @Profile("docker")
 public class KafkaEventBus implements EventBus {
+
+    private static final Logger log = LoggerFactory.getLogger(KafkaEventBus.class);
 
     private final KafkaTemplate<String, EventEnvelope> kafka;
     private final EventRoutes routes;
@@ -26,10 +28,12 @@ public class KafkaEventBus implements EventBus {
     @Override
     public void publish(EventEnvelope envelope) {
         String topic = routes.topicFor(envelope.getEventType());
-        CompletableFuture<Void> sent = kafka.send(topic, envelope.getMachineId(), envelope)
-                .thenAccept(meta -> { /* nothing */ });
-        sent.exceptionally(ex -> {
-            throw new IllegalStateException("Kafka publish failed on " + topic, ex);
-        });
+        kafka.send(topic, envelope.getMachineId(), envelope)
+                .whenComplete((meta, ex) -> {
+                    if (ex != null) {
+                        log.error("Kafka publish failed on {} for machine {}: {}",
+                                topic, envelope.getMachineId(), ex.getMessage());
+                    }
+                });
     }
 }

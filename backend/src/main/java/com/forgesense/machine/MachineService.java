@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class MachineService {
@@ -79,9 +78,5 @@ public class MachineService {
         if (twin.getStatus() != status) {
             twinService.emitStateChanged(twin, twin.getStatus(), status);
         }
-    }
-
-    public Map<String, Object> zoneCodes() {
-        return Map.of();
     }
 }

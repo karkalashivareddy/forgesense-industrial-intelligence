@@ -1,9 +1,13 @@
 package com.forgesense.websocket;
 
+import com.forgesense.observability.ForgeMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.messaging.SessionConnectEvent;
+import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -17,10 +21,26 @@ public class WsNotifier {
     private static final Logger log = LoggerFactory.getLogger(WsNotifier.class);
 
     private final SimpMessagingTemplate template;
+    private final ForgeMetrics metrics;
     private final AtomicLong connections = new AtomicLong(0);
 
-    public WsNotifier(SimpMessagingTemplate template) {
+    public WsNotifier(SimpMessagingTemplate template, ForgeMetrics metrics) {
         this.template = template;
+        this.metrics = metrics;
+    }
+
+    @EventListener
+    public void onConnect(SessionConnectEvent event) {
+        connections.incrementAndGet();
+        metrics.setWebsocketConnections(connections.get());
+    }
+
+    @EventListener
+    public void onDisconnect(SessionDisconnectEvent event) {
+        if (connections.get() > 0) {
+            connections.decrementAndGet();
+        }
+        metrics.setWebsocketConnections(connections.get());
     }
 
     /**
@@ -41,9 +61,13 @@ public class WsNotifier {
 
     public void increment() {
         connections.incrementAndGet();
+        metrics.setWebsocketConnections(connections.get());
     }
 
     public void decrement() {
-        connections.decrementAndGet();
+        if (connections.get() > 0) {
+            connections.decrementAndGet();
+        }
+        metrics.setWebsocketConnections(connections.get());
     }
 }

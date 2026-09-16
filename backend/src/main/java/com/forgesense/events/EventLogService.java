@@ -2,6 +2,7 @@ package com.forgesense.events;
 
 import com.forgesense.common.domain.EventEnvelope;
 import com.forgesense.events.domain.EventLog;
+import com.forgesense.observability.ForgeMetrics;
 import com.forgesense.websocket.WsNotifier;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -26,14 +27,17 @@ public class EventLogService {
     private final EventRepository eventRepository;
     private final WsNotifier ws;
     private final ObjectMapper objectMapper;
+    private final ForgeMetrics metrics;
 
     // throttle: per machineId+eventType, minimum interval
     private final Map<String, Long> lastEmitted = new ConcurrentHashMap<>();
 
-    public EventLogService(EventRepository eventRepository, WsNotifier ws, ObjectMapper objectMapper) {
+    public EventLogService(EventRepository eventRepository, WsNotifier ws, ObjectMapper objectMapper,
+                           ForgeMetrics metrics) {
         this.eventRepository = eventRepository;
         this.ws = ws;
         this.objectMapper = objectMapper;
+        this.metrics = metrics;
     }
 
     /**
@@ -70,6 +74,7 @@ public class EventLogService {
             e.setPayloadJson(null);
         }
         eventRepository.save(e);
+        metrics.recordEvent();
 
         ws.broadcast("events.updated", Map.of(
                 "eventType", eventType,

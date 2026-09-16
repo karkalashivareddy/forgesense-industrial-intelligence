@@ -1,6 +1,8 @@
 package com.forgesense.streaming;
 
 import com.forgesense.common.domain.EventEnvelope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +20,8 @@ import java.util.function.Consumer;
 @Profile("!docker")
 public class InMemoryEventBus implements EventBus {
 
+    private static final Logger log = LoggerFactory.getLogger(InMemoryEventBus.class);
+
     private final Map<String, List<Consumer<EventEnvelope>>> subscriptions = new ConcurrentHashMap<>();
 
     public void subscribe(String topic, Consumer<EventEnvelope> consumer) {
@@ -33,7 +37,8 @@ public class InMemoryEventBus implements EventBus {
                 try {
                     c.accept(envelope);
                 } catch (Exception e) {
-                    // one bad consumer must not kill the pipeline
+                    log.error("In-memory consumer failed on {} for machine {}: {}",
+                            topic, envelope.getMachineId(), e.getMessage());
                 }
             }
         }

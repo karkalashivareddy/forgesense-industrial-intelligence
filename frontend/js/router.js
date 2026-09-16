@@ -24,7 +24,7 @@ export function go(name) {
     return true;
   }
   if (activeView && activeView !== v) {
-    if (current.unmount) activeView.unmount();
+    if (activeView.unmount) activeView.unmount();
     activeView.el && activeView.el.classList.remove('active');
   }
   navigating = true;

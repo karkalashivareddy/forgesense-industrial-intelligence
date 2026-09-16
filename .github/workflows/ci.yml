@@ -31,8 +31,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
-      - name: Compile + package
-        run: ./mvnw -q -DskipTests package
+      - name: Compile + test + package
+        run: ./mvnw -q package
       - name: Boot test (dev profile, security off)
         run: |
           SPRING_PROFILES_ACTIVE=dev FORGESENSE_SECURITY_ENABLED=false \
