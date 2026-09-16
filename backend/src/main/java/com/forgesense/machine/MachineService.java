@@ -66,7 +66,7 @@ public class MachineService {
                 twinService.persistBudgets(twin);
                 throw ApiException.badRequest("Offline machines must recover before returning to NORMAL.");
             }
-            throw ApiException.badRequest("Illegal transition " + from + " → " + target);
+            throw ApiException.badRequest("Illegal transition " + from + " -> " + target);
         }
         twinService.emitStateChanged(twin, twin.getStatus(), next);
         twinService.persistBudgets(twin);
@@ -77,7 +77,10 @@ public class MachineService {
     public void setStatusQuiet(String machineId, MachineState status) {
         MachineTwin twin = twinService.twin(machineId);
         if (twin.getStatus() != status) {
-            twinService.emitStateChanged(twin, twin.getStatus(), status);
+            MachineState from = twin.getStatus();
+            twin.setStatus(status);
+            twinService.persistBudgets(twin);
+            twinService.emitStateChanged(twin, from, status);
         }
     }
 

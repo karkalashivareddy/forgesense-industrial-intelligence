@@ -22,9 +22,10 @@ public class MlHealthIndicator implements HealthIndicator {
     public Health health() {
         if (mlGateway.mlAvailable()) {
             return Health.up().withDetail("mode", "MODEL")
-                    .withDetail("version", mlGateway.anomalyModelVersion()).build();
+                    .withDetail("failureModelVersion", mlGateway.failureModelVersion())
+                    .withDetail("anomalyModelVersion", mlGateway.anomalyModelVersion()).build();
         }
         return Health.down().withDetail("mode", "HEURISTIC")
-                .withDetail("reason", "ML service not reachable — heuristic scorer active").build();
+                .withDetail("reason", "ML service not reachable - heuristic scorer active").build();
     }
 }

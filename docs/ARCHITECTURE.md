@@ -3,7 +3,7 @@
 ```mermaid
 flowchart LR
     subgraph Producers
-        SIM[Simulator Service<br/>Python, port 8002]
+        SIM[Simulator Service<br/>Python producer, outbound HTTP]
         ING[REST ingest endpoint<br/>POST /api/v1/telemetry/ingest]
     end
 
@@ -31,13 +31,13 @@ flowchart LR
     subgraph ML [ML Service - FastAPI, port 8001]
         ANOM[Anomaly detector<br/>Isolation Forest]
         RISK[Failure-risk model]
-        EXPL[SHAP explainer]
+        EXPL[Baseline-importance factor attribution]
     end
 
-    subgraph Frontend [React control room - port 5173]
-        UI[React / TS / Vite]
-        X3D[React Three Fiber 3D factory]
-        QS[TanStack Query + Zustand]
+    subgraph Frontend [Static dashboard - nginx :5173]
+        UI[Vanilla JS + Three.js via CDN]
+        X3D[Three.js factory floor]
+        POLL[REST poll every 3 s]
     end
 
     subgraph Ops [Observability]
@@ -45,8 +45,8 @@ flowchart LR
         GRA[Grafana]
     end
 
-    SIM -->|telemetry| ING
     SIM -->|telemetry| K
+    SIM -->|telemetry| ING
     K --> CONSUMER
     BUS --> CONSUMER
     ING --> BUS
@@ -65,35 +65,32 @@ flowchart LR
     DECISION --> WS
     TWIN --> REDISC
     REDISC --> PG
-    WS --> UI
     REST --> UI
+    POLL --> REST
     UI --> X3D
-    UI --> QS
-    WS --> QS
-    REST --> QS
-    PROM -->|scrape| UI
-    PROM -->|scrape /metrics| REST
-    PROM -->|scrape /health/metrics| RISK
+    PROM -->|scrape /actuator/prometheus| REST
     GRA --> PROM
 ```
 
 ## Key architectural positions
 
-1. **A streaming core, not a polling system.** Telemetry enters via
+1. **A server-side event core with an honest polling browser.** Telemetry enters via
    `forge.telemetry.raw`, is normalized to `forge.telemetry.normalized`, and
    every downstream subsystem (digital twin, ML, alerts, timeline) consumes
-   events. Frontend updates arrive over WebSocket, not 1-second polling.
+   events. The frontend keeps itself updated by polling the REST API every 3 s;
+   WebSocket push exists server-side (`/ws`) but the dashboard does not subscribe
+   to it; the browser's verified transport is REST polling.
 
 2. **Separation of "predict" from "decide".** The ML service answers
-   *"what does the model predict?"* (`/predict/anomaly`, `/predict/failure-risk`,
-   `/explain`). The backend decision engine answers *"what should the system do
-   about it?"* using configurable rules. Rules live in `application-*.yml` +
-   `SystemConfig`, not inside ML code.
+   *"what does the model predict?"* (`GET /health`, `POST /assess`). The backend
+   decision engine answers *"what should the system do about it?"* using
+   configurable rules. Rules live in `application-*.yml` + `SystemConfig`, not
+   inside ML code.
 
 3. **The digital twin is authoritative.** Every machine's synchronized state
    (telemetry, health, risk, status, dependencies, recent events) is owned by
-   the backend. The 3D scene and all dashboards render from this one source of
-   truth — the frontend never invents business state.
+   the backend. The 3D scene and all dashboard views render from this one source
+   of truth — the frontend never invents business state.
 
 4. **Infrastructure adapters.** PostgreSQL/Redis/Kafka are the production
    adapters; H2/in-memory/in-process bus are dev adapters. Interfaces are
@@ -108,8 +105,8 @@ flowchart LR
 |---|---|---|
 | Simulator | generate plausible machine telemetry, run scenarios, expose control API | must not decide health/risk — that is upstream of it |
 | Backend | domain truth: machines, state machine, alerts, maintenance, impact, simulation, websocket, API | must not train models |
-| ML service | anomaly score, failure-risk, SHAP explanation | must not own alert policy |
-| Frontend | render synchronized state, interactions, what-if UX | must not compute business state |
+| ML service | anomaly score, failure-risk, RUL estimate, baseline-importance factors | must not own alert policy |
+| Frontend | render synchronized state, interactions | must not compute business state |
 | Redis | latest telemetry / machine state cache, small short-lived state | not the source of truth |
 | PostgreSQL | persisted domain + history | investors-free time-series bloat becomes analytics problem |
 
@@ -123,4 +120,4 @@ flowchart LR
 - WebSocket scale-out: topic prefix per backend node or broker; sticky sessions.
 - ML inference: stateless, horizontally scalable behind a load balancer with
   model warm cache.
-- See `docs/FUTURE_SCOPE.md` and `docs/SYSTEM_DESIGN.md:scalability`.
+- See `docs/SYSTEM_DESIGN.md:scalability`.

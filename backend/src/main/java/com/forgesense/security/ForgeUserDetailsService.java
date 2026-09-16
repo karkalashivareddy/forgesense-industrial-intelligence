@@ -1,5 +1,6 @@
 package com.forgesense.security;
 
+import com.forgesense.common.config.ForgeSenseProperties;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -21,10 +22,13 @@ public class ForgeUserDetailsService implements UserDetailsService {
     private final Map<String, String> passwords;
     private final PasswordEncoder passwordEncoder;
 
-    public ForgeUserDetailsService(PasswordEncoder passwordEncoder) {
+    public ForgeUserDetailsService(PasswordEncoder passwordEncoder, ForgeSenseProperties props) {
         this.passwordEncoder = passwordEncoder;
-        String base = System.getenv("FORGESENSE_DEV_PASSWORD") == null
-                ? "forgesense-dev" : System.getenv("FORGESENSE_DEV_PASSWORD");
+        String base = System.getenv("FORGESENSE_DEV_PASSWORD");
+        if ((base == null || base.isBlank()) && !props.demoMode()) {
+            throw new IllegalStateException("FORGESENSE_DEV_PASSWORD must be provided outside demo mode");
+        }
+        if (base == null || base.isBlank()) base = "forgesense-dev";
         this.passwords = Map.of(
                 "operator", base,
                 "engineer", base,

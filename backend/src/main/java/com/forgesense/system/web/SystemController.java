@@ -36,17 +36,22 @@ public class SystemController {
     @GetMapping("/status")
     public Map<String, Object> status() {
         boolean kafka = props.streaming().kafka().enabled();
-        String db = kafka ? "postgres" : "h2";
-        return Map.of(
-                "application", "ForgeSense Backend",
-                "demoMode", props.demoMode(),
-                "streaming", kafka ? "KAFKA" : "IN-PROCESS",
-                "database", db,
-                "mlServiceAvailable", mlGateway.mlAvailable(),
-                "mlModelVersion", mlGateway.anomalyModelVersion(),
-                "simulationPaused", systemState.isPaused(),
-                "webSocketConnections", ws.connections(),
-                "definedMachines", machineService.all().size(),
-                "dataBasis", List.of("LIVE", "SIMULATED"));
+        String db = props.demoMode() ? "H2_DEV" : "POSTGRES_CONFIGURED";
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("application", "ForgeSense Backend");
+        result.put("demoMode", props.demoMode());
+        result.put("streaming", false);
+        result.put("transport", "REST_POLL");
+        result.put("pollIntervalSeconds", 3);
+        result.put("inputTransport", kafka ? "KAFKA" : "IN_PROCESS");
+        result.put("database", db);
+        result.put("mlServiceAvailable", mlGateway.mlAvailable());
+        result.put("mlModelVersion", mlGateway.failureModelVersion());
+        result.put("anomalyModelVersion", mlGateway.anomalyModelVersion());
+        result.put("simulationPaused", systemState.isPaused());
+        result.put("webSocketConnections", ws.connections());
+        result.put("definedMachines", machineService.all().size());
+        result.put("dataBasis", List.of(props.demoMode() ? "SYNTHETIC" : "OBSERVED"));
+        return result;
     }
 }

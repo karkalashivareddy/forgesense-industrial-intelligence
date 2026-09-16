@@ -1,13 +1,13 @@
-const views = {};
-let activeView = null;
+const views = new Map();
+let activeRoute = null;
 let handlers = [];
 
 export function register(name, view) {
-  views[name] = view;
+  views.set(name, { name, view, host: null, mounted: false });
 }
 
 export function current() {
-  return activeView;
+  return activeRoute ? activeRoute.view : null;
 }
 
 export function onRoute(fn) {
@@ -17,49 +17,50 @@ export function onRoute(fn) {
 let navigating = false;
 
 export function go(name) {
-  const v = views[name];
-  if (!v) return false;
-  if (activeView === v && window.location.hash === '#/' + name) {
-    if (v.activate) v.activate();
+  const route = views.get(name);
+  if (!route) return false;
+  const host = document.getElementById('view-' + name);
+  if (!host) return false;
+  if (activeRoute === route && window.location.hash === '#/' + name) {
+    if (route.view.activate) route.view.activate();
     return true;
   }
-  if (activeView && activeView !== v) {
-    if (current.unmount) activeView.unmount();
-    activeView.el && activeView.el.classList.remove('active');
+  if (activeRoute && activeRoute !== route) {
+    if (activeRoute.view.unmount) activeRoute.view.unmount();
+    activeRoute.host && activeRoute.host.classList.remove('active');
   }
   navigating = true;
-  activeView = v;
-  const host = document.getElementById('view-' + name);
-  v.el = host;
-  if (!v.mounted) {
-    v.mount(host);
-    v.mounted = true;
+  route.host = host;
+  if (!route.mounted) {
+    route.view.mount(host);
+    route.mounted = true;
   }
+  activeRoute = route;
   host.classList.add('active');
   const railBtn = document.querySelector('.rail-btn[data-route="' + name + '"]');
   document.querySelectorAll('.rail-btn[data-route]').forEach(b => b.classList.toggle('active', b === railBtn));
   window.location.hash = '#/' + name;
   navigating = false;
-  if (v.activate) v.activate();
+  if (route.view.activate) route.view.activate();
   return true;
 }
 
 export function matchHash(hash) {
   const name = String(hash || '').replace(/^#\/?/, '').split(/[?&]/)[0].toLowerCase();
-  return views[name] ? name : null;
+  return views.has(name) ? name : null;
 }
 
-export function boot(defaultRoute, allowed = Object.keys(views)) {
+export function boot(defaultRoute, allowed = Array.from(views.keys())) {
   const apply = () => {
     if (navigating) return;
     const name = matchHash(window.location.hash) || defaultRoute;
-    if (views[name] && allowed.includes(name)) go(name);
+    if (views.has(name) && allowed.includes(name)) go(name);
     else go(defaultRoute);
   };
   window.addEventListener('hashchange', apply);
   bindRail();
   apply();
-  return activeView;
+  return current();
 }
 
 export function bindRail() {

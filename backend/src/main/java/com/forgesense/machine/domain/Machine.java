@@ -63,7 +63,7 @@ public class Machine extends AbstractEntity {
     private Double healthScore = 98.0;
     private Double failureRisk = 0.03;
     private Double anomalyScore = 0.05;
-    private Double rulEstimate = 900.0;
+    private Double rulEstimate = 60.0;
 
     private Double operatingHours = 0.0;
     private Double throughputPerHour = 60.0;

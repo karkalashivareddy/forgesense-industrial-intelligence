@@ -47,7 +47,10 @@ public class JwtService {
     private SecretKey key() {
         String secret = props.security() == null ? null : props.security().jwtSecret();
         if (secret == null || secret.length() < 32) {
-            // 48+ char deterministic demo key so the app always boots
+            if (!props.demoMode()) {
+                throw new IllegalStateException("FORGESENSE_SECURITY_JWT_SECRET must be at least 32 characters outside demo mode");
+            }
+            // Deterministic key is permitted only for the explicitly labeled demo profile.
             secret = "forgesense-demo-jwt-signing-key-do-not-use-in-production-0123456789";
         }
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));

@@ -26,7 +26,7 @@ spring:
       auto-offset-reset: latest
       properties:
         spring.json.value.default.type: com.forgesense.common.domain.EventEnvelope
-        spring.json.trusted.packages: "*"
+        spring.json.trusted.packages: "com.forgesense.common.domain"
 
 forgesense:
   streaming:

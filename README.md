@@ -30,7 +30,7 @@ The Docker Compose topology also provisions Kafka, PostgreSQL, Redis, the ML ser
 - Machine and factory/zone views backed by PostgreSQL/JPA repositories.
 - Digital-twin state and connectivity monitoring for machines.
 - Kafka-backed event flow with an in-process development alternative.
-- ML assessments from FastAPI/scikit-learn: anomaly label/score, failure risk, heuristic RUL estimate, factors, and recommendations.
+- ML assessments from FastAPI/scikit-learn: anomaly label/score, failure risk, estimated remaining degradation steps, factors, and recommendations.
 - Maintenance scheduling, lifecycle actions, alerts, production-impact analysis, and simulation controls.
 - JWT login, role-aware backend security, WebSocket notifications, Actuator health, Prometheus metrics, and OpenAPI UI.
 - Static frontend with a Three.js factory floor, fleet/detail views, analytics, prediction, maintenance, simulation, alert, and event screens.
@@ -118,7 +118,7 @@ The controller classes under `backend/src/main/java/com/forgesense/**/web/` are 
 1. The ML service loads the machine profile catalog and builds deterministic training data.
 2. It trains or loads an `IsolationForest` anomaly model and a `GradientBoosting` failure-risk model.
 3. `POST /assess` converts telemetry into the feature vector for the machine type.
-4. The response includes anomaly score/label, failure risk, a heuristic RUL estimate, missing sensors, factors, and recommendations.
+4. The response includes anomaly score/label, failure risk, estimated remaining steps, model provenance, missing-sensor validation, factors, and recommendations.
 5. The Spring Boot prediction service consumes the assessment and stores/publishes the result for the dashboard.
 
 The repository also stores evaluation metadata under `ml-service/models/`; these are project artifacts, not a claim of production model accuracy.
@@ -161,7 +161,7 @@ docs/          Architecture, data flow, deployment, ownership, and system design
 ## Engineering notes and current limits
 
 - Redis, Kafka, PostgreSQL, and the ML service are real integration points in the Compose topology; local development deliberately supports lighter in-process/H2 alternatives.
-- The ML RUL value is explicitly documented in code as a heuristic mapping, not a calibrated remaining-useful-life measurement.
+- The ML RUL value is explicitly an estimated remaining degradation step count from the synthetic simulator horizon; it is not physical hours or a calibrated remaining-useful-life measurement. See [ML provenance](docs/ML_PROVENANCE.md).
 - The simulator uses synthetic telemetry and the repository does not claim industrial production data or deployment scale.
 - Before any shared deployment, replace all development credentials and review CORS, Actuator exposure, and container defaults.
 

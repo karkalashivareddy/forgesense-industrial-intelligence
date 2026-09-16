@@ -30,7 +30,9 @@ public class HttpMlClient implements MlClient {
     private final ForgeSenseProperties props;
     private final Timer inferenceTimer;
 
-    private volatile boolean available = true;
+    private volatile boolean available = false;
+    private volatile String anomalyModelVersion = "unavailable";
+    private volatile String failureModelVersion = "unavailable";
     private final Object availabilityLock = new Object();
 
     public HttpMlClient(@Qualifier("mlRestClient") RestClient rest, ForgeSenseProperties props,
@@ -68,6 +70,9 @@ public class HttpMlClient implements MlClient {
         if (n == null) {
             return unavailableHeuristic(sample);
         }
+        if (!"steps".equals(n.path("rulUnit").asText())) {
+            throw new IllegalStateException("ML response has unsupported RUL unit");
+        }
         List<Prediction.Factor> factors = new ArrayList<>();
         if (n.has("factors") && n.get("factors").isArray()) {
             for (JsonNode f : n.get("factors")) {
@@ -89,7 +94,9 @@ public class HttpMlClient implements MlClient {
                 n.path("failureRisk").asDouble(0),
                 n.path("healthScore").asDouble(100),
                 n.path("rulEstimate").asDouble(0),
-                n.path("modelVersion").asText(props.ml().failureModelVersion()),
+                n.path("rulUnit").asText("unknown"),
+                n.path("modelVersion").asText("unavailable"),
+                n.path("anomalyModelVersion").asText("unavailable"),
                 "MODEL",
                 factors,
                 recs);
@@ -113,20 +120,32 @@ public class HttpMlClient implements MlClient {
     public void probe() {
         try {
             JsonNode n = rest.get().uri("/health").retrieve().body(JsonNode.class);
-            if (n != null && n.path("status").asText().equals("ok")) {
+            if (n != null && n.path("status").asText().equals("ok") && n.path("models_loaded").asBoolean(false)) {
                 synchronized (availabilityLock) {
+                    failureModelVersion = n.path("model_version").asText("unavailable");
+                    anomalyModelVersion = n.path("anomaly_model_version").asText("unavailable");
                     available = true;
                 }
             }
         } catch (Exception e) {
             synchronized (availabilityLock) {
                 available = false;
+                failureModelVersion = "unavailable";
+                anomalyModelVersion = "unavailable";
             }
         }
     }
 
     public URI baseUri() {
         return URI.create(props.ml().url());
+    }
+
+    public String failureModelVersion() {
+        return failureModelVersion;
+    }
+
+    public String anomalyModelVersion() {
+        return anomalyModelVersion;
     }
 
     public static final class MlUnavailableException extends RuntimeException {

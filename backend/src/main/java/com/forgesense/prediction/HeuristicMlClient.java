@@ -13,7 +13,7 @@ import java.util.Map;
 /**
  * Deterministic heuristic scorer used ONLY when the ML service is unreachable.
  * Clearly labeled HEURISTIC. Assumptions: sensor baselines below are modeled
- * engineering defaults, not learned parameters. See docs/EXPLAINABILITY.md.
+ * engineering defaults, not learned parameters.
  */
 @Component
 public class HeuristicMlClient implements MlClient {
@@ -63,7 +63,7 @@ public class HeuristicMlClient implements MlClient {
         double age = s.operatingHours() == null ? 0 : Math.min(1.0, s.operatingHours() / 5000.0);
         double failureRisk = clamp(0.45 * maxAnomaly + 0.35 * sigmoid(meanDev, 2.5, 0.8) + 0.20 * age, 0.02, 0.97);
         double health = clamp(100 - (failureRisk * 65 + maxAnomaly * 35), 5, 100);
-        double rul = Math.max(24, Math.round((1 - failureRisk) * 800));
+        double rul = Math.max(0, Math.round((1 - failureRisk) * 60));
         String label = maxAnomaly > 0.7 ? "CRITICAL" : maxAnomaly > 0.45 ? "HIGH" : maxAnomaly > 0.25 ? "MEDIUM" : "LOW";
 
         List<Prediction.Factor> factors = new ArrayList<>();
@@ -78,7 +78,8 @@ public class HeuristicMlClient implements MlClient {
         List<String> recs = recommendations(failureRisk, maxAnomaly, s);
 
         return new Assessment(s.machineId(), round(maxAnomaly), label, round(failureRisk), health, rul,
-                "heuristic-v1", "HEURISTIC", factors.size() > 5 ? factors.subList(0, 5) : factors, recs);
+                "steps", "heuristic-v1", "heuristic-v1", "HEURISTIC",
+                factors.size() > 5 ? factors.subList(0, 5) : factors, recs);
     }
 
     private void add(List<SensorHit> hits, Double val, String feature, String label) {
@@ -95,7 +96,7 @@ public class HeuristicMlClient implements MlClient {
         if (anomaly >= 0.6) recs.add("Anomaly signature detected: verify sensor cabling and mounting.");
         if (s.temperature() != null && s.temperature() > 88) recs.add("Temperature elevated: increase cooling flow.");
         if (s.vibration() != null && s.vibration() > 5.0) recs.add("Vibration elevated: check bearing wear and balance.");
-        return recs.isEmpty() ? List.of("No action required — all signals within normal bounds.") : recs;
+        return recs.isEmpty() ? List.of("No action required - all signals within normal bounds.") : recs;
     }
 
     private static double sigmoid(double x, double midpoint, double steepness) {

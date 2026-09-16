@@ -42,6 +42,8 @@ ml-service/data/processed/*
 ml-service/models/*.pkl
 ml-service/models/*.joblib
 ml-service/models/*.npy
+ml-service/models/*.json
+ml-service/models/*.txt
 
 # --- Runtime / infra ---
 .env
@@ -52,10 +54,6 @@ docker-compose.override.yml
 
 # --- Backend runtime databases ---
 backend/data/
-
-# --- Optional: keep training artifacts if wanted (uncomment to track)
-# !ml-service/models/anomaly-model-v1.pkl
-# !ml-service/models/failure-risk-v1.pkl
 
 # --- Reports ---
 reports/

@@ -42,7 +42,7 @@ function render() {
     kpi('Telemetry throughput', o.telemetryThroughputPerMinute != null ? int(o.telemetryThroughputPerMinute) + '/min' : '—', 'ingested events', 'info'),
     kpi('Downtime risk horizon', o.estimatedDowntimeRiskMinutes != null ? int(o.estimatedDowntimeRiskMinutes) + ' min' : '—', 'modeled estimate', 'warn'),
     kpi('Active maintenance', mt.active != null ? int(mt.active) : '—', mt.scheduled != null ? mt.scheduled + ' scheduled' : '', mt.active ? 'critical' : 'good'),
-    kpi('Basis', esc(String(o.dataBasis || '—')), 'LIVE = real pipeline, SIMULATED = synthetic feed', 'maint')));
+    kpi('Basis', esc(String(o.dataBasis || '—')), 'OBSERVED = stored telemetry, SYNTHETIC = simulator feed', 'maint')));
 
   root.appendChild(el('div', { class: 'grid cols-2', style: { marginTop: '12px' } },
     alertPanel(alertStats),

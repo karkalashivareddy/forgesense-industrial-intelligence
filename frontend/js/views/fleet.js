@@ -139,7 +139,7 @@ function renderTable() {
       el('td', {}, healthBar(m)),
       el('td', {}, el('div', { class: 'bar-row' }, el('div', { class: 'bar' }, el('div', { class: 'bar-fill f-' + r.tone, style: { width: pct(m.failureRisk, 0) } })), el('div', { class: 'bar-cap' }, el('span', {}, r.band), el('b', {}, pct(m.failureRisk))))),
       el('td', {}, el('span', { class: 'tag tag-' + (a.tone) }, a.band), el('span', { class: 'muted small', style: { marginLeft: '6px' } }, pct(m.anomalyScore, 0))),
-      el('td', {}, m.rulEstimate != null ? int(m.rulEstimate) + ' h' : '—'),
+      el('td', {}, m.rulEstimate != null ? int(m.rulEstimate) + ' steps' : '—'),
       el('td', {}, el('span', { class: 'muted small' }, (m.modelMode || '—')), el('div', { class: 'muted small' }, 'v' + (m.modelVersion || '—'))),
       el('td', { class: 'muted small' }, m.lastTelemetryAt ? timeAgo(m.lastTelemetryAt) : '—'));
   });

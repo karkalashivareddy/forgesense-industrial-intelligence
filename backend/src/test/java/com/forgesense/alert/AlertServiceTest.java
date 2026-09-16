@@ -88,8 +88,8 @@ class AlertServiceTest {
 
     @Test
     void ensureAlertCreatesNewAlertWhenNoneOpen() {
-        when(alertRepository.findFirstByMachineIdAndStatusInOrderByOpenedAtDesc(
-                anyString(), anyList())).thenReturn(Optional.empty());
+        when(alertRepository.findFirstByMachineIdAndTypeAndStatusInOrderByOpenedAtDesc(
+                anyString(), anyString(), anyList())).thenReturn(Optional.empty());
         assignIdOnSave();
         Alert created = service.ensureAlert(twin(), AlertSeverity.CRITICAL, "FAILURE_RISK",
                 "headline", "description", assessment(), "simulator");
@@ -102,8 +102,8 @@ class AlertServiceTest {
     @Test
     void ensureAlertDedupesSameOpenSeverity() {
         Alert existing = openAlert(AlertStatus.ACKNOWLEDGED);
-        when(alertRepository.findFirstByMachineIdAndStatusInOrderByOpenedAtDesc(
-                anyString(), anyList())).thenReturn(Optional.of(existing));
+        when(alertRepository.findFirstByMachineIdAndTypeAndStatusInOrderByOpenedAtDesc(
+                anyString(), anyString(), anyList())).thenReturn(Optional.of(existing));
         Alert result = service.ensureAlert(twin(), AlertSeverity.CRITICAL, "FAILURE_RISK",
                 "headline", "description", assessment(), "simulator");
         assertThat(result).isSameAs(existing);
@@ -113,8 +113,9 @@ class AlertServiceTest {
     @Test
     void ensureAlertUpdatesOpenAlertInPlace_whenSeverityFlips() {
         Alert existing = openAlert(AlertStatus.NEW);
-        when(alertRepository.findFirstByMachineIdAndStatusInOrderByOpenedAtDesc(
-                anyString(), anyList())).thenReturn(Optional.of(existing));
+        existing.setType("RISK_ELEVATED");
+        when(alertRepository.findFirstByMachineIdAndTypeAndStatusInOrderByOpenedAtDesc(
+                anyString(), anyString(), anyList())).thenReturn(Optional.of(existing));
         Alert warning = service.ensureAlert(twin(), AlertSeverity.WARNING, "RISK_ELEVATED",
                 "headline", "description", assessment(), "simulator");
         assertThat(warning).isSameAs(existing);

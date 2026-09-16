@@ -207,6 +207,7 @@ public class MachineController {
         s.put("anomalyScore", twin.getAnomalyScore());
         s.put("anomalyLabel", twin.getAnomalyLabel());
         s.put("rulEstimate", twin.getRulEstimate());
+        s.put("rulUnit", "steps");
         s.put("modelMode", twin.getModelMode());
         s.put("modelVersion", twin.getModelVersion());
         s.put("lastTelemetryAt", twin.getLastTelemetryAt() == null ? null : twin.getLastTelemetryAt().toString());

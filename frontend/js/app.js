@@ -110,7 +110,7 @@ function topbar(s) {
   const thrPill = $id('thrPill');
   const v = tel.telemetryPerMinute;
   thr.textContent = v != null ? int(v) : '—';
-  thrPill.classList.toggle('stale', tel.streaming === false);
+  thrPill.classList.toggle('stale', !s.freshness || !s.freshness.ok);
 
   const ml = s.status || {};
   const mlDot = $id('mlDot');
@@ -147,7 +147,8 @@ function statusbar(s) {
   $id('svcBackend').textContent = f.ok ? 'OK' : 'DOWN ×' + f.failures;
   const ml = s.status || {};
   $id('svcMl').textContent = ml.mlServiceAvailable ? 'v' + (ml.mlModelVersion || '?') + ' up' : 'down';
-  $id('svcKafka').textContent = (s.telemetryStatus ? (s.telemetryStatus.streaming ? 'streaming' : 'stalled') : '—');
+  $id('svcKafka').textContent = s.telemetryStatus && s.telemetryStatus.transport
+    ? s.telemetryStatus.transport : 'REST poll';
   const st = s.status || {};
   $id('svcPg').textContent = st.database == null ? '—' : (typeof st.database === 'string' ? esc(st.database) : 'connected');
   $id('svcRedis').textContent = health && health.status === 'UP' && health.components && health.components.redis ? (health.components.redis.status === 'UP' ? 'up' : 'down') : '—';
@@ -183,7 +184,7 @@ function alertWatcher(s) {
   const now = Date.now();
   const present = new Set();
   for (const a of items) {
-    if (a.status !== 'ACTIVE') continue;
+    if (a.status !== 'NEW') continue;
     present.add(a.id);
     if (!seenAlerts.has(a.id)) {
       seenAlerts.set(a.id, { at: now, sev: String(a.severity || '').toUpperCase() });

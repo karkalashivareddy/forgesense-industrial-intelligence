@@ -35,8 +35,8 @@ TELEMETRY → EVENT STREAM → DIGITAL TWIN → ML → EXPLANATION
   state of every machine.
 - Detect anomalies and predict failure risk with defensible, reproducible
   machine-learning models.
-- Explain every important prediction (SHAP-based attribution) without claiming
-  unsupported physical causality.
+- Explain every important prediction (baseline-importance attribution) without
+  claiming unsupported physical causality.
 - Compute the operational consequence of a predicted failure through a
   configurable dependency graph (affected line, downstream machines, estimated
   downtime, estimated production impact).
@@ -59,8 +59,8 @@ TELEMETRY → EVENT STREAM → DIGITAL TWIN → ML → EXPLANATION
   decision-support system; humans act.
 - **No safety-critical certification** (IEC 61508 / ISO 26262 etc.).
 - **No real RUL (remaining useful life) claims.** RUL is shown only as a
-  clearly labeled heuristic estimate unless a dataset supports a defensible
-  model (the AI4I dataset does not provide run-to-failure curves).
+  clearly labeled heuristic regressor estimate (there is no run-to-failure
+  dataset behind it).
 - **No fabricated monetary loss figures.** Production impact is presented as a
   labeled *estimate* with transparent assumptions.
 - **No production-grade multi-region fault-tolerant infrastructure.** We
@@ -78,12 +78,12 @@ See `docs/ARCHITECTURE.md` and `docs/SYSTEM_DESIGN.md` for the full rationale.
 | Source of truth | **PostgreSQL** | transactional relational domain data, audit, history |
 | ML inference | **FastAPI** (Python) | separate ML lifecycle, independent scaling, model hygiene |
 | Anomaly model | **Isolation Forest** | solid unsupervised baseline, cheap, interpretable enough |
-| Failure-risk model | **XGBoost / LightGBM / Random Forest**, compared | supervised ensemble; selection on precision/recall/PR-AUC not accuracy alone |
-| Explainability | **SHAP** (TreeExplainer) with documented fallback | consistent model-agnostic attribution |
-| Frontend | **React + TypeScript + Vite** | large ecosystem, strong typing, fast dev loop |
-| Charts | **Recharts** | declarative, adequate for real-time sparklines/trends |
-| 3D scene | **Three.js + React Three Fiber** | mature WebGL, declarative scene graph, control over performance |
-| Styling | **Tailwind CSS** + shadcn/ui-style primitives | fast, consistent, accessible dark industrial theme |
+| Failure-risk model | **Gradient Boosting** (scikit-learn) | supervised ensemble on engineered features; selection on precision/recall/PR-AUC not accuracy alone |
+| Explainability | **Replace-with-baseline importance** | model-agnostic attribution inside the ML service; deliberately not SHAP |
+| Frontend | **Vanilla JS SPA** (no build step, `python serve.py`) | dependency-free, honest rendering of backend state |
+| Charts/Sparks | **Inline `<canvas>` sparklines** | lightweight, sufficient for short windows |
+| 3D scene | **Three.js** (ES module via CDN) | mature WebGL, configurable factory floor |
+| Styling | **Plain CSS** (custom dark industrial theme) | no UI framework, no build chain |
 | Packaging | **Docker Compose** | single-command reproducible environment |
 | Observability | **Actuator + Micrometer + Prometheus + Grafana** | standard, proven |
 
@@ -105,7 +105,7 @@ operator: the UI never claims "Kafka connected" unless Kafka is actually used.
 
 ## 5. Domain Model
 
-Primary entities (see `docs/DATABASE.md` and `docs/SYSTEM_DESIGN.md`):
+Primary entities (see `docs/SYSTEM_DESIGN.md`):
 
 - `Factory` — production site (Factory Alpha).
 - `Zone` — operational area (Machining, Assembly, Packaging, Utilities).
@@ -143,35 +143,38 @@ Versioned event envelopes published over Kafka (and the in-process bus):
 Key topics: `forge.telemetry.raw`, `forge.telemetry.normalized`,
 `forge.machine.state`, `forge.ml.predictions`, `forge.anomalies`,
 `forge.alerts`, `forge.maintenance`, `forge.simulation.commands`.
-See `docs/EVENT_STREAMING.md` and `docs/KAFKA.md`.
 
 ## 7. Machine State Machine
 
 Explicit states: `ONLINE, NORMAL, DEGRADED, WARNING, CRITICAL, MAINTENANCE,
 OFFLINE, RECOVERING`. Transitions are enforced by the backend state machine,
-never invented by the UI. See `docs/DIGITAL_TWIN.md`.
+never invented by the UI (see `docs/SYSTEM_DESIGN.md`).
 
 ## 8. ML Strategy
 
-- **Dataset:** UCI AI4I 2020 Predictive Maintenance (labeled failure
-  classification). Documented in `docs/DATASET.md`; fallback synthetic
-  dataset generation is transparently labeled when the upstream file is
-  unreachable.
+- **Resident entities:** The ML service trains nothing from external datasets —
+  it **synthesizes** fleet behavior from `config/machine_profiles.json` (the
+  authoritative per-type sensor profiles). All telemetry is simulated; there is
+  no public dataset (e.g. UCI AI4I) backing the models.
 - **Anomaly model:** Isolation Forest on normalized sensor features
   (temperature, vibration, pressure, rpm, torque, current, power, deltas,
   rolling statistics).
-- **Failure-risk model:** supervised ensemble on engineered features; evaluated
-  with precision, recall, F1, ROC-AUC, PR-AUC, calibration, confusion matrix,
-  and inference latency — with a **false-negative-aware** decision threshold.
-- **RUL:** not modeled (no run-to-failure support in AI4I). The UI may show a
-  clearly labeled heuristic estimate only.
-- **Explainability:** SHAP TreeExplainer contributions aggregated to features.
-- **Versioning:** artifacts stored as `models/anomaly-model-v1.pkl`,
-  `models/failure-risk-v1.pkl` plus a JSON manifest (features, metrics,
-  hyperparameters, training date, dataset version).
-
-See `docs/MACHINE_LEARNING.md`, `docs/MODEL_CARD.md`, `docs/FEATURE_ENGINEERING.md`,
-`docs/EXPLAINABILITY.md`.
+- **Failure-risk model:** supervised Gradient Boosting ensemble on engineered
+  features; evaluated with precision, recall, F1, ROC-AUC, PR-AUC, calibration,
+  confusion matrix, and inference latency — with a **false-negative-aware**
+  decision threshold.
+- **RUL:** a Gradient Boosting regressor produces `rulEstimate`, reported only
+  as estimated remaining degradation steps from the synthetic simulator horizon;
+  it is not physical hours or a calibrated remaining-useful-life claim.
+  as a clearly labeled heuristic (no run-to-failure data exists).
+- **Explainability:** replace-with-baseline perturbation attribution aggregated
+  to features (`ml-service/app/explanation.py`); deliberately **not** SHAP or
+  any external explainability library.
+- **Versioning:** model version strings `anomaly-model-v2` / `failure-risk-v2`;
+  artefacts at `ml-service/models/anomaly-model.pkl`, `failure-risk-model.pkl`,
+  `rul-model.pkl` plus a retrain-hash (`profiles-hash.txt`) and holdout
+  evaluation metrics (`eval-metrics.json`). Models are retrained on boot when
+  the profile-hash changes.
 
 ## 9. Simulation & Impact
 
@@ -188,26 +191,27 @@ See `docs/MACHINE_LEARNING.md`, `docs/MODEL_CARD.md`, `docs/FEATURE_ENGINEERING.
 
 Industrial control-room aesthetic: near-black graphite, subtle borders,
 technical typography, semantic status colors, high information density.
-Pages: Dashboard (KPI + live 3D factory + telemetry strip), Machines,
-Machine Inspector, Alerts, Analytics, Maintenance, Simulation, Impact.
-Command palette (`Ctrl/Cmd+K`) + keyboard shortcuts. All data connected to
-backend via REST + WebSocket; loading/empty/error/offline states everywhere.
+A single static page renders Fleet Overview (3D factory + KPIs), a Machine
+Inspector (telemetry sparkline, risk factors, explanation), an Event Feed, and
+an Alerts panel. All data is fetched from the backend REST API every 3 s;
+loading/empty/error/offline states render everywhere.
 
 ## 11. Infrastructure
 
 Docker Compose: `frontend, backend, ml-service, simulator, postgres, redis,
-kafka, prometheus, grafana`. Prometheus scrapes backend/ml/simulator; Grafana
-provisioning includes dashboards. GitHub Actions CI: build + test backend &
-ML & frontend, lint, Docker validation.
+kafka, prometheus, grafana`. Prometheus scrapes the backend
+(`/actuator/prometheus`); Grafana is provisioned with the Prometheus datasource
+(dashboards are created manually). GitHub Actions CI: builds + tests the
+backend (`./mvnw package`), runs the ML pytest suite, and syntax-checks the
+frontend (`node --check app.js`).
 
 ## 12. Risks & Assumptions
 
-- Python 3.14 wheel availability for `shap` may be limited on Windows → the
-  explanation module falls back to documented tree-gain / permutation
-  attribution while keeping the same API.
-- Docker Desktop may be unavailable in some environments → infra adapters.
-- AI4I is a synthetic diagnostic dataset, not real streaming telemetry →
-  clearly documented; live demo uses the simulator.
+- Docker Desktop may be unavailable in some environments → infra adapters
+  (PostgreSQL/Redis/Kafka ↔ H2/in-memory/in-process bus).
+- The models are trained on **synthetic** telemetry derived from
+  `config/machine_profiles.json`, not real factory data → clearly documented;
+  the live demo uses the simulator.
 - Dependencies (machines/edges, throughput, downtime factors) are **modeled
   assumptions**, not measured physics.
 
@@ -219,7 +223,7 @@ ML & frontend, lint, Docker validation.
 4. Kafka pipeline + backend APIs + digital twin + WebSocket
 5. ML training + inference service + explainability
 6. Frontend foundation + dashboard + 3D factory + inspector
-7. Alerts, analytics, impact, simulation, maintenance, command palette
+7. Alerts, analytics, impact, simulation, maintenance workflow
 8. Observability + security
 9. Tests, Docker, CI
 10. Documentation, validation, demo scenario, release

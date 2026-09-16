@@ -8,7 +8,8 @@ let root = null;
 let fStatus = 'ALL';
 let lastRef = null;
 
-const STATUS_OPTIONS = ['ALL', 'ACTIVE', 'ACKNOWLEDGED', 'INVESTIGATING', 'RESOLVED'];
+// Backend AlertStatus is authoritative: NEW -> ACKNOWLEDGED -> INVESTIGATING -> RESOLVED.
+const STATUS_OPTIONS = ['ALL', 'NEW', 'ACKNOWLEDGED', 'INVESTIGATING', 'RESOLVED'];
 
 export function mount(container) {
   root = container;
@@ -28,7 +29,7 @@ export function update(s) {
 function render() {
   root.innerHTML = '';
   const items = (store.alerts && store.alerts.items) || [];
-  const open = items.filter(a => a.status === 'ACTIVE');
+  const open = items.filter(a => ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'].includes(a.status));
   const crit = open.filter(a => String(a.severity).toUpperCase() === 'CRITICAL').length;
   const warn = open.filter(a => String(a.severity).toUpperCase() === 'WARNING').length;
   const inv = items.filter(a => a.status === 'INVESTIGATING').length;
@@ -74,7 +75,7 @@ function alertCard(a) {
   const sev = alertSeverityTag(a.severity);
   const m = store.machineMap.get(a.machineId);
   const roles = getRoles();
-  const st = a.status || 'ACTIVE';
+  const st = a.status || 'NEW';
 
   const actions = el('div', { class: 'alert-actions' });
   const act = (label, fn, need, onlyWhen) => {
@@ -86,16 +87,16 @@ function alertCard(a) {
       onClick: async () => { await fn(); refreshCore(); },
     }, label);
   };
-  const active = s => s === 'ACTIVE';
+  const active = s => s === 'NEW';
   const notResolved = s => !['RESOLVED'].includes(s);
 
   if (active(st)) actions.appendChild(act('Acknowledge', () => post(`/api/v1/alerts/${a.id}/acknowledge`), 'OPERATOR', active));
-  if (['ACTIVE', 'ACKNOWLEDGED'].includes(st)) actions.appendChild(act('Investigate', () => post(`/api/v1/alerts/${a.id}/investigate`), 'ENGINEER', notResolved));
-  if (['ACTIVE', 'ACKNOWLEDGED', 'INVESTIGATING'].includes(st)) {
+  if (['NEW', 'ACKNOWLEDGED'].includes(st)) actions.appendChild(act('Investigate', () => post(`/api/v1/alerts/${a.id}/investigate`), 'ENGINEER', notResolved));
+  if (['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'].includes(st)) {
     actions.appendChild(act('Resolve', () => post(`/api/v1/alerts/${a.id}/resolve`, { notes: 'Resolved from control room UI.' }), 'ENGINEER', notResolved));
   }
 
-  const stTone = { ACTIVE: 'critical', ACKNOWLEDGED: 'warn', INVESTIGATING: 'info', RESOLVED: 'good' }[st] || 'muted';
+  const stTone = { NEW: 'critical', ACKNOWLEDGED: 'warn', INVESTIGATING: 'info', RESOLVED: 'good' }[st] || 'muted';
 
   return el('div', { class: 'list-item', style: { padding: '0' } },
     el('div', { class: 'alert-row' },

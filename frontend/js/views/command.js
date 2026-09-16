@@ -92,7 +92,7 @@ function situationsCard(critList) {
           el('span', { class: 'badge2' }, esc(m.zone || '')),
           el('span', {}, 'risk ' + pct(m.failureRisk)),
           el('span', {}, 'anomaly ' + pct(m.anomalyScore) + ' · ' + a.band),
-          m.rulEstimate != null ? el('span', {}, 'est RUL ' + int(m.rulEstimate) + 'h') : null))));
+          m.rulEstimate != null ? el('span', {}, 'est steps ' + int(m.rulEstimate)) : null))));
   }
   return card('Situation', 'machines not NORMAL', body);
 }

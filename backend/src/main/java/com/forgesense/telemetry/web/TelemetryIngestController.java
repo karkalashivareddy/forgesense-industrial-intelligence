@@ -79,9 +79,13 @@ public class TelemetryIngestController {
         Instant from = Instant.now().minusSeconds(60);
         boolean kafka = props.streaming().kafka().enabled();
         return Map.of(
-                "streaming", kafka ? "KAFKA" : "IN-PROCESS", 
+                "streaming", false,
+                "transport", "REST_POLL",
+                "inputTransport", kafka ? "KAFKA" : "IN_PROCESS",
+                "pollIntervalSeconds", 3,
                 "telemetryPerMinute", telemetryRepository.countByTimestampAfter(from),
-                "source", kafka ? "kafka:forge.telemetry.raw" : "http:ingest,in-memory-bus");
+                "source", kafka ? "kafka:forge.telemetry.raw" : "http:ingest,in-memory-bus",
+                "dataBasis", props.demoMode() ? "SYNTHETIC" : "OBSERVED");
     }
 
     private Map<String, Object> payload(TelemetrySample s) {
@@ -101,6 +105,7 @@ public class TelemetryIngestController {
         m.put("frequency", s.frequency());
         m.put("airTemperature", s.airTemperature());
         m.put("operatingHours", s.operatingHours());
+        m.put("machineType", s.machineType());
         return m;
     }
 }

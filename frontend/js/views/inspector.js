@@ -141,7 +141,7 @@ async function overview(host, m) {
     statBox('Health', m.healthScore != null ? num(m.healthScore, 1) + '%' : '—', hTone === 'good' ? 'within operating bounds' : hTone === 'warn' ? 'low — inspect' : 'critical — act now'),
     statBox('Anomaly score', pct(m.anomalyScore), a.band + ' divergence from baseline'),
     statBox('Failure risk', pct(m.failureRisk), riskInfo(m.failureRisk).band + ' over modeled horizon'),
-    statBox('Est. remaining life', m.rulEstimate != null ? int(m.rulEstimate) + ' h' : '—', 'heuristic'),
+    statBox('Est. remaining steps', m.rulEstimate != null ? int(m.rulEstimate) + ' steps' : '—', 'synthetic model output'),
     statBox('Model', (m.modelMode || '—') + ' · v' + (m.modelVersion || '—'), 'mode · version'),
     statBox('Last telemetry', m.lastTelemetryAt ? timeAgo(m.lastTelemetryAt) : '—', 'sample received')));
 

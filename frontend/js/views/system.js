@@ -36,7 +36,7 @@ function render() {
   const o = store.analytics || {};
 
   root.appendChild(el('div', { class: 'grid cols-5' },
-    kpi('Streaming', st.streaming != null ? (st.streaming ? 'ACTIVE' : 'STALLED') : '—', 'backend pipeline', st.streaming ? 'good' : 'critical'),
+    kpi('Transport', st.transport || 'REST_POLL', 'UI data path', 'info'),
     kpi('ML service', st.mlServiceAvailable ? 'UP' : 'DOWN', 'v' + (st.mlModelVersion || '—'), st.mlServiceAvailable ? 'good' : 'critical'),
     kpi('Demo mode', st.demoMode ? 'ON' : 'OFF', 'synthetic plant', 'maint'),
     kpi('Sim paused', st.simulationPaused ? 'YES' : 'NO', 'simulator feed', st.simulationPaused ? 'warn' : 'good'),
@@ -44,7 +44,7 @@ function render() {
 
   root.appendChild(el('div', { class: 'grid cols-2', style: { marginTop: '12px' } },
     servicesCard(st, ts),
-    reconcileCard(fs, o)));
+    reconcileCard(fs, o, st)));
 
   root.appendChild(el('div', { class: 'grid cols-2', style: { marginTop: '12px' } },
     mlIntegrityCard(st, ts),
@@ -57,7 +57,7 @@ function servicesCard(st, ts) {
     kv('Database', st.database == null ? '—' : typeof st.database === 'string' ? esc(st.database) : JSON.stringify(st.database)),
     kv('WebSocket connections', st.webSocketConnections != null ? int(st.webSocketConnections) : '—'),
     kv('Backend data basis', (st.dataBasis || []).join(' + ') || '—'),
-    kv('Telemetry stream', ts.streaming ? 'ACTIVE' : 'STALLED'),
+    kv('Telemetry transport', esc(ts.transport || 'REST_POLL')),
     kv('Telemetry source', esc(ts.source || '—')),
     kv('Telemetry / min', ts.telemetryPerMinute != null ? int(ts.telemetryPerMinute) : '—'),
     kv('ML models', 'anomaly ' + esc(st.mlModelVersion || '—') + ' · attribution baseline-perturbation'),
@@ -78,7 +78,7 @@ function healthCard() {
   return body;
 }
 
-function reconcileCard(fs, o) {
+function reconcileCard(fs, o, st) {
   const derivedOnline = fs.total - fs.offline;
   const attn = fs.attn;
   const row = (label, a, b) => el('div', { class: 'kv' },
@@ -104,7 +104,7 @@ function mlIntegrityCard(st, ts) {
     kv('Machines on MODEL', mModeModel + '/' + machines.length),
     kv('Machines on heuristic fallback', mModeHeur),
     kv('Attribution method', 'baseline perturbation (not SHAP)'),
-    kv('RUL', 'heuristic estimate — not certified'),
+    kv('RUL', 'estimated remaining steps — not physical hours'),
     el('div', { class: 'muted small', style: { marginTop: '8px' } },
       'When the ML service is down the backend labels predictions HEURISTIC so the UI never overstates confidence. The frontend shows mode and modelVersion per machine everywhere relevant.'),
     el('div', { class: 'alert-desc', style: { marginTop: '8px' } },
@@ -113,10 +113,10 @@ function mlIntegrityCard(st, ts) {
 
 function pipelineCard(st, ts) {
   const basis = (st.dataBasis || []).join('/');
-  return card('Data pipeline', 'REST-polled control room · ' + (st.streaming ? 'streaming active' : 'streaming stalled'),
+  return card('Data pipeline', 'REST-polled control room · interval ' + (st.pollIntervalSeconds || 3) + 's',
     kv('Source', 'simulator ' + esc(ts.source || '—') + ' (synthetic, ~5s samples)'),
-    kv('Transport', 'Kafka → backend consumer → API store'),
-    kv('UI transport', 'REST poll · 3s · no WebSocket subscription by default (available on /ws)'),
+    kv('Backend input', esc(st.inputTransport || ts.transport || 'IN_PROCESS')),
+    kv('UI transport', 'REST poll · ' + (st.pollIntervalSeconds || 3) + 's · no WebSocket subscription'),
     kv('Freshness', 'age shown in top bar · basis ' + esc(basis) + ' from backend'),
     kv('Auth', 'JWT bearer + RBAC (OPERATOR/ENGINEER/ADMIN)'),
     el('div', { class: 'muted small', style: { marginTop: '8px' } },

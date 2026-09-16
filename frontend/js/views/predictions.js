@@ -61,7 +61,7 @@ async function render() {
       'failure risk (0-1) and anomaly score (0-1) plus a normalized feature attribution per signal. ' +
       'If the ML service is unavailable the backend falls back to a labelled heuristic estimator (mode HEURISTIC) so the UI never goes dark. ' +
       'Attribution is baseline-perturbation feature attribution and is intentionally not presented as SHAP values. ' +
-      '"Est. RUL" shown elsewhere is a heuristic projection, not a certified failure prediction.')));
+      'Estimated remaining steps are a synthetic model output, not physical hours or a certified failure prediction.')));
 }
 
 function riskTable(list) {
@@ -74,7 +74,7 @@ function riskTable(list) {
       el('td', {}, el('span', { class: 'tag tag-' + r.tone }, r.band), el('span', { class: 'muted small', style: { marginLeft: '6px' } }, pct(m.failureRisk))),
       el('td', {}, num(m.healthScore, 1) + '%', el('div', { class: 'bar', style: { marginTop: '4px' } }, el('div', { class: 'bar-fill f-' + (m.healthScore < 80 ? 'warn' : m.healthScore < 60 ? 'critical' : 'good'), style: { width: pct(m.healthScore / 100, 0) } }))),
       el('td', {}, pct(m.anomalyScore, 0)),
-      el('td', {}, m.rulEstimate != null ? int(m.rulEstimate) + ' h' : '—'));
+      el('td', {}, m.rulEstimate != null ? int(m.rulEstimate) + ' steps' : '—'));
   });
   return card('Ranked by failure risk', 'click a row to open its prediction detail',
     el('div', { style: { overflowX: 'auto' } },

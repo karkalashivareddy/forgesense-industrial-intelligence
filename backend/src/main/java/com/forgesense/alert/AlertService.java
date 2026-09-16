@@ -47,8 +47,10 @@ public class AlertService {
     @Transactional
     public Alert ensureAlert(MachineTwin twin, AlertSeverity severity, String type, String headline,
                              String description, Assessment assessment, String triggeredBy) {
-        Alert existing = alertRepository.findFirstByMachineIdAndStatusInOrderByOpenedAtDesc(
+        String correlationId = twin.getMachineId() + ":" + type;
+        Alert existing = alertRepository.findFirstByMachineIdAndTypeAndStatusInOrderByOpenedAtDesc(
                         twin.getMachineId(),
+                        type,
                         List.of(AlertStatus.NEW, AlertStatus.ACKNOWLEDGED, AlertStatus.INVESTIGATING))
                 .orElse(null);
         if (existing != null) {
@@ -57,12 +59,10 @@ public class AlertService {
             existing.setHeadline(headline);
             existing.setDescription(description);
             existing.setRiskAtCreation(twin.getFailureRisk());
+            existing.setSource(triggeredBy == null ? "decision-engine" : triggeredBy);
+            existing.setCorrelationId(correlationId);
             existing.setFactorsSummary(serializeFactors(assessment));
-            existing.setRecommendedAction(assessment == null
-                    ? "Investigate contributing factors and schedule inspection."
-                    : assessment.recommendations() == null || assessment.recommendations().isEmpty()
-                    ? "Investigate contributing factors and schedule inspection."
-                    : String.join(" ", assessment.recommendations()));
+            existing.setRecommendedAction(recommendedAction(assessment));
             return existing;
         }
 
@@ -72,12 +72,13 @@ public class AlertService {
         alert.setMachineType(twin.getMachineType());
         alert.setSeverity(severity);
         alert.setType(type);
+        alert.setSource(triggeredBy == null ? "decision-engine" : triggeredBy);
+        alert.setCorrelationId(correlationId);
         alert.setHeadline(headline);
         alert.setDescription(description);
         alert.setRiskAtCreation(twin.getFailureRisk());
         alert.setFactorsSummary(serializeFactors(assessment));
-        alert.setRecommendedAction(assessment.recommendations() == null || assessment.recommendations().isEmpty()
-                ? "Investigate contributing factors and schedule inspection." : String.join(" ", assessment.recommendations()));
+        alert.setRecommendedAction(recommendedAction(assessment));
         alert.setOpenedAt(Instant.now());
         alertRepository.save(alert);
 
@@ -85,7 +86,7 @@ public class AlertService {
         metrics.perTypeAlert(type).increment();
 
         eventLogService.append("ALERT_CREATED", twin.getMachineId(), triggeredBy == null ? "decision-engine" : triggeredBy,
-                alert.getHeadline(), Map.of("alertId", alert.getId(), "severity", severity.name()));
+                alert.getHeadline(), Map.of("alertId", alert.getId(), "severity", severity.name(), "correlationId", correlationId));
 
         ws.broadcast("alert.created", toPayload(alert));
 
@@ -149,6 +150,7 @@ public class AlertService {
     }
 
     private static String serializeFactors(Assessment a) {
+        if (a == null) return "";
         if (a.factors() == null || a.factors().isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
         for (var f : a.factors()) {
@@ -157,17 +159,28 @@ public class AlertService {
         return sb.toString().trim();
     }
 
+    private static String recommendedAction(Assessment a) {
+        return a == null || a.recommendations() == null || a.recommendations().isEmpty()
+                ? "Investigate contributing factors and schedule inspection."
+                : String.join(" ", a.recommendations());
+    }
+
     private static Map<String, Object> toPayload(Alert a) {
-        return Map.of(
-                "id", a.getId(),
-                "machineId", a.getMachineId(),
-                "machineName", a.getMachineName(),
-                "severity", a.getSeverity().name(),
-                "status", a.getStatus().name(),
-                "type", a.getType(),
-                "headline", a.getHeadline(),
-                "riskAtCreation", a.getRiskAtCreation(),
-                "openedAt", a.getOpenedAt() == null ? null : a.getOpenedAt().toString());
+        Map<String, Object> out = new java.util.HashMap<>();
+        out.put("id", a.getId());
+        out.put("machineId", a.getMachineId());
+        out.put("machineName", a.getMachineName());
+        out.put("severity", a.getSeverity() == null ? null : a.getSeverity().name());
+        out.put("status", a.getStatus() == null ? null : a.getStatus().name());
+        out.put("type", a.getType());
+        out.put("source", a.getSource());
+        out.put("correlationId", a.getCorrelationId());
+        out.put("headline", a.getHeadline());
+        out.put("recommendedAction", a.getRecommendedAction());
+        out.put("riskAtCreation", a.getRiskAtCreation());
+        out.put("openedAt", a.getOpenedAt() == null ? null : a.getOpenedAt().toString());
+        out.put("updatedAt", a.getUpdatedAt() == null ? null : a.getUpdatedAt().toString());
+        return out;
     }
 
     private static String truncate(String s) {
