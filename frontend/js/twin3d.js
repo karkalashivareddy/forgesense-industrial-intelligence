@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { store } from './state.js';
-import { statusInfo } from './util.js';
+import { statusInfo, machineState } from './util.js';
 
 const GLOW = {
   good: 0x3bc97f,
@@ -23,6 +23,8 @@ let renderer = null;
 let controls = null;
 let rafId = 0;
 let onSelect = null;
+let resizeObserver = null;
+let domHandlers = [];
 
 const machines = new Map();
 const machines3d = new Map();
@@ -35,6 +37,61 @@ let depsVersion = -1;
 let disposed = false;
 
 const SIM_OVERLAY = { active: false, ids: new Set() };
+
+const QUALITY = {
+  samples: 0,
+  frames: 0,
+  lastAt: 0,
+  fps: 60,
+  tiers: [],
+  idx: 0,
+};
+
+function dprTiers() {
+  const max = Math.min(window.devicePixelRatio || 1, 2);
+  if (!QUALITY.tiers.length) {
+    const n = 4;
+    for (let i = 0; i < n; i++) QUALITY.tiers.push(1 + (max - 1) * (i / (n - 1)));
+    QUALITY.tiers.push(max);
+  }
+  return QUALITY.tiers;
+}
+
+function applyDpr() {
+  if (!renderer || !container) return;
+  renderer.setPixelRatio(Math.min(dprTiers()[QUALITY.idx], 2));
+  const w = container.clientWidth || 1;
+  const h = container.clientHeight || 1;
+  renderer.setSize(w, h);
+}
+
+function adaptQuality() {
+  if (QUALITY.samples < 6) return;
+  QUALITY.samples = 0;
+  const tiers = dprTiers();
+  if (QUALITY.idx >= tiers.length - 1) return;
+  if (QUALITY.fps < 44) {
+    QUALITY.idx = Math.max(0, QUALITY.idx - 1);
+    applyDpr();
+  }
+}
+
+export function isTwin() { return !!scene; }
+
+function disposeObject(root) {
+  if (!root) return;
+  root.traverse(o => {
+    if (!o.geometry && !o.material) return;
+    if (o.geometry) o.geometry.dispose();
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) {
+      if (!m) continue;
+      if (m.map) m.map.dispose();
+      if (m.emissiveMap) m.emissiveMap.dispose();
+      m.dispose();
+    }
+  });
+}
 
 function mat() { return new THREE.MeshStandardMaterial({ color: BODY, roughness: 0.5, metalness: 0.55 }); }
 function glowMat() {
@@ -180,6 +237,7 @@ function makeMachine3d(m) {
 }
 
 function buildEdges() {
+  if (!scene) return;
   depLines.forEach(([x1, x2]) => {
     scene.remove(x1);
     scene.remove(x2);
@@ -243,7 +301,7 @@ function zoneSlab(code, name, zRow) {
 function applyStatus(m) {
   const node = machines3d.get(m.machineId);
   if (!node) return;
-  const s = statusInfo(m);
+  const s = machineState(m);
   const tone = s.tone === 'muted' ? 'good' : s.tone;
   if (SIM_OVERLAY.active && SIM_OVERLAY.ids.has(m.machineId)) {
     node.glow.emissive.setHex(0x38c7ea);
@@ -253,7 +311,8 @@ function applyStatus(m) {
     node.glow.emissiveIntensity = tone === 'critical' ? 1.1 : 0.62;
   }
   node.group.scale.set(1, tone === 'critical' ? 1.06 : 1, 1);
-  node.ring.visible = store.selectedMachineId === m.machineId;
+  const showRing = store.selectedMachineId === m.machineId || s.state === 'STALE';
+  node.ring.visible = showRing;
   const dim = highlightZone && m.zone !== highlightZone;
   node.group.traverse(o => {
     if (o.isMesh && o.material && !o.isSprite) {
@@ -264,6 +323,7 @@ function applyStatus(m) {
 }
 
 export function updateTwin() {
+  if (!scene) return;
   for (const id of machines3d.keys()) {
     if (!machines.has(id)) { scene.remove(machines3d.get(id).group); machines3d.delete(id); }
   }
@@ -295,23 +355,37 @@ function animate() {
     if (camera.position.distanceTo(focusTarget.pos) < 0.15) focusTarget = null;
   }
   renderer.render(scene, camera);
+
+  const now = performance.now();
+  if (!QUALITY.lastAt) QUALITY.lastAt = now;
+  QUALITY.frames += 1;
+  if (now - QUALITY.lastAt >= 1200) {
+    QUALITY.fps = (QUALITY.frames * 1000) / (now - QUALITY.lastAt);
+    QUALITY.frames = 0;
+    QUALITY.lastAt = now;
+    QUALITY.samples += 1;
+    adaptQuality();
+  }
 }
 
 function attachEvents() {
   const dom = renderer.domElement;
-  dom.addEventListener('click', (e) => {
+  const onClick = (e) => {
     const hit = pick(e.clientX, e.clientY);
     if (hit) onSelect && onSelect(hit.userData.machineId);
-  });
+  };
   let hovered = null;
-  dom.addEventListener('mousemove', (e) => {
+  const onMove = (e) => {
     const hit = pick(e.clientX, e.clientY);
     const next = hit ? hit.userData.machineId : null;
     if (next !== hovered) {
       hovered = next;
       dom.style.cursor = next ? 'pointer' : 'grab';
     }
-  });
+  };
+  dom.addEventListener('click', onClick);
+  dom.addEventListener('mousemove', onMove);
+  domHandlers.push(['click', onClick], ['mousemove', onMove]);
 }
 
 function pick(x, y) {
@@ -343,18 +417,21 @@ const STATE = {
 };
 
 export function resetCamera() {
+  if (!scene) return;
   focusTarget = { pos: STATE.camera.clone(), tgt: STATE.target.clone() };
   highlightZone = null;
   for (const m of machines.values()) applyStatus(m);
 }
 
 export function focusTop() {
+  if (!scene) return;
   highlightZone = null;
   focusTarget = { pos: new THREE.Vector3(0, 22, 0.5), tgt: new THREE.Vector3(0, 0, -0.5) };
   for (const m of machines.values()) applyStatus(m);
 }
 
 export function focusOnMachine(id) {
+  if (!scene) return;
   const node = machines3d.get(id);
   if (!node) return;
   const pos = node.pos.clone().add(new THREE.Vector3(4.5, 5, 7));
@@ -362,6 +439,7 @@ export function focusOnMachine(id) {
 }
 
 export function focusOnZone(code) {
+  if (!scene) return;
   const zb = zoneBoxes.get(code);
   if (!zb) return;
   focusTarget = { pos: new THREE.Vector3(0, 12, zb.z - 8), tgt: new THREE.Vector3(0, 0, zb.z) };
@@ -372,11 +450,17 @@ export function focusOnZone(code) {
 export function initTwin(el, opts = {}) {
   container = el;
   onSelect = opts.onSelect || null;
+  disposed = false;
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0a0e14);
   camera = new THREE.PerspectiveCamera(STATE.fov, 1, STATE.near, STATE.far);
   camera.position.copy(STATE.camera);
   renderer = new THREE.WebGLRenderer({ antialias: true });
+  QUALITY.tiers = [];
+  QUALITY.idx = dprTiers().length - 1;
+  QUALITY.samples = 0;
+  QUALITY.frames = 0;
+  QUALITY.lastAt = 0;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.appendChild(renderer.domElement);
   controls = new OrbitControls(camera, renderer.domElement);
@@ -415,7 +499,8 @@ export function initTwin(el, opts = {}) {
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
   };
-  new ResizeObserver(resize).observe(container);
+  resizeObserver = new ResizeObserver(resize);
+  resizeObserver.observe(container);
   resize();
   animate();
   return { resetCamera, focusOnMachine, focusOnZone };
@@ -428,6 +513,7 @@ export function syncMachines(list) {
 }
 
 export function updateMachines(list) {
+  if (!scene) return;
   const seen = new Set();
   for (const m of list) {
     machines.set(m.machineId, m);
@@ -440,13 +526,42 @@ export function updateMachines(list) {
 }
 
 export function setSimMode(active, ids = []) {
+  if (!scene) return;
   SIM_OVERLAY.active = !!active;
   SIM_OVERLAY.ids = new Set(ids);
   for (const m of machines.values()) applyStatus(m);
 }
 
 export function disposeTwin() {
+  if (disposed) return;
   disposed = true;
   stopAnim();
-  if (renderer) { renderer.dispose(); renderer.domElement.remove(); }
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+  if (controls) {
+    controls.dispose();
+    controls = null;
+  }
+  if (renderer) {
+    for (const [type, fn] of domHandlers) renderer.domElement.removeEventListener(type, fn);
+    disposeObject(scene);
+    renderer.dispose();
+    renderer.domElement.remove();
+    renderer = null;
+  }
+  domHandlers = [];
+  scene = null;
+  camera = null;
+  container = null;
+  onSelect = null;
+  machines.clear();
+  machines3d.clear();
+  depLines.length = 0;
+  zoneBoxes.clear();
+  focusTarget = null;
+  highlightZone = null;
+  depsVersion = -1;
+  QUALITY.tiers = [];
 }

@@ -2,7 +2,7 @@ import { API_BASE, getRoles, login, decodePw } from './api.js';
 import { store, subscribe, selectMachine, startPolling, refreshMaintenance, set } from './state.js';
 import { el, esc, int, timeAgo, fleetSummary } from './util.js';
 import { register, boot as bootRouter, go, onRoute } from './router.js';
-import { initTwin, updateMachines, resetCamera, focusOnMachine, focusOnZone, setSimMode, focusTop } from './twin3d.js';
+import { initTwin, updateMachines, resetCamera, focusOnMachine, focusOnZone, setSimMode, focusTop, isTwin } from './twin3d.js';
 import * as commandView from './views/command.js';
 import * as factoryView from './views/factoryView.js';
 import * as fleetView from './views/fleet.js';
@@ -15,7 +15,6 @@ import * as systemView from './views/system.js';
 import { openInspector, closeInspector, toggleInspector, subscribeInspector } from './views/inspector.js';
 import { initPalette, togglePalette, closePalette, openPalette, isOpen as paletteOpen } from './command.js';
 
-let twinInited = false;
 let lastSel = null;
 const seenAlerts = new Map();
 let tick = 0;
@@ -74,13 +73,12 @@ function showLogin() {
 
 /* ---------- 3D twin lifecycle ---------- */
 function ensureTwin() {
-  if (twinInited) return true;
   const container = $id('sceneContainer');
   if (!container) return false;
+  if (isTwin()) return true;
   initTwin(container, {
     onSelect: (machineId) => { selectMachine(machineId); openInspector(machineId); },
   });
-  twinInited = true;
   updateMachines(store.machines || []);
   return true;
 }
@@ -202,7 +200,7 @@ function alertWatcher(s) {
 function selectionFocus(s) {
   if (s.selectedMachineId && s.selectedMachineId !== lastSel) {
     lastSel = s.selectedMachineId;
-    if (twinInited) focusOnMachine(s.selectedMachineId);
+    if (isTwin()) focusOnMachine(s.selectedMachineId);
   }
   if (!s.selectedMachineId) lastSel = null;
 }
@@ -284,8 +282,9 @@ function globalEvents() {
     } else {
       banner.classList.add('hidden');
     }
-    if (twinInited) setSimMode(!!active, ids || []);
+    if (isTwin()) setSimMode(!!active, ids || []);
   });
+  window.addEventListener('forge:ensure3d', () => { ensureTwin(); });
   window.addEventListener('forge:shortcuts', () => showShortcuts());
 }
 
@@ -308,7 +307,7 @@ function main() {
       selectionFocus(s);
       const v = currentView();
       if (v && v.update) v.update(s);
-      if (twinInited && s.machines) updateMachines(s.machines);
+      if (isTwin() && s.machines) updateMachines(s.machines);
       if (++tick % 5 === 0) refreshMaintenance();
     });
     onRoute(({ type, payload }) => {
@@ -324,6 +323,7 @@ function main() {
     bootRouter('command', Object.keys(routeViews));
     startPolling();
     clock();
+    setInterval(() => { topbar(store); statusbar(store); }, 1000);
     document.addEventListener('keydown', onKey, true);
     globalEvents();
     apiHealth();

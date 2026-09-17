@@ -42,8 +42,9 @@ forgesense:
     poll-enabled: true
   security:
     enabled: ${FORGESENSE_SECURITY_ENABLED:true}
-    # demo-only signing key — replace with a strong secret in production
-    jwt-secret: ${FORGESENSE_SECURITY_JWT_SECRET:forgesense-demo-jwt-signing-key-do-not-use-in-production-0123456789}
+    # no default secret — JwtService generates a random key in demo mode and
+    # refuses to boot without an explicit secret otherwise
+    jwt-secret: ${FORGESENSE_SECURITY_JWT_SECRET:}
     jwt-expiration-seconds: ${FORGESENSE_SECURITY_JWT_EXPIRATION_SECONDS:86400}
   allowed-origins: ${FORGESENSE_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
 

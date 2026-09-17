@@ -15,6 +15,7 @@ export function onRoute(fn) {
 }
 
 let navigating = false;
+let justGo = false;
 
 export function go(name) {
   const route = views.get(name);
@@ -39,7 +40,11 @@ export function go(name) {
   host.classList.add('active');
   const railBtn = document.querySelector('.rail-btn[data-route="' + name + '"]');
   document.querySelectorAll('.rail-btn[data-route]').forEach(b => b.classList.toggle('active', b === railBtn));
-  window.location.hash = '#/' + name;
+  if (window.location.hash !== '#/' + name) {
+    justGo = true;
+    window.location.hash = '#/' + name;
+    setTimeout(() => { justGo = false; }, 0);
+  }
   navigating = false;
   if (route.view.activate) route.view.activate();
   return true;
@@ -52,7 +57,7 @@ export function matchHash(hash) {
 
 export function boot(defaultRoute, allowed = Array.from(views.keys())) {
   const apply = () => {
-    if (navigating) return;
+    if (navigating || justGo) return;
     const name = matchHash(window.location.hash) || defaultRoute;
     if (views.has(name) && allowed.includes(name)) go(name);
     else go(defaultRoute);

@@ -101,6 +101,9 @@ public class MachineController {
         row.put("voltage", t.getVoltage());
         row.put("power", t.getPower());
         row.put("flow", t.getFlow());
+        row.put("frequency", t.getFrequency());
+        row.put("airTemperature", t.getAirTemperature());
+        row.put("operatingHours", t.getOperatingHours());
         return row;
     }
 

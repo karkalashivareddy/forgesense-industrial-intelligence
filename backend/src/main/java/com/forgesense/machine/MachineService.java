@@ -74,6 +74,7 @@ public class MachineService {
     }
 
     /** Used by connectivity monitor: move twin to offline/recovered states. */
+    @Transactional
     public void setStatusQuiet(String machineId, MachineState status) {
         MachineTwin twin = twinService.twin(machineId);
         if (twin.getStatus() != status) {

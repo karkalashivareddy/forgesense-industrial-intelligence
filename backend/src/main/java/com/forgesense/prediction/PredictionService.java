@@ -11,6 +11,7 @@ import com.forgesense.streaming.EventBus;
 import com.forgesense.telemetry.domain.TelemetrySample;
 import com.forgesense.websocket.WsNotifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Map;
@@ -63,6 +64,7 @@ public class PredictionService {
         assess(sample);
     }
 
+    @Transactional
     public Assessment assess(TelemetrySample sample) {
         MachineTwin twin = twinService.twin(sample.machineId());
         Assessment a = mlGateway.assess(sample);

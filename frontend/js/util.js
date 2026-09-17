@@ -46,6 +46,94 @@ export function timeAgo(iso, now = Date.now()) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
+export function ageBand(ageSec) {
+  if (ageSec == null) return { label: 'UNKNOWN', tone: 'down' };
+  if (ageSec < 15) return { label: 'LIVE', tone: 'good' };
+  if (ageSec < 60) return { label: 'DELAYED', tone: 'warn' };
+  return { label: 'STALE', tone: 'down' };
+}
+
+/* ---------- Unified machine state machine ----------
+ * One derivation path for every view (fleet card, 3D halo, inspector,
+ * command center). States: NORMAL → ESCALATED → CRITICAL → RECOVERING → back
+ * to NORMAL, plus OFFLINE (explicit disconnect) / STALE (silent, feed up but
+ * quiet) / MAINTENANCE which override the health-derived ladder.
+ */
+export const STALE_AFTER_S = 60;
+export const RECOVERY_CONFIRM = 3;
+
+export const MACHINE_STATE = {
+  NORMAL: {
+    state: 'NORMAL', tone: 'good', label: 'Normal', hint: 'Operating within normal bounds',
+    guidance: 'No action needed — values inside modeled limits.',
+  },
+  ESCALATED: {
+    state: 'ESCALATED', tone: 'warn', label: 'Escalated', hint: 'Anomaly or risk elevated — monitor',
+    guidance: 'Advisory: risk or anomaly is above its operating baseline. Watch the trend and plan an inspection window if it persists.',
+  },
+  CRITICAL: {
+    state: 'CRITICAL', tone: 'critical', label: 'Critical', hint: 'Critical condition — act now',
+    guidance: 'Maintenance guidance: treat as urgent. Open machine detail for attribution, estimated RUL and production impact; schedule or advance a work order.',
+  },
+  RECOVERING: {
+    state: 'RECOVERING', tone: 'info', label: 'Recovering', hint: 'Stabilizing — needs consecutive healthy readings to clear',
+    guidance: 'Stabilizing after an incident. Clears automatically once consecutive healthy readings are confirmed.',
+  },
+  MAINTENANCE: {
+    state: 'MAINTENANCE', tone: 'maint', label: 'Maintenance', hint: 'Maintenance in progress',
+    guidance: 'In maintenance — excluded from health scoring until it returns to service.',
+  },
+  OFFLINE: {
+    state: 'OFFLINE', tone: 'down', label: 'Offline', hint: 'Connection dropped — not reporting',
+    guidance: 'Explicit disconnect. Check power/network; last-known values are unconfirmed.',
+  },
+  STALE: {
+    state: 'STALE', tone: 'down', label: 'Stale', hint: 'No new telemetry for longer than expected',
+    guidance: 'No new telemetry received — showing last known values with an age marker.',
+  },
+  UNKNOWN: {
+    state: 'UNKNOWN', tone: 'muted', label: 'Unknown', hint: 'No telemetry on record',
+    guidance: 'No data on record for this machine yet.',
+  },
+};
+
+export function deriveMachineState(m, ctx = {}) {
+  const base = { ...MACHINE_STATE.UNKNOWN, ageSec: null, recoveryConsecutive: 0, remaining: 0 };
+  if (!m) return base;
+  if (m.status == null && m.healthScore == null && !m.lastTelemetryAt) return base;
+  const now = ctx.now || Date.now();
+  const age = ageSec(m.lastTelemetryAt, now);
+  const consecutive = Number(ctx.consecutive) || 0;
+  const recovering = ctx.recovering === true || m.status === 'RECOVERING';
+  const wrap = st => ({ ...st, ageSec: age, recoveryConsecutive: consecutive, remaining: 0 });
+
+  if (m.status === 'MAINTENANCE') return wrap(MACHINE_STATE.MAINTENANCE);
+  if (m.connectivity === 'OFFLINE' || m.status === 'OFFLINE' || ctx.disconnected === true) return wrap(MACHINE_STATE.OFFLINE);
+  if (age != null && age > (ctx.staleAfterS ?? STALE_AFTER_S)) return wrap(MACHINE_STATE.STALE);
+
+  if (recovering) {
+    const need = Number(ctx.confirmReadings) || RECOVERY_CONFIRM;
+    const confirmed = consecutive >= need && m.status !== 'RECOVERING';
+    if (!confirmed) return { ...MACHINE_STATE.RECOVERING, ageSec: age, recoveryConsecutive: consecutive, remaining: Math.max(0, need - consecutive) };
+  }
+
+  if (m.status === 'CRITICAL' || (Number(m.failureRisk) || 0) >= 0.8) return wrap(MACHINE_STATE.CRITICAL);
+  if (m.status === 'WARNING' || m.status === 'DEGRADED' || (Number(m.failureRisk) || 0) >= 0.5 || (Number(m.anomalyScore) || 0) >= 0.6) return wrap(MACHINE_STATE.ESCALATED);
+  return wrap(MACHINE_STATE.NORMAL);
+}
+
+export function machineState(m, now) {
+  const ui = m && m.uiState;
+  return ui || deriveMachineState(m, { now });
+}
+
+export function modelGrade(mode) {
+  const key = String(mode || '').toUpperCase();
+  if (key === 'MODEL') return { label: 'High', tone: 'good', scale: 'HIGH' };
+  if (key === 'HYBRID') return { label: 'Moderate', tone: 'warn', scale: 'MID' };
+  return { label: 'Low', tone: 'warn', scale: 'LOW' };
+}
+
 const ST = {
   NORMAL:      { label: 'NORMAL',      tone: 'good',     hint: 'Operating within normal bounds' },
   DEGRADED:    { label: 'DEGRADED',    tone: 'warn',     hint: 'Performance degraded — monitor' },

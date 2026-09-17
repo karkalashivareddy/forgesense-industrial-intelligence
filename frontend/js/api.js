@@ -38,11 +38,25 @@ export async function login(user, pass) {
   return data;
 }
 
+async function relogin() {
+  const pw = decodePw() || 'forgesense-dev';
+  for (const u of username ? [username] : ['operator', 'engineer', 'admin']) {
+    try {
+      await login(u, pw);
+      return true;
+    } catch { /* try next candidate */ }
+  }
+  return false;
+}
+
 export async function api(path, opts = {}) {
-  const res = await raw(path, opts);
-  if (res.status === 401) {
-    const r2 = await raw(path, { ...opts, _retry: true });
-    return parseBody(r2);
+  let res = await raw(path, opts);
+  if (res.status === 401 && !opts._retry) {
+    if (await relogin()) res = await raw(path, { ...opts, _retry: true });
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} ${path}${text ? ' — ' + text.slice(0, 240) : ''}`);
   }
   return parseBody(res);
 }

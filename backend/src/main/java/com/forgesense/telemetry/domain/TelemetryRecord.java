@@ -65,4 +65,6 @@ public class TelemetryRecord {
     private Double power;
     private Double flow;
     private Double frequency;
+    private Double airTemperature;
+    private Double operatingHours;
 }

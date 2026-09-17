@@ -65,7 +65,16 @@ function renderBody() {
 }
 
 function renderItems() {
-  const items = (store.alerts && store.alerts.items || []).filter(a => fStatus === 'ALL' || a.status === fStatus);
+  const items = ((store.alerts && store.alerts.items) || [])
+    .filter(a => fStatus === 'ALL' || a.status === fStatus)
+    .slice()
+    .sort((a, b) => {
+      const ta = new Date(a.openedAt).getTime();
+      const tb = new Date(b.openedAt).getTime();
+      if (Number.isNaN(ta)) return 1;
+      if (Number.isNaN(tb)) return -1;
+      return (tb - ta) || String(b.id || '').localeCompare(String(a.id || ''));
+    });
   if (!items.length) return el('div', { class: 'empty' }, 'No alerts match. When the simulator injects conditions, alerts appear here and the top-bar counter reacts.');
   return el('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
     items.map(a => alertCard(a)));

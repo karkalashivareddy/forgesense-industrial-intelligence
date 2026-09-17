@@ -1,8 +1,8 @@
-import { el, esc, pct, num, int, fmtDateTime, timeAgo, statusInfo, riskInfo, anomalyInfo } from '../util.js';
+import { el, esc, pct, num, int, fmtDateTime, timeAgo, statusInfo, riskInfo, anomalyInfo, modelGrade } from '../util.js';
 import { api } from '../api.js';
 import { store, selectMachine } from '../state.js';
 import { openInspector } from './inspector.js';
-import { kpi, card, segBar, riskPill, statusPill, errorBox, emptyBox } from '../shared.js';
+import { kpi, card, segBar, riskPill, statusPill, errorBox, emptyBox, insightCard } from '../shared.js';
 
 let root = null;
 let lastRef = null;
@@ -17,7 +17,9 @@ export function unmount() { /* stateless */ }
 
 export function update(s) {
   if (!root) return;
-  const ref = (s.machines || []).length + '|' + (s.riskRanking || []).length;
+  const ref = (s.machines || []).map(m =>
+    m.machineId + ':' + (m.failureRisk != null ? Math.round(m.failureRisk * 100) : '-') + ':' + (m.healthScore != null ? Math.round(m.healthScore) : '-') + ':' + (m.modelMode || '')).join('|')
+    + '|' + (s.riskRanking || []).length;
   if (ref === lastRef) return;
   lastRef = ref;
   render();
@@ -25,7 +27,7 @@ export function update(s) {
 
 function ranked() {
   const machines = store.machines || [];
-  return machines.slice().sort((a, b) => (b.failureRisk ?? -1) - (a.failureRisk ?? -1));
+  return machines.slice().sort((a, b) => (b.failureRisk ?? -1) - (a.failureRisk ?? -1) || String(a.machineId || '').localeCompare(String(b.machineId || '')));
 }
 
 function modes() {
@@ -50,6 +52,9 @@ async function render() {
     kpi('Top driver in model', top ? (top.failureRisk != null ? pct(top.failureRisk, 0) : '—') : '—', top ? top.machineId : 'no machine data', 'info'),
     kpi('Model coverage', mod.model + '/' + mod.total, mod.heuristic ? mod.heuristic + ' on heuristic fallback' : 'all predictions from ML model', mod.heuristic ? 'warn' : 'good')));
 
+  const insight = topInsight(top);
+  if (insight) root.appendChild(insight);
+
   root.appendChild(el('div', { class: 'grid cols-2', style: { marginTop: '12px' } },
     riskTable(rankedList),
     attributionPanel(top)));
@@ -64,24 +69,67 @@ async function render() {
       'Estimated remaining steps are a synthetic model output, not physical hours or a certified failure prediction.')));
 }
 
+function topInsight(top) {
+  if (!top) return null;
+  const g = modelGrade(top.modelMode);
+  const why = el('div', { class: 'insight-why' },
+    el('div', { class: 'muted small' }, 'Loading signal attribution…'));
+  const ins = insightCard({
+    tone: 'warn',
+    title: 'Top risk driver · ' + top.machineId,
+    lead: el('div', {},
+      pct(top.failureRisk, 0) + ' modeled failure risk · anomaly ' + pct(top.anomalyScore, 0) +
+      ' · health ' + num(top.healthScore, 1) + '%' +
+      (top.rulEstimate != null ? ' · est ' + int(top.rulEstimate) + ' steps' : '')),
+    conf: g,
+    why,
+  });
+  const key = top.machineId;
+  const p = explanationCache[key] || api(`/api/v1/machines/${key}/explanation`);
+  if (!explanationCache[key]) explanationCache[key] = p;
+  p.then(ex => {
+    if (!why.isConnected) return;
+    const factors = (ex && Array.isArray(ex.factors)) ? ex.factors.slice(0, 3) : [];
+    why.innerHTML = '';
+    if (!factors.length) {
+      why.appendChild(el('div', { class: 'muted small' }, 'No attribution on record yet — the model has not produced a prediction for this machine.'));
+      return;
+    }
+    for (const f of factors) {
+      const up = String(f.direction || 'high').toLowerCase() !== 'low';
+      why.appendChild(el('div', { class: 'kv' },
+        el('b', {}, (f.feature || 'signal').toUpperCase()),
+        el('span', { class: 'muted small' }, (up ? 'elevated · pushes risk up' : 'bounded · within bounds') + ' by ' + pct(Number(f.contribution) || 0))));
+    }
+    why.appendChild(el('div', { class: 'insight-why-note muted small' }, 'Baseline-perturbation attribution; confidence reflects the estimator in use (MODEL vs heuristics).'));
+  }, () => {
+    if (!why.isConnected) return;
+    why.innerHTML = '';
+    why.appendChild(el('div', { class: 'muted small' }, 'Attribution unavailable right now.'));
+  });
+  return ins;
+}
+
 function riskTable(list) {
   const rows = list.map(m => {
     const s = statusInfo(m);
     const r = riskInfo(m.failureRisk);
+    const g = modelGrade(m.modelMode);
     return el('tr', { onClick: () => { selectMachine(m.machineId); openInspector(m.machineId, 'prediction'); }, style: { cursor: 'pointer' } },
       el('td', {}, m.machineId, el('div', { class: 'muted small' }, esc(m.name || '') + ' · ' + esc(m.zone || ''))),
       el('td', {}, statusPill(m)),
       el('td', {}, el('span', { class: 'tag tag-' + r.tone }, r.band), el('span', { class: 'muted small', style: { marginLeft: '6px' } }, pct(m.failureRisk))),
       el('td', {}, num(m.healthScore, 1) + '%', el('div', { class: 'bar', style: { marginTop: '4px' } }, el('div', { class: 'bar-fill f-' + (m.healthScore < 80 ? 'warn' : m.healthScore < 60 ? 'critical' : 'good'), style: { width: pct(m.healthScore / 100, 0) } }))),
       el('td', {}, pct(m.anomalyScore, 0)),
-      el('td', {}, m.rulEstimate != null ? int(m.rulEstimate) + ' steps' : '—'));
+      el('td', {}, m.rulEstimate != null ? int(m.rulEstimate) + ' steps' : '—'),
+      el('td', {}, el('span', { class: 'conf-tag conf-' + g.scale, title: 'predictions from ' + (m.modelMode || 'heuristic estimator') }, g.label + ' · ' + (m.modelMode || 'heuristic'))));
   });
   return card('Ranked by failure risk', 'click a row to open its prediction detail',
     el('div', { style: { overflowX: 'auto' } },
       el('table', { class: 'tbl' },
         el('thead', {}, el('tr', {},
-          el('th', {}, 'Machine'), el('th', {}, 'Status'), el('th', {}, 'Failure risk'), el('th', {}, 'Health'), el('th', {}, 'Anomaly'), el('th', {}, 'Est RUL'))),
-        rows.length ? el('tbody', {}, rows) : el('tbody', {}, el('tr', {}, el('td', { colspan: '6' }, emptyBox()))))));
+          el('th', {}, 'Machine'), el('th', {}, 'Status'), el('th', {}, 'Failure risk'), el('th', {}, 'Health'), el('th', {}, 'Anomaly'), el('th', {}, 'Est RUL'), el('th', {}, 'Model confidence'))),
+        rows.length ? el('tbody', {}, rows) : el('tbody', {}, el('tr', {}, el('td', { colspan: '7' }, emptyBox()))))));
 }
 
 function attributionPanel(top) {

@@ -126,21 +126,23 @@ public class ControlService {
         machineRepository.findAll().forEach(m -> {
             MachineTwin twin = twinService.twin(m.getMachineId());
             MachineState target = MachineState.NORMAL;
-            if (twin.getStatus() != target) {
+            MachineState previous = twin.getStatus();
+            if (previous != target) {
                 try {
-                    twinService.emitStateChanged(twin, twin.getStatus(),
-                            com.forgesense.machine.state.MachineStateMachine.apply(twin.getStatus(), target));
+                    twinService.emitStateChanged(twin, previous,
+                            com.forgesense.machine.state.MachineStateMachine.apply(previous, target));
                 } catch (IllegalStateException e) {
                     // offline units recover first
-                    twinService.emitStateChanged(twin, twin.getStatus(), MachineState.RECOVERING);
+                    twinService.emitStateChanged(twin, previous, MachineState.RECOVERING);
                 }
             }
             twin.setFailureRisk(0.03);
             twin.setAnomalyScore(0.05);
             twin.setHealthScore(98);
-            if (m.getConnectivity().equals("ONLINE")) {
-                twin.setConnectivity(twin.getConnectivity());
+            if (m.getConnectivity() != null && m.getConnectivity().equals("ONLINE")) {
+                twin.setConnectivity("ONLINE");
             }
+            twinService.persistBudgets(twin);
         });
         eventLogService.append("FACTORY_RESET", null, "operator", "Factory Alpha reset to nominal baseline", null);
         ws.broadcast("simulation.global.updated", Map.of("reset", true));

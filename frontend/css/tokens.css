@@ -1,0 +1,101 @@
+/* ============ ForgeSense Control Room — design tokens ============ */
+:root {
+  /* surface */
+  --bg: #0a0e14;
+  --bg-soft: #0d131b;
+  --panel: #111924;
+  --panel2: #16202c;
+  --panel3: #1b2735;
+  --overlay: rgba(10, 14, 20, .82);
+
+  /* borders */
+  --border: #243242;
+  --border-soft: #1b2632;
+
+  /* text */
+  --text: #d9e4f0;
+  --muted: #7b93ab;
+  --faint: #4d5a6b;
+
+  /* accent (single primary) */
+  --accent: #38c7ea;
+  --accent-dim: rgba(56, 199, 234, .14);
+  --accent-hover: rgba(56, 199, 234, .24);
+
+  /* status */
+  --good: #3bc97f;
+  --good-dim: rgba(59, 201, 127, .14);
+  --warn: #f0b450;
+  --warn-dim: rgba(240, 180, 80, .14);
+  --critical: #f25c4c;
+  --critical-dim: rgba(242, 92, 76, .14);
+  --maint: #8f7bff;
+  --maint-dim: rgba(143, 123, 255, .14);
+  --down: #5a6780;
+  --down-dim: rgba(90, 103, 128, .18);
+  --info: #38c7ea;
+  --info-dim: rgba(56, 199, 234, .14);
+
+  /* typography */
+  --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", "Consolas", ui-monospace, monospace;
+  --fs-10: 10px;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-28: 28px;
+
+  /* spacing scale (4px) */
+  --sp1: 4px;
+  --sp2: 8px;
+  --sp3: 12px;
+  --sp4: 16px;
+  --sp5: 20px;
+  --sp6: 24px;
+  --sp7: 28px;
+  --sp8: 32px;
+
+  /* radius */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-pill: 999px;
+
+  /* elevation */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);
+  --shadow: 0 4px 14px rgba(0, 0, 0, .3);
+  --shadow-lg: 0 14px 40px rgba(0, 0, 0, .45);
+  --glow-good: 0 0 6px var(--good);
+  --glow-warn: 0 0 6px var(--warn);
+  --glow-critical: 0 0 6px var(--critical);
+  --glow-accent: 0 0 6px var(--accent);
+
+  /* motion */
+  --dur-micro: 120ms;
+  --dur-fast: 200ms;
+  --dur: 300ms;
+  --dur-slow: 450ms;
+  --ease: cubic-bezier(.4, 0, .2, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+
+  /* layout */
+  --rail-w: 208px;
+  --insp-w: 460px;
+  --topbar-h: 52px;
+
+  /* glass */
+  --glass-bg: rgba(10, 14, 20, .72);
+  --glass-border: rgba(255, 255, 255, .08);
+}
+
+:root[data-density="cozy"] {
+  --fs-14: 15px;
+  --sp3: 14px;
+  --sp5: 24px;
+}

@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { deriveMachineState, RECOVERY_CONFIRM } from './util.js';
 
 export const POLL_MS = 3000;
 
@@ -22,6 +23,9 @@ export const store = {
   eventFreq: null,
   selectedMachineId: null,
   freshness: { ok: false, lastOk: null, polls: 0, failures: 0, lastError: null },
+  uiRawStates: {},
+  recoverySeen: {},
+  derivedAt: null,
 };
 
 const listeners = new Set();
@@ -84,15 +88,45 @@ export async function refreshCore() {
       api('/api/v1/alerts?limit=100'),
       api('/api/v1/events?limit=50'),
     ]);
+    const list = machines || [];
     const machineMap = new Map();
-    (machines || []).forEach(m => machineMap.set(m.machineId, m));
+    const rawStates = { ...(store.uiRawStates || {}) };
+    const recoveryOld = store.recoverySeen || {};
+    const recoveryNext = {};
+    const now = Date.now();
+    for (const m of list) {
+      const baseState = deriveMachineState(m, { now }).state;
+      rawStates[m.machineId] = baseState;
+      let counter = recoveryOld[m.machineId] || 0;
+      if (baseState === 'MAINTENANCE' || baseState === 'OFFLINE' || baseState === 'STALE' || baseState === 'UNKNOWN') {
+        counter = 0;
+      } else if (baseState === 'CRITICAL' || baseState === 'ESCALATED') {
+        counter = 0;
+      } else if (baseState === 'NORMAL') {
+        const prev = rawStates[m.machineId];
+        if (prev === 'CRITICAL' || prev === 'ESCALATED') counter = 1;
+        else if (counter > 0) counter += 1;
+        if (counter >= RECOVERY_CONFIRM) counter = 0;
+      }
+      recoveryNext[m.machineId] = counter;
+      m.uiState = deriveMachineState(m, {
+        now,
+        recovering: counter > 0,
+        consecutive: counter,
+        confirmReadings: RECOVERY_CONFIRM,
+      });
+      machineMap.set(m.machineId, m);
+    }
     set({
-      machines: machines || [],
+      machines: list,
       machineMap,
       status,
       telemetryStatus: telStatus,
       alerts: alerts || { items: [] },
       events: events || { items: [] },
+      uiRawStates: rawStates,
+      recoverySeen: recoveryNext,
+      derivedAt: now,
     });
   } catch (e) {
     ok = false;
@@ -154,5 +188,4 @@ export function startPolling() {
   };
   tick();
   setInterval(tick, POLL_MS);
-  setInterval(() => notify(), 1000);
 }

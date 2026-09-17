@@ -1,8 +1,8 @@
-import { el, esc, pct, num, int, fmtTime, timeAgo, statusInfo, riskInfo, anomalyInfo, fleetSummary, avgHealth } from '../util.js';
+import { el, esc, pct, num, int, fmtTime, timeAgo, statusInfo, riskInfo, anomalyInfo, machineState, fleetSummary, avgHealth } from '../util.js';
 import { api } from '../api.js';
 import { store, selectMachine } from '../state.js';
 import { openInspector } from './inspector.js';
-import { kpi, card, statusPill, healthBar, statusDot, toneColor } from '../shared.js';
+import { kpi, card, statusPill, healthBar, statusDot, toneColor, fleetBar } from '../shared.js';
 
 let root = null;
 let lastRef = null;
@@ -18,7 +18,9 @@ export function unmount() { /* stateless */ }
 
 export function update(s) {
   if (!root) return;
-  const ref = JSON.stringify([(s.machines || []).map(m => m.machineId + m.status + (m.connectivity || '')), (s.events || {}).count]);
+  const ref = (s.machines || []).map(m =>
+    m.machineId + ':' + m.status + ':' + (m.failureRisk != null ? Math.round(m.failureRisk * 100) : '-') + ':' + (m.healthScore != null ? Math.round(m.healthScore) : '-')).join('|')
+    + '|' + ((s.events || {}).count ?? '') + '|' + s.selectedMachineId;
   if (ref === lastRef) return;
   lastRef = ref;
   render();
@@ -37,7 +39,7 @@ async function loadImpact() {
 }
 
 function ranked() {
-  return (store.machines || []).slice().sort((a, b) => (b.failureRisk ?? -1) - (a.failureRisk ?? -1));
+  return (store.machines || []).slice().sort((a, b) => (b.failureRisk ?? -1) - (a.failureRisk ?? -1) || String(a.machineId || '').localeCompare(String(b.machineId || '')));
 }
 
 function opState(fs) {
@@ -64,6 +66,11 @@ function render() {
     kpi('Offline & maintenance', (fs.offline + fs.maintenance), fs.offline + ' offline · ' + fs.maintenance + ' in maint', 'maint'),
     kpi('At risk (≥ 50%)', fs.atRisk, 'modeled failure risk', fs.atRisk ? 'warn' : 'good')));
 
+  root.appendChild(el('div', { class: 'card', style: { marginTop: '12px' } },
+    el('div', { class: 'card-head' }, el('h3', { class: 'card-title' }, 'Fleet health'),
+      el('span', { class: 'card-sub' }, 'aggregate across zones · live from telemetry feed')),
+    fleetBar(fs)));
+
   root.appendChild(el('div', { class: 'grid cols-3', style: { marginTop: '12px' } },
     situationsCard(critList),
     zoneMapCard(),
@@ -78,7 +85,7 @@ function situationsCard(critList) {
     body.appendChild(el('div', { class: 'empty' }, 'All machines are NORMAL right now. Run a degrade scenario (Simulation) to animate this screen.'));
   }
   for (const m of critList.slice(0, 6)) {
-    const s = statusInfo(m);
+    const s = machineState(m);
     const r = riskInfo(m.failureRisk);
     const a = anomalyInfo(m.anomalyScore);
     body.appendChild(el('div', {
@@ -87,12 +94,12 @@ function situationsCard(critList) {
     },
       el('div', { class: 'alert-main' },
         el('div', { class: 'alert-title' }, statusDot(m), ' ', m.machineId, ' · ', esc(m.name || ''), ' ',
-          el('span', { class: 'pill-status st-' + s.tone, style: { marginLeft: '4px' } }, s.label)),
+          el('span', { class: 'pill-status st-' + (s.state === 'STALE' ? 'stale' : s.tone), style: { marginLeft: '4px' } }, s.label.toUpperCase())),
         el('div', { class: 'alert-meta' },
           el('span', { class: 'badge2' }, esc(m.zone || '')),
           el('span', {}, 'risk ' + pct(m.failureRisk)),
           el('span', {}, 'anomaly ' + pct(m.anomalyScore) + ' · ' + a.band),
-          m.rulEstimate != null ? el('span', {}, 'est steps ' + int(m.rulEstimate)) : null))));
+          m.rulEstimate != null ? el('span', {}, 'est steps ' + int(m.rulEstimate)) : null), s.guidance ? el('div', { class: 'alert-guide' }, s.guidance) : null)));
   }
   return card('Situation', 'machines not NORMAL', body);
 }
@@ -107,7 +114,7 @@ function zoneMapCard() {
   for (const z of zones) {
     const inZone = (store.machines || []).filter(m => m.zone === z.code);
     const stc = {};
-    inZone.forEach(m => { const t = statusInfo(m).tone; stc[t] = (stc[t] || 0) + 1; });
+    inZone.forEach(m => { const t = machineState(m).tone; stc[t] = (stc[t] || 0) + 1; });
     body.appendChild(el('div', {
       class: 'zone-cell',
       onClick: () => window.dispatchEvent(new CustomEvent('forge:zone', { detail: { code: z.code } })),
@@ -117,7 +124,7 @@ function zoneMapCard() {
         el('span', { class: 'muted small' }, inZone.length + ' machines')),
       el('div', { class: 'zc-stat' },
         inZone.length ? inZone.map(m => {
-          const t = statusInfo(m).tone;
+          const t = machineState(m).tone;
           return el('span', { class: 'm' }, el('span', { style: { width: '8px', height: '8px', borderRadius: '2px', background: toneColor(t), display: 'inline-block' } }),
             m.machineId + ' · ' + num(m.healthScore, 0) + '%');
         }) : el('span', { class: 'muted small' }, 'no machines'),
@@ -131,7 +138,7 @@ function sideColumn(fs) {
   const top = ranked()[0];
   const body = el('div', {});
   if (top) {
-    body.appendChild(el('div', { class: 'kv' }, el('b', {}, 'Top risk'), el('span', {}, el('a', { href: '#', style: { color: '#38c7ea', cursor: 'pointer' }, onclick: e => { e.preventDefault(); selectMachine(top.machineId); openInspector(top.machineId, 'prediction'); } }, top.machineId + ' · ' + pct(top.failureRisk)))));
+    body.appendChild(el('div', { class: 'kv' }, el('b', {}, 'Top risk'), el('span', {}, el('a', { class: 'link', href: '#/factory', onclick: e => { e.preventDefault(); selectMachine(top.machineId); openInspector(top.machineId, 'prediction'); } }, top.machineId + ' · ' + pct(top.failureRisk)))));
   }
   body.appendChild(el('div', { class: 'kv' }, el('b', {}, 'Production efficiency'), el('span', {},
     store.analytics && store.analytics.productionEfficiency ? pct(store.analytics.productionEfficiency.value, 0) : '—')));

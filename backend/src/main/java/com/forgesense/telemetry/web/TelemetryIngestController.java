@@ -78,9 +78,11 @@ public class TelemetryIngestController {
     public Map<String, Object> status() {
         Instant from = Instant.now().minusSeconds(60);
         boolean kafka = props.streaming().kafka().enabled();
+        boolean streaming = kafka;
+        String transport = kafka ? "KAFKA" : "REST_POLL";
         return Map.of(
-                "streaming", false,
-                "transport", "REST_POLL",
+                "streaming", streaming,
+                "transport", transport,
                 "inputTransport", kafka ? "KAFKA" : "IN_PROCESS",
                 "pollIntervalSeconds", 3,
                 "telemetryPerMinute", telemetryRepository.countByTimestampAfter(from),

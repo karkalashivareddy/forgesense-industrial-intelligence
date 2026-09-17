@@ -70,7 +70,7 @@ function stat(v, l, tone) {
 }
 
 function riskPanel(risk) {
-  const sorted = risk.slice().sort((a, b) => (b.failureRisk ?? -1) - (a.failureRisk ?? -1));
+  const sorted = risk.slice().sort((a, b) => (b.failureRisk ?? -1) - (a.failureRisk ?? -1) || String(a.machineId || '').localeCompare(String(b.machineId || '')));
   const body = el('div', {});
   if (!sorted.length) { body.appendChild(emptyBox('No risk ranking available yet.')); return card('Risk ranking', 'from /api/v1/analytics/risk-ranking', body); }
   const max = Math.max(...sorted.map(r => r.failureRisk ?? 0), 0.01);

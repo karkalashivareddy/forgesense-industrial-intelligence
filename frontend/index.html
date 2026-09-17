@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ForgeSense · Industrial Intelligence Control Room</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="css/tokens.css" />
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/components.css" />
+<link rel="stylesheet" href="css/views.css" />
 </head>
 <body>
 <header class="topbar" role="banner">
@@ -33,15 +36,15 @@
 
 <div class="shell">
   <nav class="rail" aria-label="Control room sections">
-    <button class="rail-btn" data-route="command"><span class="idx">01</span>Command Center</button>
-    <button class="rail-btn" data-route="factory"><span class="idx">02</span>Factory Twin</button>
-    <button class="rail-btn" data-route="fleet"><span class="idx">03</span>Fleet</button>
-    <button class="rail-btn" data-route="alerts"><span class="idx">04</span>Alerts</button>
-    <button class="rail-btn" data-route="predictions"><span class="idx">05</span>Predictions</button>
-    <button class="rail-btn" data-route="simulation"><span class="idx">06</span>Simulation</button>
-    <button class="rail-btn" data-route="maintenance"><span class="idx">07</span>Maintenance</button>
-    <button class="rail-btn" data-route="analytics"><span class="idx">08</span>Analytics</button>
-    <button class="rail-btn" data-route="system"><span class="idx">09</span>System</button>
+    <button class="rail-btn" data-route="command" data-label="Command"><span class="idx">01</span>Command Center</button>
+    <button class="rail-btn" data-route="factory" data-label="Factory"><span class="idx">02</span>Factory Twin</button>
+    <button class="rail-btn" data-route="fleet" data-label="Fleet"><span class="idx">03</span>Fleet</button>
+    <button class="rail-btn" data-route="alerts" data-label="Alerts"><span class="idx">04</span>Alerts</button>
+    <button class="rail-btn" data-route="predictions" data-label="Prediction"><span class="idx">05</span>Predictions</button>
+    <button class="rail-btn" data-route="simulation" data-label="Simulation"><span class="idx">06</span>Simulation</button>
+    <button class="rail-btn" data-route="maintenance" data-label="Maintenance"><span class="idx">07</span>Maintenance</button>
+    <button class="rail-btn" data-route="analytics" data-label="Analytics"><span class="idx">08</span>Analytics</button>
+    <button class="rail-btn" data-route="system" data-label="System"><span class="idx">09</span>System</button>
     <div class="rail-foot">
       <button class="rail-link" data-action="shortcuts" title="Keyboard shortcuts">⌨ Shortcuts</button>
       <span class="rail-ver">·synthetic demo·</span>

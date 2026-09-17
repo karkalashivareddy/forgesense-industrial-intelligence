@@ -1,5 +1,6 @@
 import { el, esc, fleetSummary, statusInfo } from '../util.js';
 import { store } from '../state.js';
+import { isTwin, disposeTwin } from '../twin3d.js';
 
 let root = null;
 let activeZone = null;
@@ -10,9 +11,12 @@ export function mount(container) {
   renderChips();
 }
 
-export function unmount() { /* stateless */ }
+export function unmount() {
+  if (isTwin()) disposeTwin();
+}
 
 export function activate() {
+  window.dispatchEvent(new CustomEvent('forge:ensure3d'));
   renderChips();
 }
 

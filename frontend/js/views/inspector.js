@@ -1,6 +1,6 @@
 import {
   el, esc, pct, num, int, fmtTime, fmtDateTime, timeAgo,
-  statusInfo, riskInfo, healthInfo, anomalyInfo, sensorLabel, userCan,
+  statusInfo, riskInfo, healthInfo, anomalyInfo, sensorLabel, userCan, machineState,
 } from '../util.js';
 import { store, selectMachine, subscribe, refreshMaintenance } from '../state.js';
 import { api, post, getRoles } from '../api.js';
@@ -23,6 +23,7 @@ let id = null;
 let tab = 'overview';
 let mCache = {};
 let lastBodyRender = 0;
+let idleTimer = null;
 const teleCfg = { metric: null, range: '300' };
 
 function panel() { return document.getElementById('inspector'); }
@@ -44,11 +45,30 @@ export function openInspector(machineId, tabName) {
   renderHead();
   renderTabs();
   renderTab();
+  startIdleRefresh();
 }
 
 export function closeInspector() {
+  stopIdleRefresh();
   panel().classList.add('collapsed');
   panel().setAttribute('aria-hidden', 'true');
+}
+
+function startIdleRefresh() {
+  stopIdleRefresh();
+  idleTimer = setInterval(() => {
+    if (!isOpen() || !id) return;
+    const now = Date.now();
+    if (now - lastBodyRender > 15000 && document.visibilityState === 'visible') renderTab();
+    else renderHead();
+  }, 4000);
+}
+
+function stopIdleRefresh() {
+  if (idleTimer) {
+    clearInterval(idleTimer);
+    idleTimer = null;
+  }
 }
 
 export function toggleInspector() {
@@ -130,13 +150,16 @@ function errorBox(msg) { return el('div', { class: 'error-box' }, msg); }
 
 async function overview(host, m) {
   const a = anomalyInfo(m.anomalyScore);
-  const s = statusInfo(m);
+  const s = machineState(m);
   const hTone = healthInfo(m.healthScore);
   host.appendChild(el('div', { class: 'insp-head-line' },
     el('div', { class: 'name' }, m.name,
-      el('span', { class: 'pill-status st-' + s.tone, title: s.hint }, s.label),
+      el('span', { class: 'pill-status st-' + (s.state === 'STALE' ? 'stale' : s.tone), title: s.hint }, s.label.toUpperCase()),
       el('span', { class: 'tag tag-' + (a.tone === 'good' ? 'info' : a.tone) }, 'Anomaly ' + a.band)),
     el('div', { class: 'meta' }, `${m.zone || '—'} / ${m.line || '—'} · ${esc(m.typeLabel || m.type || '')} · criticality ${esc(m.criticality || 'standard')}`)));
+  if (s.state !== 'NORMAL' && s.state !== 'UNKNOWN' && s.guidance) {
+    host.appendChild(el('div', { class: 'alert-guide', style: { marginTop: '6px', marginBottom: '4px' } }, s.guidance));
+  }
   host.appendChild(el('div', { class: 'stat-grid' },
     statBox('Health', m.healthScore != null ? num(m.healthScore, 1) + '%' : '—', hTone === 'good' ? 'within operating bounds' : hTone === 'warn' ? 'low — inspect' : 'critical — act now'),
     statBox('Anomaly score', pct(m.anomalyScore), a.band + ' divergence from baseline'),
@@ -485,7 +508,7 @@ function schedulePrompt(o) {
 }
 
 export function subscribeInspector() {
-  subscribe(s => {
+  return subscribe(s => {
     if (s.selectedMachineId && s.selectedMachineId !== id) {
       id = s.selectedMachineId;
       tab = 'overview';
@@ -495,14 +518,6 @@ export function subscribeInspector() {
       if (isOpen()) renderTab();
     }
   });
-  const idle = setInterval(() => {
-    if (!isOpen() || !id) return;
-    const now = Date.now();
-    const overdue = now - lastBodyRender > 15000;
-    if (overdue && document.visibilityState === 'visible') renderTab();
-    else renderHead();
-  }, 4000);
-  return () => clearInterval(idle);
 }
 
 export function forceRefresh() {

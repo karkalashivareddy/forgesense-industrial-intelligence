@@ -147,14 +147,14 @@ public class DataSeeder implements ApplicationRunner {
         Instant end = Instant.now().minusSeconds(30);
         List<String> sensors = List.of(
                 "temperature", "vibration", "pressure", "rpm", "torque",
-                "current", "power", "flow", "voltage", "frequency");
+                "current", "power", "flow", "voltage", "frequency", "airTemperature");
         for (Machine m : machineRepository.findAllByOrderByMachineId()) {
             var r = new java.util.Random(m.getMachineId().hashCode() * 31L);
             for (int i = 39; i >= 0; i--) {
                 TelemetryRecord rec = new TelemetryRecord();
                 rec.setMachineId(m.getMachineId());
                 rec.setTimestamp(end.minusSeconds(30L * (39 - i)));
-                rec.setSequence(1000L - i);
+                rec.setSequence(39L - i);
                 for (String sensor : sensors) {
                     catalog.nominalValue(m.getMachineId(), sensor).ifPresent(nominal -> {
                         double value = nominal + r.nextGaussian() * 0.3
@@ -179,6 +179,7 @@ public class DataSeeder implements ApplicationRunner {
             case "flow" -> rec.setFlow(value);
             case "voltage" -> rec.setVoltage(value);
             case "frequency" -> rec.setFrequency(value);
+            case "airTemperature" -> rec.setAirTemperature(value);
             default -> { }
         }
     }

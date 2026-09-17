@@ -102,7 +102,7 @@ public class AnalyticsService {
                         + alertRepository.countByStatus(AlertStatus.INVESTIGATING),
                 "new", alertRepository.countByStatus(AlertStatus.NEW),
                 "investigating", alertRepository.countByStatus(AlertStatus.INVESTIGATING),
-                "resolvedToday", alertRepository.countByOpenedAtAfter(Instant.now().minusSeconds(86400)),
+                "resolvedToday", alertRepository.countByResolvedAtAfter(Instant.now().minusSeconds(86400)),
                 "basis", "OBSERVED");
     }
 

@@ -180,6 +180,8 @@ public class TelemetryPipeline implements EventSink {
         r.setPower(s.power());
         r.setFlow(s.flow());
         r.setFrequency(s.frequency());
+        r.setAirTemperature(s.airTemperature());
+        r.setOperatingHours(s.operatingHours());
         return r;
     }
 

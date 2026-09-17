@@ -25,7 +25,7 @@ public class WebSocketConnectionMonitor
 
     @Override
     public void onApplicationEvent(org.springframework.context.ApplicationEvent event) {
-        if (event instanceof SessionConnectedEvent || event instanceof SessionConnectEvent) {
+        if (event instanceof SessionConnectedEvent) {
             ws.increment();
             metrics.setWebsocketConnections(ws.connections());
         } else if (event instanceof SessionDisconnectEvent) {
