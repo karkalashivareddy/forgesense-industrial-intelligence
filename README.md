@@ -175,6 +175,19 @@ docs/          Architecture, data flow, deployment, ownership, and system design
 - [Deployment](docs/DEPLOYMENT.md)
 - [Project specification](docs/PROJECT_SPECIFICATION.md)
 
+## Screenshots
+
+| View | Screenshot |
+| --- | --- |
+| Command Center | ![Command Center](docs/assets/screenshots/01-command-center.png) |
+| Factory Twin (Three.js 3D) | ![Factory Twin](docs/assets/screenshots/02-factory-twin.png) |
+| Fleet | ![Fleet](docs/assets/screenshots/03-fleet.png) |
+| Alerts | ![Alerts](docs/assets/screenshots/04-alerts.png) |
+| Predictions | ![Predictions](docs/assets/screenshots/05-predictions.png) |
+| Simulation | ![Simulation](docs/assets/screenshots/06-simulation.png) |
+
+*Screenshots captured from live application (backend on :8080, ML on :8001, frontend served statically) on 2026-09-17.*
+
 ## License and author
 
 Released under the [MIT License](LICENSE).
