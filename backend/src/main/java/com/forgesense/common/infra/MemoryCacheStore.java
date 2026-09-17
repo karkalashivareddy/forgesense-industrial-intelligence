@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * In-memory cache store (dev profile) — same contract as Redis, no daemon needed.
+ * In-memory cache store (dev profile) - same contract as Redis, no daemon needed.
  */
 @Component
 @Profile("!docker")

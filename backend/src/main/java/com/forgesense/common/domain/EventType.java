@@ -1,7 +1,7 @@
 package com.forgesense.common.domain;
 
 /**
- * Canonical operational event types (see docs/EVENT_STREAMING.md).
+ * Canonical operational event types.
  */
 public enum EventType {
     TELEMETRY_RECEIVED,

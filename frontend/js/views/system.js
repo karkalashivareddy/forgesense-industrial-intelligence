@@ -11,8 +11,8 @@ export function mount(container) {
   root = container;
   render();
   api('/actuator/health').then(
-    v => { health = v; if (root) renderHealth(); },
-    () => { health = { __err: 'not reachable' }; if (root) renderHealth(); }
+    v => { health = v; if (root) render(); },
+    () => { health = { __err: 'not reachable' }; if (root) render(); }
   );
 }
 

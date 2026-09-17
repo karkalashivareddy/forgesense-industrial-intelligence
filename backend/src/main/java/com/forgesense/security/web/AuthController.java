@@ -1,5 +1,6 @@
 package com.forgesense.security.web;
 
+import com.forgesense.common.config.ForgeSenseProperties;
 import com.forgesense.common.errors.ApiException;
 import com.forgesense.security.ForgeUserDetailsService;
 import com.forgesense.security.JwtService;
@@ -24,12 +25,14 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final ForgeUserDetailsService userDetailsService;
+    private final ForgeSenseProperties props;
 
     public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
-                          ForgeUserDetailsService userDetailsService) {
+                          ForgeUserDetailsService userDetailsService, ForgeSenseProperties props) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.props = props;
     }
 
     @PostMapping("/login")
@@ -44,11 +47,12 @@ public class AuthController {
         String name = auth.getName();
         List<String> roles = userDetailsService.rolesFor(name);
         String token = jwtService.generate(name, roles);
+        long expires = props.security() == null ? 86400L : props.security().jwtExpirationSeconds();
         return Map.of(
                 "accessToken", token,
                 "tokenType", "Bearer",
                 "username", name,
                 "roles", roles,
-                "expiresInSeconds", 86400);
+                "expiresInSeconds", expires);
     }
 }

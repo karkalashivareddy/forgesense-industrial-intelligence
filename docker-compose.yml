@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: forgesense
       POSTGRES_USER: forgesense
-      POSTGRES_PASSWORD: forgesense_dev_pw
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-forgesense_dev_pw}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -24,24 +24,32 @@ services:
       retries: 10
 
   kafka:
-    image: bitnami/kafka:3.7
+    image: apache/kafka:3.7.0
     environment:
-      KAFKA_CFG_NODE_ID: 0
-      KAFKA_CFG_PROCESS_ROLES: controller,broker
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 0
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
       interval: 10s
       timeout: 10s
       retries: 12
 
   ml-service:
-    build: ./ml-service
+    build:
+      context: .
+      dockerfile: ml-service/Dockerfile
     ports:
       - "8001:8001"
     healthcheck:
@@ -51,7 +59,9 @@ services:
       retries: 5
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,15 +75,30 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       FORGESENSE_SECURITY_ENABLED: "true"
       FORGESENSE_ML_URL: http://ml-service:8001
+      FORGESENSE_ALLOWED_ORIGINS: http://localhost:5173
       POSTGRES_HOST: postgres
       POSTGRES_DB: forgesense
       POSTGRES_USER: forgesense
-      POSTGRES_PASSWORD: forgesense_dev_pw
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-forgesense_dev_pw}
       REDIS_HOST: redis
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      FORGESENSE_DEV_PASSWORD: "forgeSence-DemoPW-2026!"
+      FORGESENSE_DEV_PASSWORD: ${FORGESENSE_DEV_PASSWORD:?set FORGESENSE_DEV_PASSWORD in .env}
+      FORGESENSE_SECURITY_JWT_SECRET: ${FORGESENSE_SECURITY_JWT_SECRET:?set FORGESENSE_SECURITY_JWT_SECRET in .env}
     ports:
       - "8080:8080"
+
+  simulator:
+    build:
+      context: .
+      dockerfile: simulator/Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      FORGESENSE_BACKEND: http://backend:8080
+      FORGESENSE_DEV_PASSWORD: ${FORGESENSE_DEV_PASSWORD:-forgeSence-DemoPW-2026!}
+    command: ["python", "-u", "telemetry_feed.py", "--interval", "5"]
+    restart: unless-stopped
 
   frontend:
     image: nginx:alpine
@@ -92,7 +117,8 @@ services:
   grafana:
     image: grafana/grafana:11.2.0
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: forgesense
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-forgesense}
     volumes:
       - ./infra/grafana:/etc/grafana/provisioning:ro
     ports:

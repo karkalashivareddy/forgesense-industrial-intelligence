@@ -119,7 +119,7 @@ function alertCard(a) {
           (a.resolvedAt ? el('span', {}, 'resolved ' + fmtDateTime(a.resolvedAt)) : null))),
       el('div', { class: 'alert-desc' }, esc(a.description || '')),
       a.factorsSummary ? el('div', { class: 'alert-meta' },
-        (a.factorsSummary || []).map(f => el('span', { class: 'badge2' }, esc(String(f || '')).slice(0, 24)))) : null,
+        String(a.factorsSummary).split(/\s+/).filter(Boolean).map(f => el('span', { class: 'badge2' }, esc(String(f || '')).slice(0, 24)))) : null,
       a.recommendedAction ? el('div', { class: 'alert-meta' },
         el('span', { style: { color: '#8dc6a8' } }, 'Recommended: ' + esc(a.recommendedAction))) : null,
       actions));

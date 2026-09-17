@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Parses the Bearer token and populates the security context. Stateless —
+ * Parses the Bearer token and populates the security context. Stateless -
  * no session is created.
  */
 @Component

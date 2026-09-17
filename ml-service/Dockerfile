@@ -1,16 +1,21 @@
+# syntax=docker/dockerfile:1
+# Build context is the repository root so the authoritative profile catalog
+# (config/machine_profiles.json) can be baked into the image and the models
+# trained at image build time against it.
 FROM python:3.13-slim
 
 WORKDIR /opt/forgesense-ml
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    FORGESENSE_PROFILES_FILE=/config/machine_profiles.json
 
-COPY requirements.txt .
+COPY ml-service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app ./app
-COPY scripts ./scripts
-COPY data ./data
+COPY config/machine_profiles.json /config/machine_profiles.json
+COPY ml-service/app ./app
+COPY ml-service/scripts ./scripts
 
 RUN mkdir -p /opt/forgesense-ml/models \
     && python -m scripts.train

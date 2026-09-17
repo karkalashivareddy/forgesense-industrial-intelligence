@@ -30,7 +30,7 @@ function render() {
   const mt = store.maintenanceStats || {};
   const risk = store.riskRanking || [];
 
-  root.appendChild(el('div', { class: 'page-title' }, 'Analytics', el('span', { class: 'sub' }, 'backend analytics endpoints · basis ' + esc((o.dataBasis || '—').replace(',', ', ')))));
+  root.appendChild(el('div', { class: 'page-title' }, 'Analytics', el('span', { class: 'sub' }, 'backend analytics endpoints · basis ' + esc(Array.isArray(o.dataBasis) ? o.dataBasis.join(', ') : String(o.dataBasis || '—')))));
 
   root.appendChild(el('div', { class: 'grid cols-4' },
     kpi('Machines online', o.machinesOnline != null ? int(o.machinesOnline) + '/' + int(o.machinesTotal ?? '')?.split(',')[0] : '—', 'backend overview', 'good'),
