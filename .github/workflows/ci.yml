@@ -18,7 +18,9 @@ jobs:
           demo_pw=$(printf '%s%s' 'forgeSence' '-DemoPW')
           default_pw=$(printf '%s%s' 'default forgesense' '-dev')
           pattern="${dev_pw}|${demo_key}|${demo_pw}|${default_pw}"
-          matching=$(git grep -lE "$pattern" -- ':!.github/workflows/ci.yml')
+          # git grep returns 1 when there are no matches. In GitHub Actions'
+          # bash -e mode, preserve that expected result for the explicit check.
+          matching=$(git grep -lE "$pattern" -- ':!.github/workflows/ci.yml' || true)
           if [ -n "$matching" ]; then
             echo "Tracked local credential material found:"
             printf '%s\n' "$matching"
