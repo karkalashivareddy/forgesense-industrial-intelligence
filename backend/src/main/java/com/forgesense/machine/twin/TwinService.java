@@ -11,6 +11,7 @@ import com.forgesense.websocket.WsNotifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
 
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,11 @@ public class TwinService {
         this.eventBus = eventBus;
     }
 
+    @PostConstruct
+    void restorePersistedTwins() {
+        machineRepository.findAll().forEach(this::register);
+    }
+
     private void copyFrom(Machine m, MachineTwin t) {
         t.setName(m.getName());
         t.setMachineType(m.getType().name());
@@ -45,6 +51,9 @@ public class TwinService {
         t.setFailureRisk(m.getFailureRisk() == null ? 0.03 : m.getFailureRisk());
         t.setAnomalyScore(m.getAnomalyScore() == null ? 0.05 : m.getAnomalyScore());
         t.setHealthScore(m.getHealthScore() == null ? 98 : m.getHealthScore());
+        t.setRulEstimate(m.getRulEstimate() == null ? 60 : m.getRulEstimate());
+        t.setConnectivity(m.getConnectivity() == null ? "UNKNOWN" : m.getConnectivity());
+        t.setLastTelemetryAt(m.getLastTelemetryAt());
         t.setModelVersion(m.getModelVersion());
     }
 
@@ -111,7 +120,7 @@ public class TwinService {
 
     public void emitStateChanged(MachineTwin twin, MachineState from, MachineState to) {
         eventBus.publish(EventEnvelope.of(EventType.MACHINE_STATE_CHANGED, twin.getMachineId(), "backend",
-                Map.of("from", from.name(), "to", to.name())));
+        Map.of("from", from.name(), "to", to.name())));
         ws.broadcast("machine.state.changed", Map.of(
                 "machineId", twin.getMachineId(), "from", from.name(), "to", to.name()));
     }

@@ -9,6 +9,7 @@ import com.forgesense.machine.domain.MachineDependency;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -56,6 +57,7 @@ public class ImpactEngine {
         return compute(originMachineId, impactType, true, clamp01(severity));
     }
 
+    @Transactional
     public ProductionImpact compute(String originMachineId, String impactType, boolean simulated, double severity) {
         Machine origin = machineRepository.findByMachineId(originMachineId).orElse(null);
         if (origin == null) {

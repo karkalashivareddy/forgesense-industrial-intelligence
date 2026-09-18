@@ -10,6 +10,9 @@ import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.Map;
+import java.util.UUID;
+import java.time.Instant;
 
 /**
  * Broadcasts typed events to all connected STOMP clients.
@@ -23,6 +26,7 @@ public class WsNotifier {
     private final SimpMessagingTemplate template;
     private final ForgeMetrics metrics;
     private final AtomicLong connections = new AtomicLong(0);
+    private final AtomicLong sequence = new AtomicLong(0);
 
     public WsNotifier(SimpMessagingTemplate template, ForgeMetrics metrics) {
         this.template = template;
@@ -49,10 +53,18 @@ public class WsNotifier {
      */
     public void broadcast(String eventTopic, Object payload) {
         try {
-            template.convertAndSend("/topic/" + eventTopic, payload);
+            template.convertAndSend("/topic/" + eventTopic,
+                    new RealtimeEvent(eventTopic, UUID.randomUUID().toString(), assetId(payload),
+                            Instant.now(), sequence.incrementAndGet(), payload));
         } catch (Exception e) {
             log.debug("Ws broadcast to {} failed (likely no clients): {}", eventTopic, e.getMessage());
         }
+    }
+
+    private static String assetId(Object payload) {
+        if (!(payload instanceof Map<?, ?> map)) return null;
+        Object value = map.containsKey("assetId") ? map.get("assetId") : map.get("machineId");
+        return value == null ? null : String.valueOf(value);
     }
 
     public long connections() {

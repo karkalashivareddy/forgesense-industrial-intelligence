@@ -2,6 +2,7 @@ package com.forgesense.maintenance.web;
 
 import com.forgesense.maintenance.MaintenanceService;
 import com.forgesense.maintenance.domain.MaintenanceRecord;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,7 @@ public class MaintenanceController {
     }
 
     @PostMapping("/{id}/schedule")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> schedule(@PathVariable UUID id,
                                         @RequestBody(required = false) Map<String, String> body) {
         Instant at = body == null || !body.containsKey("scheduledAt") ? null : Instant.parse(body.get("scheduledAt"));
@@ -35,12 +37,14 @@ public class MaintenanceController {
     }
 
     @PostMapping("/{id}/start")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> start(@PathVariable UUID id, Authentication auth) {
         String operator = auth == null ? "operator" : auth.getName();
         return row(maintenanceService.start(id, operator));
     }
 
     @PostMapping("/{id}/complete")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> complete(@PathVariable UUID id,
                                         @RequestBody(required = false) Map<String, String> body,
                                         Authentication auth) {
@@ -50,6 +54,7 @@ public class MaintenanceController {
     }
 
     @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> cancel(@PathVariable UUID id, Authentication auth) {
         String operator = auth == null ? "operator" : auth.getName();
         return row(maintenanceService.cancel(id, operator));

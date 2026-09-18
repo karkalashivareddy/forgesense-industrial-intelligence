@@ -1,5 +1,6 @@
 package com.forgesense.security.web;
 
+import com.forgesense.common.config.ForgeSenseProperties;
 import com.forgesense.common.errors.ApiException;
 import com.forgesense.security.ForgeUserDetailsService;
 import com.forgesense.security.JwtService;
@@ -34,13 +35,15 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final ForgeUserDetailsService userDetailsService;
+    private final ForgeSenseProperties props;
     private final Map<String, int[]> failures = new ConcurrentHashMap<>();
 
     public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
-                          ForgeUserDetailsService userDetailsService) {
+                          ForgeUserDetailsService userDetailsService, ForgeSenseProperties props) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.props = props;
     }
 
     private String keyFor(String username, HttpServletRequest request) {
@@ -79,7 +82,7 @@ public class AuthController {
         if (username == null || password == null) {
             throw ApiException.badRequest("username and password are required");
         }
-        String key = keyFor(username, request);
+String key = keyFor(username, request);
         assertNotLocked(key);
         try {
             Authentication auth = authenticationManager.authenticate(
@@ -88,12 +91,13 @@ public class AuthController {
             String name = auth.getName();
             List<String> roles = userDetailsService.rolesFor(name);
             String token = jwtService.generate(name, roles);
+            long expires = props.security() == null ? 86400L : props.security().jwtExpirationSeconds();
             return Map.of(
                     "accessToken", token,
                     "tokenType", "Bearer",
                     "username", name,
                     "roles", roles,
-                    "expiresInSeconds", 86400);
+                    "expiresInSeconds", expires);
         } catch (LockedException e) {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
                     "Too many failed attempts — retry shortly");

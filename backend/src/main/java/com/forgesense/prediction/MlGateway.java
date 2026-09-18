@@ -55,6 +55,10 @@ public class MlGateway {
     }
 
     public String anomalyModelVersion() {
-        return props.ml().anomalyModelVersion();
+        return http.isAvailable() ? http.anomalyModelVersion() : "unavailable";
+    }
+
+    public String failureModelVersion() {
+        return http.isAvailable() ? http.failureModelVersion() : "unavailable";
     }
 }

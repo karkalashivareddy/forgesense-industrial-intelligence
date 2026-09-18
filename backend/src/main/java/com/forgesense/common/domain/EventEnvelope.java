@@ -13,7 +13,10 @@ public class EventEnvelope {
     private String eventId;
     private String eventType;
     private String machineId;
+    /** Event creation time at the producing boundary. */
     private Instant timestamp;
+    /** Time the event entered the ForgeSense event boundary. */
+    private Instant ingestedAt;
     private long sequence;
     private String source;
     private String schemaVersion = "1.0";
@@ -28,11 +31,16 @@ public class EventEnvelope {
         e.setEventId(UUID.randomUUID().toString());
         e.setEventType(type.name());
         e.setMachineId(machineId);
-        e.setTimestamp(Instant.now());
+        Instant now = Instant.now();
+        e.setTimestamp(now);
+        e.setIngestedAt(now);
         e.setSource(source);
         e.setSchemaVersion("1.0");
         e.setCorrelationId(UUID.randomUUID().toString());
         e.setPayload(payload);
+        if (payload != null && payload.get("sequence") instanceof Number n) {
+            e.setSequence(n.longValue());
+        }
         return e;
     }
 
@@ -44,6 +52,8 @@ public class EventEnvelope {
     public void setMachineId(String machineId) { this.machineId = machineId; }
     public Instant getTimestamp() { return timestamp; }
     public void setTimestamp(Instant timestamp) { this.timestamp = timestamp; }
+    public Instant getIngestedAt() { return ingestedAt; }
+    public void setIngestedAt(Instant ingestedAt) { this.ingestedAt = ingestedAt; }
     public long getSequence() { return sequence; }
     public void setSequence(long sequence) { this.sequence = sequence; }
     public String getSource() { return source; }

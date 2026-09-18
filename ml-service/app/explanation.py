@@ -2,11 +2,13 @@
 
 For every active feature the baseline value (the average of the training
 data) is substituted one-at-a-time.  The change in the model output is
-attributed to that feature.  The method is identical in spirit to the
-"mean baseline" variant of KernelSHAP but runs in O(F) model evaluations
-rather than 2^F or Monte Carlo samples, making it suitable for real-time
-inference.  The approximation is local and first-order; it does not capture
-interactions but is well-understood, deterministic, and honest.
+attributed to that feature.  This is a local *baseline-perturbation* method:
+any resemblance to KernelSHAP is only in spirit (both measure the effect of
+replacing a feature value), and no SHAP library or axioms are involved.  It
+runs in O(F) model evaluations rather than 2^F or Monte Carlo samples, making
+it suitable for real-time inference.  The approximation is local and
+first-order; it does not capture interactions but is well-understood,
+deterministic, and honest.
 """
 
 from __future__ import annotations

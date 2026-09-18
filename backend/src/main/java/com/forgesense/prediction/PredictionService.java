@@ -11,6 +11,7 @@ import com.forgesense.streaming.EventBus;
 import com.forgesense.telemetry.domain.TelemetrySample;
 import com.forgesense.websocket.WsNotifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Map;
@@ -63,6 +64,7 @@ public class PredictionService {
         assess(sample);
     }
 
+    @Transactional
     public Assessment assess(TelemetrySample sample) {
         MachineTwin twin = twinService.twin(sample.machineId());
         Assessment a = mlGateway.assess(sample);
@@ -89,7 +91,7 @@ public class PredictionService {
 
         metrics.recordPrediction();
         eventLogService.append("PREDICTION_UPDATED", sample.machineId(), "ml-service",
-                "Prediction updated — risk " + Math.round(a.failureRisk() * 100) + "%",
+                "Prediction updated - risk " + Math.round(a.failureRisk() * 100) + "%",
                 Map.of("risk", a.failureRisk(), "anomaly", a.anomalyScore(), "mode", a.mode()), true);
 
         ws.broadcast("prediction.updated", Map.of(
@@ -99,7 +101,9 @@ public class PredictionService {
                 "failureRisk", a.failureRisk(),
                 "healthScore", a.healthScore(),
                 "rulEstimate", a.rulEstimate(),
+                "rulUnit", a.rulUnit(),
                 "modelVersion", a.modelVersion(),
+                "anomalyModelVersion", a.anomalyModelVersion(),
                 "mode", a.mode()));
 
         decisionEngine.evaluate(twin, sample, a);

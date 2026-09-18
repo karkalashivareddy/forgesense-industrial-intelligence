@@ -8,7 +8,7 @@ import java.time.Instant;
 
 /**
  * Synchronized software representation of a physical machine's operational
- * state — the digital twin. One instance per machine, owned by TwinService.
+ * state - the digital twin. One instance per machine, owned by TwinService.
  */
 public class MachineTwin {
 
@@ -25,7 +25,7 @@ public class MachineTwin {
     private volatile String anomalyLabel = "LOW";
     private volatile double failureRisk;
     private volatile double healthScore = 98;
-    private volatile double rulEstimate = 900;
+    private volatile double rulEstimate = 60;
 
     private volatile String modelVersion = "none";
     private volatile String modelMode = "MODEL";
@@ -84,6 +84,7 @@ public class MachineTwin {
     public String getModelMode() { return modelMode; }
     public void setModelMode(String modelMode) { this.modelMode = modelMode; }
     public Instant getLastTelemetryAt() { return lastTelemetryAt; }
+    public void setLastTelemetryAt(Instant value) { this.lastTelemetryAt = value; }
     public long getLastSequence() { return lastSequence; }
 
     public double criticalityWeight() {

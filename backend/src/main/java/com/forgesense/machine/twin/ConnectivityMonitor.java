@@ -16,9 +16,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Background monitor implementing graceful degradation:
- * - machines with no stream yet → WAITING (never alerted for being quiet)
- * - machines whose telemetry stopped → STALE, then OFFLINE
- * - offline machines that resume → RECOVERING → NORMAL once risk is low
+ * - machines with no stream yet -> WAITING (never alerted for being quiet)
+ * - machines whose telemetry stopped -> STALE, then OFFLINE
+ * - offline machines that resume -> RECOVERING -> NORMAL once risk is low
  */
 @Component
 public class ConnectivityMonitor {

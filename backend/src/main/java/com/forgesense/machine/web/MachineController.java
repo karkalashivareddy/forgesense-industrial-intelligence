@@ -101,6 +101,9 @@ public class MachineController {
         row.put("voltage", t.getVoltage());
         row.put("power", t.getPower());
         row.put("flow", t.getFlow());
+        row.put("frequency", t.getFrequency());
+        row.put("airTemperature", t.getAirTemperature());
+        row.put("operatingHours", t.getOperatingHours());
         return row;
     }
 
@@ -207,6 +210,7 @@ public class MachineController {
         s.put("anomalyScore", twin.getAnomalyScore());
         s.put("anomalyLabel", twin.getAnomalyLabel());
         s.put("rulEstimate", twin.getRulEstimate());
+        s.put("rulUnit", "steps");
         s.put("modelMode", twin.getModelMode());
         s.put("modelVersion", twin.getModelVersion());
         s.put("lastTelemetryAt", twin.getLastTelemetryAt() == null ? null : twin.getLastTelemetryAt().toString());

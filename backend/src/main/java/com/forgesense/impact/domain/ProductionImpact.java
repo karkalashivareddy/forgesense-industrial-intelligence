@@ -16,7 +16,7 @@ import java.util.List;
 
 /**
  * Estimated operational consequence of a (simulated or predicted) failure.
- * All values are ESTIMATES built from modeled assumptions — never presented
+ * All values are ESTIMATES built from modeled assumptions - never presented
  * as measured fact.
  */
 @Entity

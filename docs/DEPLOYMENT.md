@@ -33,16 +33,20 @@ Prometheus + Grafana.
 ## IAM notes
 
 - Dev users (seeded on boot): `admin`, `operator`, `engineer`. Passwords come from
-  the required `FORGESENSE_DEV_PASSWORD` environment variable. The JWT signing key
-  comes from the required `FORGESENSE_JWT_SECRET` environment variable.
-- WebSocket/STOMP broker and `/topic/**` are public; the rest of `/api/v1/**`
+`FORGESENSE_DEV_PASSWORD` (default `forgesense-dev`). The JWT signing key is a
+  documented demo placeholder (`forgesense-demo-...`) — replace it for any real
+  deployment.
+- WebSocket/STOMP endpoints are not anonymous control-plane entry points; the
+  browser currently uses authenticated REST polling. The rest of `/api/v1/**`
   requires a Bearer token from `POST /api/v1/auth/login`.
 
 ## Telemetry & ML
 
 - The simulator streams the fabricated fleet (`M-101`…`M-108`). Degrade a machine with
   `--degrade M-105` to watch anomaly → risk → alert → maintenance in the UI.
-- On first boot the ML service trains `models/` artifacts (gitignored). Retrain:
-  `cd ml-service && python -m scripts.train`. Expected model versions are enforced
-  via `forgesense.ml.*-model-version`; a mismatch is surfaced but does not block
-  predictions.
+- On boot the ML service trains `ml-service/models/` artifacts if the
+  `config/machine_profiles.json` retrain-hash changed (see
+  `ml-service/app/models.py`), persists holdout `eval-metrics.json`, and reports
+  its model versions (`anomaly-model-v2` / `failure-risk-v2`) on `GET /health`.
+  Each `/assess` response carries `modelVersion`, which the backend stores on the
+  prediction and the machine twin for transparency.

@@ -1,6 +1,6 @@
 import {
   el, esc, pct, num, int, fmtTime, fmtDateTime, timeAgo,
-  statusInfo, riskInfo, healthInfo, anomalyInfo, sensorLabel, userCan,
+  statusInfo, riskInfo, healthInfo, anomalyInfo, sensorLabel, userCan, machineState,
 } from '../util.js';
 import { store, selectMachine, subscribe, refreshMaintenance } from '../state.js';
 import { api, post, getRoles } from '../api.js';
@@ -23,6 +23,11 @@ let id = null;
 let tab = 'overview';
 let mCache = {};
 let lastBodyRender = 0;
+let idleTimer = null;
+let liveRenderTimer = null;
+let previousFocus = null;
+let trapHandler = null;
+let lastLiveEventCount = 0;
 const teleCfg = { metric: null, range: '300' };
 
 function panel() { return document.getElementById('inspector'); }
@@ -37,18 +42,70 @@ export function isOpen() {
 }
 
 export function openInspector(machineId, tabName) {
+  if (!isOpen()) previousFocus = document.activeElement;
   id = machineId;
   tab = tabName || 'overview';
   panel().classList.remove('collapsed');
   panel().setAttribute('aria-hidden', 'false');
+  lastLiveEventCount = store.liveEventCount || 0;
   renderHead();
   renderTabs();
   renderTab();
+  requestAnimationFrame(() => panel()?.focus());
+  installFocusTrap();
+  startIdleRefresh();
 }
 
 export function closeInspector() {
+  stopIdleRefresh();
   panel().classList.add('collapsed');
   panel().setAttribute('aria-hidden', 'true');
+  if (trapHandler) panel().removeEventListener('keydown', trapHandler);
+  trapHandler = null;
+  if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+  previousFocus = null;
+}
+
+function focusables() {
+  const p = panel();
+  return p ? [...p.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')] : [];
+}
+
+function installFocusTrap() {
+  if (trapHandler) panel().removeEventListener('keydown', trapHandler);
+  trapHandler = e => {
+    if (e.key === 'Escape') { e.preventDefault(); closeInspector(); return; }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      const tabs = [...tabsEl().querySelectorAll('[role="tab"]')];
+      const current = tabs.indexOf(document.activeElement);
+      if (current >= 0) { e.preventDefault(); const next = tabs[(current + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]; next.focus(); next.click(); return; }
+    }
+    if (e.key !== 'Tab') return;
+    const items = focusables();
+    if (!items.length) return;
+    const first = items[0]; const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+  panel().addEventListener('keydown', trapHandler);
+}
+
+function startIdleRefresh() {
+  stopIdleRefresh();
+  idleTimer = setInterval(() => {
+    if (!isOpen() || !id) return;
+    const now = Date.now();
+    if (now - lastBodyRender > 15000 && document.visibilityState === 'visible') renderTab();
+    else renderHead();
+  }, 4000);
+}
+
+function stopIdleRefresh() {
+  if (idleTimer) {
+    clearInterval(idleTimer);
+    idleTimer = null;
+  }
+  if (liveRenderTimer) { clearTimeout(liveRenderTimer); liveRenderTimer = null; }
 }
 
 export function toggleInspector() {
@@ -72,6 +129,8 @@ function renderTabs() {
       class: 'tab-btn' + (key === tab ? ' active' : ''),
       role: 'tab',
       'aria-selected': key === tab ? 'true' : 'false',
+      tabindex: key === tab ? '0' : '-1',
+      'aria-controls': 'inspBody',
       onClick: () => { tab = key; renderTabs(); renderTab(); },
     }, label));
   }
@@ -130,18 +189,21 @@ function errorBox(msg) { return el('div', { class: 'error-box' }, msg); }
 
 async function overview(host, m) {
   const a = anomalyInfo(m.anomalyScore);
-  const s = statusInfo(m);
+  const s = machineState(m);
   const hTone = healthInfo(m.healthScore);
   host.appendChild(el('div', { class: 'insp-head-line' },
     el('div', { class: 'name' }, m.name,
-      el('span', { class: 'pill-status st-' + s.tone, title: s.hint }, s.label),
+      el('span', { class: 'pill-status st-' + (s.state === 'STALE' ? 'stale' : s.tone), title: s.hint }, s.label.toUpperCase()),
       el('span', { class: 'tag tag-' + (a.tone === 'good' ? 'info' : a.tone) }, 'Anomaly ' + a.band)),
     el('div', { class: 'meta' }, `${m.zone || '—'} / ${m.line || '—'} · ${esc(m.typeLabel || m.type || '')} · criticality ${esc(m.criticality || 'standard')}`)));
+  if (s.state !== 'NORMAL' && s.state !== 'UNKNOWN' && s.guidance) {
+    host.appendChild(el('div', { class: 'alert-guide', style: { marginTop: '6px', marginBottom: '4px' } }, s.guidance));
+  }
   host.appendChild(el('div', { class: 'stat-grid' },
     statBox('Health', m.healthScore != null ? num(m.healthScore, 1) + '%' : '—', hTone === 'good' ? 'within operating bounds' : hTone === 'warn' ? 'low — inspect' : 'critical — act now'),
     statBox('Anomaly score', pct(m.anomalyScore), a.band + ' divergence from baseline'),
     statBox('Failure risk', pct(m.failureRisk), riskInfo(m.failureRisk).band + ' over modeled horizon'),
-    statBox('Est. remaining life', m.rulEstimate != null ? int(m.rulEstimate) + ' h' : '—', 'heuristic'),
+    statBox('Est. remaining steps', m.rulEstimate != null ? int(m.rulEstimate) + ' steps' : '—', 'synthetic model output'),
     statBox('Model', (m.modelMode || '—') + ' · v' + (m.modelVersion || '—'), 'mode · version'),
     statBox('Last telemetry', m.lastTelemetryAt ? timeAgo(m.lastTelemetryAt) : '—', 'sample received')));
 
@@ -485,7 +547,7 @@ function schedulePrompt(o) {
 }
 
 export function subscribeInspector() {
-  subscribe(s => {
+  return subscribe(s => {
     if (s.selectedMachineId && s.selectedMachineId !== id) {
       id = s.selectedMachineId;
       tab = 'overview';
@@ -494,15 +556,14 @@ export function subscribeInspector() {
       renderTabs();
       if (isOpen()) renderTab();
     }
+    if (isOpen() && s.selectedMachineId === id && s.liveEventCount !== lastLiveEventCount) {
+      lastLiveEventCount = s.liveEventCount;
+      if (tab === 'overview' || tab === 'telemetry' || tab === 'prediction') {
+        if (liveRenderTimer) window.clearTimeout(liveRenderTimer);
+        liveRenderTimer = window.setTimeout(() => { liveRenderTimer = null; if (isOpen()) { bust(); renderHead(); renderTab(); } }, 120);
+      }
+    }
   });
-  const idle = setInterval(() => {
-    if (!isOpen() || !id) return;
-    const now = Date.now();
-    const overdue = now - lastBodyRender > 15000;
-    if (overdue && document.visibilityState === 'visible') renderTab();
-    else renderHead();
-  }, 4000);
-  return () => clearInterval(idle);
 }
 
 export function forceRefresh() {

@@ -21,4 +21,8 @@ public interface TelemetryRepository extends JpaRepository<TelemetryRecord, Long
                                     @Param("to") Instant to);
 
     long countByTimestampAfter(Instant after);
+
+    boolean existsByMachineIdAndSequence(String machineId, long sequence);
+
+    TelemetryRecord findFirstByMachineIdOrderBySequenceDesc(String machineId);
 }

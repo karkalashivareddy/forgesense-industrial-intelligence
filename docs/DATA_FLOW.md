@@ -17,7 +17,7 @@ sequenceDiagram
     participant W as WebSocket
     participant F as Frontend / 3D
 
-    S->>I: POST /api/v1/telemetry/ingest (bearer token)
+S->>I: POST /api/v1/telemetry/ingest (bearer token)
     I->>B: validate + normalize
     B->>B: update MachineTwin
     B->>M: POST /assess (feature vector per machine type)
@@ -27,8 +27,11 @@ sequenceDiagram
     X-->>D: impacted machines + line + downtime est.
     D->>A: create alert / recommend maintenance
     A-->>B: alert / maintenance events
-    B->>W: machine.updated / telemetry.updated / prediction.updated / alert.created
-    F->>B: GET /api/v1/** poll (3-second interval)
+B->>W: machine.updated / telemetry.updated / prediction.updated
+    B->>W: anomaly.detected / alert.created / impact.updated
+    F->>B: REST poll every 3 s → 3D scene + KPI + panels react
+    F->>B: operator actions (ack alert, run simulation, schedule maintenance)
+    B-->>S: scenario command (via control API) → simulator changes behavior
     F->>F: render fleet/detail/analytics/etc. from REST + WS events
 ```
 
@@ -46,8 +49,11 @@ Simulator → POST /api/v1/telemetry/ingest → in-process EventBus → validati
 Simulator (external) → POST /api/v1/telemetry/ingest → Kafka raw topic → backend consumer → validation → twin
 ```
 
-In both cases the ingest endpoint is HTTP. Kafka is used as the event backbone
-inside the backend in the docker profile, not as a simulator transport.
+Both paths land in the identical normalization/twin/ML pipeline, and in both
+cases the ingest endpoint is HTTP — Kafka is the event backbone inside the
+backend in the docker profile, not a simulator transport. The backend reports
+which input mode is configured (`forgesense.streaming.kafka.enabled` via
+`/api/v1/system/status`); the browser transport is REST polling.
 
 ## 3. Machine state change flow
 
@@ -56,8 +62,9 @@ inside the backend in the docker profile, not as a simulator transport.
 3. State-machine intent computed (`NORMAL → DEGRADED → WARNING → CRITICAL …`).
 4. Valid transition applied by `MachineStateMachine` (or rejected).
 5. On accepted change → `MACHINE_STATE_CHANGED` event + `machine.state.changed`
-   WebSocket broadcast → 3D machine changes color/animation; panels update on
-   the next poll.
+WebSocket message — a server-side capability. Broadcasts can drive 3D
+   machine color/animation; the dashboard also reflects persisted state on its
+   next 3 s REST poll.
 
 ## 4. Alert lifecycle
 
@@ -81,8 +88,8 @@ The canonical story the system demonstrates end-to-end:
 2. Degradation injected: vibration ↑, temperature ↑, RPM unstable.
 3. Anomaly score climbs; failure risk climbs.
 4. State WARNING → CRITICAL; CRITICAL alert created.
-5. Feature attribution (top contributing factors) available in the inspector.
-6. Impact engine: affected dependency machines, line throughput ↓, downtime estimate.
+5. AI explanation (baseline-importance factors) available in the inspector.
+6. Impact engine: M-106 waits, Assembly line throughput ↓, downtime estimate.
 7. Operator runs what-if simulation (baseline vs scenario).
 8. Maintenance scheduled → MAINTENANCE state → RECOVERING → NORMAL.
 9. All numbers come from the simulator + pipeline; nothing hand-edited.
@@ -92,18 +99,19 @@ The canonical story the system demonstrates end-to-end:
 
 | UI element | Data source |
 |---|---|
-| KPIs | `GET /api/v1/analytics/overview` (polled) |
-| 3D machines | `GET /api/v1/machines` + REST telemetry (polled); WS events when subscribed |
-| Live telemetry strip | LAST telemetry payload from REST poll |
-| Alerts panel | `GET /api/v1/alerts` + WS events |
-| Inspector charts | REST `/api/v1/machines/{machineId}/telemetry?range=` (polled) |
-| Explanation | `GET /api/v1/machines/{machineId}/predictions` (attribution factors) |
+| KPIs | `/api/v1/analytics/overview` (REST) |
+| 3D machines | REST `GET /api/v1/machines` fleet state |
+| Telemetry strip | REST `GET /api/v1/machines/{id}/telemetry/range` |
+| Alerts panel | REST `GET /api/v1/alerts` |
+| Inspector charts | REST `GET /api/v1/machines/{id}/telemetry/range` (downsampled) |
+| Explanation | REST `GET /api/v1/machines/{id}/explanation` |
 | Impact page | REST `/api/v1/impact/{machineId}` |
-| Simulation | REST `/api/v1/simulation/scenarios` + `/run` |
-| Timeline | REST `/api/v1/events?machineId=` |
+| Simulation | REST `/api/v1/simulation/scenarios` + `/api/v1/simulation/run` |
+| Timeline | REST `/api/v1/events` |
 
-The current frontend polls REST every 3 seconds (`state.js`). WebSocket updates
-are broadcast server-side; frontend subscription is a planned enhancement.
+All dashboard views are fetched by a 3 s REST poll loop (`frontend/js/app.js`);
+the backend additionally publishes WebSocket events on `/ws` for future
+subscribers.
 
 ## 7. Backpressure / staleness rules
 
@@ -112,4 +120,5 @@ are broadcast server-side; frontend subscription is a planned enhancement.
 - Out-of-range physical values are rejected or clamped by the normalizer.
 - If telemetry for a machine stops for > `forgesense.machine.offlineAfter`
   (default 30s), the twin marks connectivity `STALE/OFFLINE`.
-- Per-machine ordering preserved; cross-machine order is not assumed.
+- Per-machine ordering preserved (keyed by machineId); cross-machine order is
+  not assumed.

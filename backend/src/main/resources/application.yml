@@ -17,8 +17,8 @@ forgesense:
     timeout-ms: 1500
     # expected model versions — if the ML service reports a different version,
     # predictions are still accepted but labeled "model drift/mismatch" in the UI
-    anomaly-model-version: anomaly-model-v1
-    failure-model-version: failure-risk-v1
+    anomaly-model-version: anomaly-model-v2
+    failure-model-version: failure-risk-v2
   streaming:
     kafka:
       enabled: ${FORGESENSE_STREAMING_KAFKA_ENABLED:false}
@@ -42,8 +42,11 @@ forgesense:
     poll-enabled: true
   security:
     enabled: ${FORGESENSE_SECURITY_ENABLED:true}
-    jwt-secret: ${FORGESENSE_JWT_SECRET:}
-    jwt-expiration-seconds: 86400
+    # no default secret — JwtService generates a random key in demo mode and
+    # refuses to boot without an explicit secret otherwise
+    jwt-secret: ${FORGESENSE_SECURITY_JWT_SECRET:}
+    jwt-expiration-seconds: ${FORGESENSE_SECURITY_JWT_EXPIRATION_SECONDS:86400}
+  allowed-origins: ${FORGESENSE_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
 
 management:
   endpoints:

@@ -25,5 +25,10 @@ public interface AlertRepository extends JpaRepository<Alert, UUID> {
 
     long countByOpenedAtAfter(Instant after);
 
+    long countByResolvedAtAfter(Instant after);
+
     Optional<Alert> findFirstByMachineIdAndStatusInOrderByOpenedAtDesc(String machineId, List<AlertStatus> statuses);
+
+    Optional<Alert> findFirstByMachineIdAndTypeAndStatusInOrderByOpenedAtDesc(
+            String machineId, String type, List<AlertStatus> statuses);
 }

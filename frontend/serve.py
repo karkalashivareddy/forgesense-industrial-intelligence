@@ -3,9 +3,11 @@
 Usage:
   python serve.py [port]
 Backend API is read from localStorage 'forgesense.api' (default http://localhost:8080).
+
+Threaded so parallel ES-module requests (js/*.js, js/views/*) are served without
+connections being refused. Development server only; not a production server.
 """
 import http.server
-import socketserver
 import sys
 from pathlib import Path
 
@@ -22,7 +24,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 
-with socketserver.TCPServer(("0.0.0.0", PORT), Handler) as httpd:
+with http.server.ThreadingHTTPServer(("0.0.0.0", PORT), Handler) as httpd:
     print(f"ForgeSense frontend on http://localhost:{PORT}")
     print("Open the browser, enter the admin password when prompted.")
     httpd.serve_forever()

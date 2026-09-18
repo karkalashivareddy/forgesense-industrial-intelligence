@@ -36,7 +36,8 @@ public class TelemetryNormalizer {
                 rng(s.flow(), 0, 300),
                 rng(s.frequency(), 0, 100),
                 rng(s.airTemperature(), -40, 120),
-                s.operatingHours()
+                s.operatingHours(),
+                s.machineType()
         );
     }
 

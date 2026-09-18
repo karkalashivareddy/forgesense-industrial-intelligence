@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,7 @@ public class ImpactController {
     }
 
     @PostMapping("/analyze")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> analyze(@RequestBody Map<String, Object> body) {
         String machineId = (String) body.get("machineId");
         ProductionImpact impact = impactEngine.computeReal(machineId, "MANUAL_REQUEST");
@@ -68,7 +70,7 @@ public class ImpactController {
         m.put("recoveryAssumption", i.getRecoveryAssumption());
         m.put("assumptionsJson", i.getAssumptionsJson());
         m.put("createdAt", i.getCreatedAt() == null ? null : i.getCreatedAt().toString());
-        m.put("dataLabel", "ESTIMATED — modeled assumption, not a measurement");
+        m.put("dataLabel", "ESTIMATED - modeled assumption, not a measurement");
         return m;
     }
 }

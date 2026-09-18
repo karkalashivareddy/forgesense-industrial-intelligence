@@ -7,9 +7,10 @@ backend.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, FiniteFloat, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -19,20 +20,28 @@ from pydantic import BaseModel, Field
 class TelemetrySampleRequest(BaseModel):
     machineId: str
     timestamp: str
-    sequence: int = 0
-    temperature: Optional[float] = None
-    vibration: Optional[float] = None
-    pressure: Optional[float] = None
-    rpm: Optional[float] = None
-    torque: Optional[float] = None
-    current: Optional[float] = None
-    voltage: Optional[float] = None
-    power: Optional[float] = None
-    flow: Optional[float] = None
-    frequency: Optional[float] = None
-    airTemperature: Optional[float] = None
-    operatingHours: Optional[float] = None
+    sequence: int = Field(default=1, ge=1)
+    temperature: Optional[FiniteFloat] = None
+    vibration: Optional[FiniteFloat] = None
+    pressure: Optional[FiniteFloat] = None
+    rpm: Optional[FiniteFloat] = None
+    torque: Optional[FiniteFloat] = None
+    current: Optional[FiniteFloat] = None
+    voltage: Optional[FiniteFloat] = None
+    power: Optional[FiniteFloat] = None
+    flow: Optional[FiniteFloat] = None
+    frequency: Optional[FiniteFloat] = None
+    airTemperature: Optional[FiniteFloat] = None
+    operatingHours: Optional[FiniteFloat] = None
     machineType: Optional[str] = None
+
+    @field_validator("timestamp")
+    @classmethod
+    def timestamp_must_be_aware_iso(cls, value: str) -> str:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            raise ValueError("timestamp must include a timezone")
+        return value
 
 
 # ---------------------------------------------------------------------------
@@ -52,12 +61,18 @@ class AssessmentResponse(BaseModel):
     failureRisk: float = Field(ge=0.0, le=1.0)
     healthScore: float = Field(ge=0.0, le=100.0)
     rulEstimate: float = Field(ge=0.0)
+    rulUnit: str = Field(pattern="^steps$")
     modelVersion: str
-    factors: List[Factor] = []
-    recommendations: List[str] = []
+    anomalyModelVersion: str
+    missingSensors: List[str] = Field(default_factory=list)
+    factors: List[Factor] = Field(default_factory=list)
+    recommendations: List[str] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):
     status: str
     model_version: str
+    anomaly_model_version: str = "unavailable"
     models_loaded: bool
+    evaluation: dict = Field(default_factory=dict)
+    metadata: dict = Field(default_factory=dict)

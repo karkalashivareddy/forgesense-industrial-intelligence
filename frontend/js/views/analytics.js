@@ -30,7 +30,7 @@ function render() {
   const mt = store.maintenanceStats || {};
   const risk = store.riskRanking || [];
 
-  root.appendChild(el('div', { class: 'page-title' }, 'Analytics', el('span', { class: 'sub' }, 'backend analytics endpoints · basis ' + esc((o.dataBasis || '—').replace(',', ', ')))));
+  root.appendChild(el('div', { class: 'page-title' }, 'Analytics', el('span', { class: 'sub' }, 'backend analytics endpoints · basis ' + esc(Array.isArray(o.dataBasis) ? o.dataBasis.join(', ') : String(o.dataBasis || '—')))));
 
   root.appendChild(el('div', { class: 'grid cols-4' },
     kpi('Machines online', o.machinesOnline != null ? int(o.machinesOnline) + '/' + int(o.machinesTotal ?? '')?.split(',')[0] : '—', 'backend overview', 'good'),
@@ -42,7 +42,7 @@ function render() {
     kpi('Telemetry throughput', o.telemetryThroughputPerMinute != null ? int(o.telemetryThroughputPerMinute) + '/min' : '—', 'ingested events', 'info'),
     kpi('Downtime risk horizon', o.estimatedDowntimeRiskMinutes != null ? int(o.estimatedDowntimeRiskMinutes) + ' min' : '—', 'modeled estimate', 'warn'),
     kpi('Active maintenance', mt.active != null ? int(mt.active) : '—', mt.scheduled != null ? mt.scheduled + ' scheduled' : '', mt.active ? 'critical' : 'good'),
-    kpi('Basis', esc(String(o.dataBasis || '—')), 'LIVE = real pipeline, SIMULATED = synthetic feed', 'maint')));
+    kpi('Basis', esc(String(o.dataBasis || '—')), 'OBSERVED = stored telemetry, SYNTHETIC = simulator feed', 'maint')));
 
   root.appendChild(el('div', { class: 'grid cols-2', style: { marginTop: '12px' } },
     alertPanel(alertStats),
@@ -70,7 +70,7 @@ function stat(v, l, tone) {
 }
 
 function riskPanel(risk) {
-  const sorted = risk.slice().sort((a, b) => (b.failureRisk ?? -1) - (a.failureRisk ?? -1));
+  const sorted = risk.slice().sort((a, b) => (b.failureRisk ?? -1) - (a.failureRisk ?? -1) || String(a.machineId || '').localeCompare(String(b.machineId || '')));
   const body = el('div', {});
   if (!sorted.length) { body.appendChild(emptyBox('No risk ranking available yet.')); return card('Risk ranking', 'from /api/v1/analytics/risk-ranking', body); }
   const max = Math.max(...sorted.map(r => r.failureRisk ?? 0), 0.01);

@@ -8,7 +8,8 @@ let root = null;
 let fStatus = 'ALL';
 let lastRef = null;
 
-const STATUS_OPTIONS = ['ALL', 'ACTIVE', 'ACKNOWLEDGED', 'INVESTIGATING', 'RESOLVED'];
+// Backend AlertStatus is authoritative: NEW -> ACKNOWLEDGED -> INVESTIGATING -> RESOLVED.
+const STATUS_OPTIONS = ['ALL', 'NEW', 'ACKNOWLEDGED', 'INVESTIGATING', 'RESOLVED'];
 
 export function mount(container) {
   root = container;
@@ -28,7 +29,7 @@ export function update(s) {
 function render() {
   root.innerHTML = '';
   const items = (store.alerts && store.alerts.items) || [];
-  const open = items.filter(a => a.status === 'ACTIVE');
+  const open = items.filter(a => ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'].includes(a.status));
   const crit = open.filter(a => String(a.severity).toUpperCase() === 'CRITICAL').length;
   const warn = open.filter(a => String(a.severity).toUpperCase() === 'WARNING').length;
   const inv = items.filter(a => a.status === 'INVESTIGATING').length;
@@ -64,7 +65,16 @@ function renderBody() {
 }
 
 function renderItems() {
-  const items = (store.alerts && store.alerts.items || []).filter(a => fStatus === 'ALL' || a.status === fStatus);
+  const items = ((store.alerts && store.alerts.items) || [])
+    .filter(a => fStatus === 'ALL' || a.status === fStatus)
+    .slice()
+    .sort((a, b) => {
+      const ta = new Date(a.openedAt).getTime();
+      const tb = new Date(b.openedAt).getTime();
+      if (Number.isNaN(ta)) return 1;
+      if (Number.isNaN(tb)) return -1;
+      return (tb - ta) || String(b.id || '').localeCompare(String(a.id || ''));
+    });
   if (!items.length) return el('div', { class: 'empty' }, 'No alerts match. When the simulator injects conditions, alerts appear here and the top-bar counter reacts.');
   return el('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
     items.map(a => alertCard(a)));
@@ -74,7 +84,7 @@ function alertCard(a) {
   const sev = alertSeverityTag(a.severity);
   const m = store.machineMap.get(a.machineId);
   const roles = getRoles();
-  const st = a.status || 'ACTIVE';
+  const st = a.status || 'NEW';
 
   const actions = el('div', { class: 'alert-actions' });
   const act = (label, fn, need, onlyWhen) => {
@@ -86,16 +96,16 @@ function alertCard(a) {
       onClick: async () => { await fn(); refreshCore(); },
     }, label);
   };
-  const active = s => s === 'ACTIVE';
+  const active = s => s === 'NEW';
   const notResolved = s => !['RESOLVED'].includes(s);
 
   if (active(st)) actions.appendChild(act('Acknowledge', () => post(`/api/v1/alerts/${a.id}/acknowledge`), 'OPERATOR', active));
-  if (['ACTIVE', 'ACKNOWLEDGED'].includes(st)) actions.appendChild(act('Investigate', () => post(`/api/v1/alerts/${a.id}/investigate`), 'ENGINEER', notResolved));
-  if (['ACTIVE', 'ACKNOWLEDGED', 'INVESTIGATING'].includes(st)) {
+  if (['NEW', 'ACKNOWLEDGED'].includes(st)) actions.appendChild(act('Investigate', () => post(`/api/v1/alerts/${a.id}/investigate`), 'ENGINEER', notResolved));
+  if (['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'].includes(st)) {
     actions.appendChild(act('Resolve', () => post(`/api/v1/alerts/${a.id}/resolve`, { notes: 'Resolved from control room UI.' }), 'ENGINEER', notResolved));
   }
 
-  const stTone = { ACTIVE: 'critical', ACKNOWLEDGED: 'warn', INVESTIGATING: 'info', RESOLVED: 'good' }[st] || 'muted';
+  const stTone = { NEW: 'critical', ACKNOWLEDGED: 'warn', INVESTIGATING: 'info', RESOLVED: 'good' }[st] || 'muted';
 
   return el('div', { class: 'list-item', style: { padding: '0' } },
     el('div', { class: 'alert-row' },
@@ -118,7 +128,7 @@ function alertCard(a) {
           (a.resolvedAt ? el('span', {}, 'resolved ' + fmtDateTime(a.resolvedAt)) : null))),
       el('div', { class: 'alert-desc' }, esc(a.description || '')),
       a.factorsSummary ? el('div', { class: 'alert-meta' },
-        (a.factorsSummary || []).map(f => el('span', { class: 'badge2' }, esc(String(f || '')).slice(0, 24)))) : null,
+        String(a.factorsSummary).split(/\s+/).filter(Boolean).map(f => el('span', { class: 'badge2' }, esc(String(f || '')).slice(0, 24)))) : null,
       a.recommendedAction ? el('div', { class: 'alert-meta' },
         el('span', { style: { color: '#8dc6a8' } }, 'Recommended: ' + esc(a.recommendedAction))) : null,
       actions));

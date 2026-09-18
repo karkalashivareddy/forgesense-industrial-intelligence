@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,11 +15,13 @@ import lombok.Setter;
 import java.time.Instant;
 
 /**
- * A normalized telemetry sample. Sensor columns are nullable — a machine only
+ * A normalized telemetry sample. Sensor columns are nullable - a machine only
  * reports the sensors its type provides.
  */
 @Entity
-@Table(name = "telemetry", indexes = {
+@Table(name = "telemetry", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_telemetry_machine_sequence", columnNames = {"machineId", "sequence"})
+}, indexes = {
         @Index(name = "idx_telemetry_machine_time", columnList = "machineId,timestamp"),
         @Index(name = "idx_telemetry_time", columnList = "timestamp")
 })
@@ -37,6 +40,19 @@ public class TelemetryRecord {
     @Column(nullable = false)
     private Instant timestamp;
 
+    /** Event creation time, distinct from the sensor measurement timestamp. */
+    private Instant eventTimestamp;
+
+    /** Backend/event-boundary ingestion time. */
+    private Instant ingestedAt;
+
+    /** Time the normalized sample completed backend processing. */
+    private Instant processedAt;
+
+    private String eventId;
+    private String correlationId;
+    private String schemaVersion;
+
     private long sequence;
 
     private Double temperature;
@@ -49,4 +65,6 @@ public class TelemetryRecord {
     private Double power;
     private Double flow;
     private Double frequency;
+    private Double airTemperature;
+    private Double operatingHours;
 }

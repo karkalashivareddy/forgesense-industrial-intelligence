@@ -10,6 +10,7 @@ import com.forgesense.simulation.SystemState;
 import com.forgesense.simulation.domain.ScenarioType;
 import com.forgesense.simulation.domain.SimulationControl;
 import com.forgesense.simulation.domain.SimulationScenario;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -55,6 +56,7 @@ public class SimulationController {
     }
 
     @PostMapping("/simulation/run")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> run(@RequestBody Map<String, Object> body) {
         String machineId = (String) body.get("machineId");
         ScenarioType type = ScenarioType.valueOf((String) body.get("scenarioType"));
@@ -67,6 +69,7 @@ public class SimulationController {
     }
 
     @PostMapping("/simulation/control")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public SimulationControl applyControl(@RequestBody Map<String, Object> body) {
         String machineId = (String) body.get("machineId");
         ScenarioType type = body.get("scenario") == null ? ScenarioType.NONE
@@ -78,6 +81,7 @@ public class SimulationController {
     }
 
     @PostMapping("/simulation/control/{machineId}/clear")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> clear(@PathVariable String machineId) {
         controlService.clearScenario(machineId);
         return Map.of("cleared", true, "machineId", machineId);
@@ -94,18 +98,21 @@ public class SimulationController {
     }
 
     @PostMapping("/simulation/pause")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> pause() {
         controlService.setPaused(true);
         return Map.of("paused", true);
     }
 
     @PostMapping("/simulation/resume")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> resume() {
         controlService.setPaused(false);
         return Map.of("paused", false);
     }
 
     @PostMapping("/simulation/reset")
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> reset() {
         int machines = controlService.resetFactory();
         return Map.of("reset", true, "machines", machines);

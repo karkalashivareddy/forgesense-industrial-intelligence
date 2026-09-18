@@ -97,27 +97,20 @@ acceptable for the single-node demo topology.
 
 ## 5. ML integration
 
-Backend `MlClient` (HTTP to FastAPI) exposes:
+Backend `MlClient` (HTTP to FastAPI) with routes:
 
 ```
-GET  /health                  → service + model availability
-POST /assess                  → { anomalyLabel, anomalyScore, failureRisk,
-                                  rulEstimate (heuristic), factors, recommendations, ... }
+GET  /health                        → { model versions, evaluation, status }
+POST /assess   { features, ... }    → { anomalyScore, riskScore, rulEstimate,
+                                        factors: [{feature, contribution, direction}] }
 ```
 
-The ML service trains an `IsolationForest` anomaly model and a
-`GradientBoosting` failure-risk model over synthetic data derived from the
-machine profile catalog (deterministic seed). Feature attribution uses a
-replace-with-baseline method. **This is not SHAP; the code and UI explicitly
-label it so.**
+The factor attribution is a replace-with-baseline perturbation method inside
+the ML service (`ml-service/app/explanation.py`) — it is deliberately **not**
+SHAP or any external explainability library.
 
 On ML outage the backend falls back to a deterministic heuristic scorer
-`HeuristicMlClient` clearly labeled `HEURISTIC`. `MlGateway` probes ML every
-15 seconds, records the active mode, and reports it through the health
-indicator and the `MODEL: available/unavailable` badge in the UI.
-
-The docs do not claim production model accuracy; ML artifacts are project
-artifacts trained on synthetic profiles.
+clearly labeled `HEURISTIC`, and the UI shows `MODEL: unavailable`.
 
 ## 6. Decision engine
 
@@ -156,11 +149,9 @@ the simulation REST surface.
 
 ## 9. Persistence
 
-PostgreSQL (dev: H2 PG-mode). JPA entities under
-`backend/src/main/java/com/forgesense/**/domain`, repositories per aggregate.
-`application-docker.yml` selects the Postgres adapter, `application-dev.yml`
-the H2 adapter. No external `init.sql` is shipped; schema is created from the
-entities in dev and managed via JPA in the Compose profile.
+PostgreSQL (dev: H2 PG-mode). Key indexes on `machine_id`, `timestamp`,
+alert status, telemetry/prediction timestamps, event type. The docker profile
+uses JPA `ddl-auto: update`; there is no checked-in SQL schema.
 
 ## 10. WebSocket protocol
 
@@ -170,35 +161,44 @@ broker under `/topic`. Topics include `machine.updated`,
 `alert.created`, `alert.updated`, `maintenance.created`, `impact.updated`,
 `events.updated`.
 
-The backend broadcasts on domain events. **The current static frontend polls
-REST every 3 seconds and does not subscribe to WebSocket topics** — the socket
-surface is implemented and testable server-side, and client-side subscription
-is a planned enhancement.
+```
+machine.updated | machine.state.changed | telemetry.updated
+prediction.updated | anomaly.detected | alert.created | alert.updated
+maintenance.created | simulation.updated | impact.updated
+```
+
+JSON envelopes mirror domain events. The server broadcasts on domain events and
+exposes these topics for any subscriber, but the current static frontend polls
+REST every 3 s and does not subscribe to WebSocket topics — the socket surface
+is implemented and testable server-side, and client-side subscription is a
+planned enhancement.
 
 ## 11. Security
 
-- Dev login (`/api/v1/auth/login`) issues JWT bearer tokens; three roles
-  (OPERATOR/ENGINEER/ADMIN).
+- Dev-mode login (`POST /api/v1/auth/login`) issues JWT bearer tokens with
+  three roles (OPERATOR/ENGINEER/ADMIN) loaded from config; BCrypt password
+  hashing, configurable expiry; CSRF disabled for the stateless JSON API.
 - `JwtService` enforces a ≥32-character `FORGESENSE_JWT_SECRET` when security
   is enabled; dev/discovery profiles may run with a transient signing key.
 - `ForgeUserDetailsService` fails fast if `FORGESENSE_DEV_PASSWORD` is unset
   while security is enabled.
-- CSRF disabled for the JSON API; Actuator health/probes exposed to
-  `health,info,metrics,prometheus` only.
+- Actuator endpoints restricted (`health,info,metrics,prometheus` only).
 - All secrets come from environment variables; `.env` is gitignored and
-  `.env.example` documents every variable.
+  `.env.example` documents every variable — no hard-coded credentials.
 
 ## 12. Observability
 
-Micrometer counters/gauges/timer registered in `ForgeMetrics`:
-`forgesense.telemetry.received.total`, `.dropped.total`, `.predictions.total`,
-`.anomalies.total` (critical-alert events), `.alerts.total` + per-type alerts,
-`.maintenance.total`, `.simulation.runs.total`, `.events.total`,
-`forgesense.telemetry.processing.latency`, `forgesense.machines.online`,
-`forgesense.websocket.connections`.
+Micrometer counters/histograms/gauge registered in `ForgeMetrics`:
+`forgesense.telemetry.received.total`, `forgesense.telemetry.dropped.total`,
+`forgesense.telemetry.processing.latency`, `forgesense.ml.inference.latency`,
+`forgesense.predictions.total`, `forgesense.anomalies.total`
+(critical-alert events), `forgesense.alerts.total`, `forgesense.machines.online`,
+`forgesense.websocket.connections`, `forgesense.simulation.runs.total`,
+`forgesense.events.total`, `forgesense.maintenance.total`.
 
-Actuator health groups: `liveness`, `readiness` (includes `db`, `mlService`).
-Prometheus scrape target reachable at `/actuator/prometheus`.
+Actuator health groups: `liveness`, `readiness`, `dependencies`
+(db/redis/kafka/ml). Prometheus scrapes only the backend
+`/actuator/prometheus`; Grafana visualizes it.
 
 ## 13. Failures & degradation (summary)
 
@@ -206,9 +206,9 @@ Prometheus scrape target reachable at `/actuator/prometheus`.
 |---|---|---|
 | Kafka down | in-process bus (dev) OR publish error (docker) logged | `STREAMING` fallback messaging |
 | Redis down | cache falls back to memory; PostgreSQL unaffected | `CACHE: fallback` |
-| PostgreSQL down | health down; writes rejected; reads degraded | error states |
-| ML down | heuristic scorer selected + `MODEL: unavailable` badge | explanation uses heuristic |
-| WebSocket down | REST polling continues; server-side broadcasts no-op | `LIVE` reflects REST data |
+| PostgreSQL down | health down; writes rejected; reads degraded | `DB: DOWN` + error states |
+| ML down | heuristic scorer + `MODEL: unavailable` badge | explanation uses heuristic |
+| WebSocket down | dashboard unaffected — it polls REST and never opens a socket | n/a |
 | Machine offline | telemetry stops; state → OFFLINE; alerts generated | status color + stale label |
 
 ## 14. Environment & configuration
@@ -221,12 +221,15 @@ Prometheus scrape target reachable at `/actuator/prometheus`.
 
 ## 15. Testing strategy (current)
 
-- Backend: JUnit + Mockito unit tests for `MachineStateMachine`,
-  `DecisionEngine`, `AlertService` (22 tests; run in CI via `./mvnw package`).
-- ML: pytest tests for health, `/assess` normal and degraded inputs,
-  deterministic training (4 tests; run in CI).
-- Frontend: `node --check` for all modules + `node:test` unit tests
-  (`test/util.test.mjs`, 15 tests; run in CI).
+- Backend: JUnit + Spring Boot Test — state machine, telemetry validation,
+  twin, decision rules, alert lifecycle, and an end-to-end RBAC integration
+  suite (`MockMvc`) run by CI via `./mvnw package`.
+- ML: pytest — API endpoints against the trained v2 artefacts, retrain-hash
+  stability, evaluation metrics.
+- Simulator: exercised end-to-end via docker compose (`--degrade`, `--bare`,
+  `--omit`); no dedicated test suite at present.
+- Frontend: `node --check` on all modules plus a `node:test` unit suite
+  (`test/util.test.mjs`, run in CI).
 - Testcontainers, Vitest/Testing Library, and Playwright E2E are **not**
   currently implemented; they are candidate next steps.
 

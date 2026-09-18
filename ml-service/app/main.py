@@ -1,8 +1,9 @@
 """FastAPI application for the ForgeSense ML Service.
 
 Provides /health and /assess endpoints consumed by the Spring Boot backend.
-Model training happens once on first boot if artefacts are not present; the
-deterministic seed ensures any clone produces the same models.
+Model training happens once on first boot if artefacts are not present (or
+when the authoritative profile catalog changes); the deterministic seed
+ensures any clone produces the same models.
 """
 
 from __future__ import annotations
@@ -14,19 +15,20 @@ from contextlib import asynccontextmanager
 from typing import Optional
 
 import numpy as np
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .explanation import _recommendations, compute_factors
 from .features import (
     FEATURE_NAMES,
-    MACHINE_TYPES,
     applicable_sensors,
+    known_machine,
     machine_type_for,
+    missing_sensors_for,
     profile_for,
     to_feature_vector,
 )
-from .models import ModelBundle, get_bundle
+from .models import ModelBundle, get_bundle, get_eval_metrics
 from .schemas import AssessmentResponse, Factor, HealthResponse, TelemetrySampleRequest
 
 logger = logging.getLogger("forgesense.ml")
@@ -47,16 +49,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ForgeSense ML Service",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
 # The ML service is consumed server-to-server by the Spring Boot backend, so
 # credentials/CORS are only enabled for explicitly configured origins
-# (defaults to the Vue/Dev-origins used when running everything locally).
+# (defaults to the dev/backend origins used when running everything locally).
 _app_origins = [
     o.strip()
-    for o in os.environ.get("FORGESENSE_ML_CORS_ORIGINS", "http://localhost:5173,http://localhost:5174").split(",")
+    for o in os.environ.get("FORGESENSE_ML_CORS_ORIGINS", "http://localhost:8080,http://localhost:5173").split(",")
     if o.strip()
 ]
 
@@ -64,8 +66,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_app_origins,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["POST", "GET", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -98,8 +100,11 @@ def health() -> HealthResponse:
     models_loaded = _bundle is not None
     return HealthResponse(
         status="ok" if models_loaded else "training",
-        model_version="failure-risk-v1",
+        model_version=_bundle.failure_version if _bundle else "unavailable",
+        anomaly_model_version=_bundle.anomaly_version if _bundle else "unavailable",
         models_loaded=models_loaded,
+        evaluation=dict(get_eval_metrics(_bundle)) if _bundle else {},
+        metadata=dict(_bundle.metadata) if _bundle else {},
     )
 
 
@@ -107,8 +112,22 @@ def health() -> HealthResponse:
 def assess(req: TelemetrySampleRequest) -> AssessmentResponse:
     assert _bundle is not None, "Models not loaded"
 
-    mtype = machine_type_for(req.machineId, req.machineType)
+    if not known_machine(req.machineId):
+        raise HTTPException(status_code=404, detail=f"unknown machine: {req.machineId}")
+
+    try:
+        mtype = machine_type_for(req.machineId, req.machineType)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     raw = req.model_dump()
+    missing = missing_sensors_for(req.machineId, raw, mtype)
+    if missing:
+        raise HTTPException(status_code=422, detail={
+            "message": "missing required sensors",
+            "missingSensors": missing,
+        })
     x = np.array(to_feature_vector(req.machineId, raw, mtype), dtype=np.float64)
 
     # --- anomaly ---
@@ -121,13 +140,14 @@ def assess(req: TelemetrySampleRequest) -> AssessmentResponse:
     # --- health score ---
     health_score = round(100.0 * (1.0 - failure_risk) * (1.0 - 0.30 * anomaly_score), 1)
 
-    # --- RUL ---
+    # The regressor target is the synthetic degradation horizon in steps. It
+    # is intentionally not converted to physical time.
     if failure_risk > 0.5:
         rul_raw = float(_bundle.rul_predict_fn.predict(x.reshape(1, -1))[0])
-        rul_hours = min(max(rul_raw * 20.0, 10.0), 900.0)
+        rul_est = min(max(rul_raw, 0.0), float(_bundle.metadata.get("rul_horizon_steps", 60)))
     else:
-        rul_hours = 900.0
-    rul_est = round(rul_hours, 1)
+        rul_est = float(_bundle.metadata.get("rul_horizon_steps", 60))
+    rul_est = round(rul_est, 1)
 
     # --- explanations ---
     factors_raw, _ = compute_factors(_bundle, x, req.machineId, mtype, top_n=5)
@@ -141,7 +161,10 @@ def assess(req: TelemetrySampleRequest) -> AssessmentResponse:
         failureRisk=failure_risk,
         healthScore=health_score,
         rulEstimate=rul_est,
+        rulUnit=str(_bundle.metadata.get("rul_unit", "steps")),
         modelVersion=_bundle.failure_version,
+        anomalyModelVersion=_bundle.anomaly_version,
+        missingSensors=missing,
         factors=factors,
         recommendations=recs,
     )

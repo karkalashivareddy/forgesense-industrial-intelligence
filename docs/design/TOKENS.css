@@ -1,0 +1,255 @@
+/* ==========================================================================
+   ForgeSense Design Tokens — Auto-generated from VISUAL_IDENTITY.md
+   Drop into frontend/css/tokens.css
+   ========================================================================== */
+
+:root {
+  /* =========================================================================
+     COLOR — Core Palette
+     ========================================================================= */
+  --color-bg: #0a0e14;
+  --color-surface: #111820;
+  --color-surface-elevated: #181f2a;
+  --color-border: #233044;
+  --color-border-strong: #3a4a5f;
+
+  /* Brand Accents — The ForgeSense Fingerprint */
+  --color-copper: #c9762e;
+  --color-copper-hover: #d48a3e;
+  --color-copper-muted: #8b5a22;
+  --color-amber: #f59e0b;
+  --color-emerald: #10b981;
+  --color-crimson: #ef4444;
+  --color-cyan: #06b6d4;
+
+  /* Semantic Status — Color + Icon + Text (Never Color Only) */
+  --color-status-running: var(--color-emerald);
+  --color-status-warning: var(--color-amber);
+  --color-status-error: var(--color-crimson);
+  --color-status-offline: var(--color-border);
+  --color-status-maintenance: var(--color-cyan);
+  --color-status-simulation: var(--color-cyan);
+  --color-status-unknown: var(--color-border);
+
+  /* Data Visualization — Categorical, Color-Blind Safe */
+  --viz-1: #c9762e;  /* copper */
+  --viz-2: #06b6d4;  /* cyan */
+  --viz-3: #10b981;  /* emerald */
+  --viz-4: #f59e0b;  /* amber */
+  --viz-5: #ef4444;  /* crimson */
+  --viz-6: #8b5cf6;  /* violet */
+  --viz-7: #ec4899;  /* pink */
+  --viz-8: #22d3ee;  /* light cyan */
+
+  /* Text Colors */
+  --color-text: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-text-inverse: #0a0e14;
+
+  /* =========================================================================
+     TYPOGRAPHY
+     ========================================================================= */
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", monospace;
+  --font-display: "Inter Tight", var(--font-ui);
+
+  /* Type Scale — Fluid clamp() */
+  --text-display: clamp(2.5rem, 4vw, 3.5rem);
+  --text-h1: clamp(1.75rem, 3vw, 2.25rem);
+  --text-h2: clamp(1.375rem, 2.5vw, 1.75rem);
+  --text-h3: 1.125rem;
+  --text-body-lg: 1.0625rem;
+  --text-body: 0.9375rem;
+  --text-body-sm: 0.8125rem;
+  --text-caption: 0.75rem;
+  --text-mono: 0.8125rem;
+  --text-mono-lg: 0.9375rem;
+
+  --leading-tight: 1.1;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* Font Features */
+  --font-feature-ui: "cv11" 1, "ss01" 1, "cv02" 1, "cv03" 1, "cv04" 1, "zero" 1;
+  --font-variant-numeric: tabular-nums;
+
+  /* =========================================================================
+     ICONS
+     ========================================================================= */
+  --icon-xs: 12px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
+  --icon-xl: 32px;
+
+  /* =========================================================================
+     SPACING — 4px Base Unit
+     ========================================================================= */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* =========================================================================
+     LAYOUT
+     ========================================================================= */
+  --layout-max: 1440px;
+  --layout-gutter: 24px;
+  --layout-gutter-mobile: 16px;
+  --rail-width: 72px;
+  --rail-width-expanded: 240px;
+  --inspector-width: 384px;
+  --inspector-width-mobile: 100vw;
+  --header-height: 56px;
+  --twin-aspect: 16 / 9;
+
+  /* =========================================================================
+     BORDER RADIUS
+     ========================================================================= */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* =========================================================================
+     SHADOWS — Depth = Elevation
+     ========================================================================= */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 8px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-4: 0 16px 48px rgba(0, 0, 0, 0.45);
+  --shadow-focus: 0 0 0 2px var(--color-copper);
+
+  /* =========================================================================
+     MOTION
+     ========================================================================= */
+  --duration-instant: 0ms;
+  --duration-fast: 120ms;
+  --duration-normal: 240ms;
+  --duration-slow: 400ms;
+  --duration-cinematic: 800ms;
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* =========================================================================
+     Z-INDEX
+     ========================================================================= */
+  --z-base: 0;
+  --z-rail: 100;
+  --z-header: 200;
+  --z-dropdown: 300;
+  --z-drawer: 400;
+  --z-modal: 500;
+  --z-toast: 600;
+  --z-tooltip: 700;
+  --z-loading: 800;
+
+  /* =========================================================================
+     COMPONENT DEFAULTS
+     ========================================================================= */
+  --btn-sm: 32px;
+  --btn-md: 40px;
+  --btn-lg: 48px;
+
+  /* Focus Ring — WCAG 2.1 AA (≥3:1) — 5.8:1 achieved */
+  --focus-ring: var(--shadow-focus);
+
+  /* Reduced Motion */
+  --duration-reduced: 0ms;
+}
+
+/* ==========================================================================
+   REDUCED MOTION — Respect User Preference
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: var(--duration-reduced);
+    --duration-normal: var(--duration-reduced);
+    --duration-slow: var(--duration-reduced);
+    --duration-cinematic: var(--duration-reduced);
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   FONT FEATURES — Apply Globally
+   ========================================================================== */
+html {
+  font-family: var(--font-ui);
+  font-feature-settings: var(--font-feature-ui);
+  font-variant-numeric: var(--font-variant-numeric);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code, pre, kbd, samp, .mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: var(--font-variant-numeric);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+}
+
+body {
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+/* ==========================================================================
+   SELECTION
+   ========================================================================== */
+::selection {
+  background: color-mix(in srgb, var(--color-copper) 30%, transparent);
+  color: var(--color-text-inverse);
+}
+
+/* ==========================================================================
+   SCROLLBAR — Subtle
+   ========================================================================== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
+}

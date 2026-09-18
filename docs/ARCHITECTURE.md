@@ -1,9 +1,9 @@
-# ForgeSense — Architecture
+# ForgeSense â€” Architecture
 
 ```mermaid
 flowchart LR
     subgraph Producers
-        SIM[Simulator script<br/>Python, HTTP client]
+        SIM[Simulator Service<br/>Python producer, outbound HTTP]
         ING[REST ingest endpoint<br/>POST /api/v1/telemetry/ingest]
     end
 
@@ -35,8 +35,9 @@ flowchart LR
     end
 
     subgraph Frontend [Static dashboard - nginx :5173]
-        UI[Vanilla ES-module JS]
-        X3D[Three.js via CDN<br/>3D factory floor]
+        UI[Vanilla ES-module JS + Three.js via CDN]
+        X3D[Three.js factory floor]
+        POLL[REST poll every 3 s]
         CHARTS[Canvas chart helpers]
     end
 
@@ -45,9 +46,10 @@ flowchart LR
         GRA[Grafana]
     end
 
+    SIM -->|telemetry| K
+    SIM -->|POST /api/v1/telemetry/ingest| ING
     ING --> VALIDATE
     ING --> BUS
-    SIM -->|POST /api/v1/telemetry/ingest| ING
     K --> CONSUMER
     BUS --> CONSUMER
     CONSUMER --> VALIDATE
@@ -65,8 +67,8 @@ flowchart LR
     DECISION --> WS
     TWIN --> REDISC
     REDISC --> PG
-    WS --> UI
     REST --> UI
+    POLL --> REST
     UI --> X3D
     UI --> CHARTS
     PROM -->|scrape /actuator/prometheus| REST
@@ -75,21 +77,23 @@ flowchart LR
 
 ## Key architectural positions
 
-1. **An event-flow core with a WebSocket and REST surface.** Telemetry is
-   ingested over HTTP, validated, normalized, and fed to the digital twin. The
-   backend broadcasts events over WebSocket; the static frontend polls REST
-   every 3 seconds and renders live state. The WebSocket endpoint exists and is
-   used by server-side broadcast; the current frontend does not subscribe to it.
+1. **A server-side event core with an honest polling browser.** Telemetry enters via
+   `forge.telemetry.raw`, is normalized to `forge.telemetry.normalized`, and
+   every downstream subsystem (digital twin, ML, alerts, timeline) consumes
+   events. The frontend keeps itself updated by polling the REST API every 3 s;
+   WebSocket push exists server-side (`/ws`) but the dashboard does not subscribe
+   to it; the browser's verified transport is REST polling.
 
-2. **Separation of "assess" from "decide".** The ML service answers *"what does
-   the model assess for this telemetry?"* (`POST /assess`). The backend decision
-   engine answers *"what should the system do about it?"* using configurable
-   thresholds. Rules live in `application-*.yml` + service code, not inside ML.
+2. **Separation of "predict" from "decide".** The ML service answers
+   *"what does the model predict?"* (`GET /health`, `POST /assess`). The backend
+   decision engine answers *"what should the system do about it?"* using
+   configurable rules. Rules live in `application-*.yml` + `SystemConfig`, not
+   inside ML code.
 
 3. **The digital twin is authoritative.** Every machine's synchronized state
    (telemetry, health, risk, status, dependencies, recent events) is owned by
-   the backend. The 3D scene and all dashboards render from this one source of
-   truth — the frontend never invents business state.
+   the backend. The 3D scene and all dashboard views render from this one source
+   of truth â€” the frontend never invents business state.
 
 4. **Infrastructure adapters.** PostgreSQL/Redis/Kafka are the Compose-profile
    adapters; H2/in-memory/in-process bus are dev-profile adapters. Interfaces
@@ -102,22 +106,23 @@ flowchart LR
 
 | Component | Responsibilities | Anti-responsibilities |
 |---|---|---|
-| Simulator | generate synthetic telemetry for the fleet, inject degradations, run bare mode | must not decide health/risk — that is upstream of it |
+| Simulator | generate synthetic telemetry for the fleet, inject degradations, run bare mode | must not decide health/risk â€” that is upstream of it |
 | Backend | domain truth: machines, state machine, alerts, maintenance, impact, simulation, websocket, API | must not train models |
-| ML service | anomaly score, failure risk, heuristic RUL, feature attribution | must not own alert policy |
-| Frontend | render synchronized state, interactions, what-if UX | must not compute business state |
-| Redis | latest machine state / telemetry cache | not the source of truth |
-| PostgreSQL | persisted domain + telemetry history | telemetry history bloat is a foreseeable analytics problem |
+| ML service | anomaly score, failure-risk, RUL estimate, baseline-importance factors | must not own alert policy |
+| Frontend | render synchronized state, interactions | must not compute business state |
+| Redis | latest telemetry / machine state cache, small short-lived state | not the source of truth |
+| PostgreSQL | persisted domain + history | telemetry history bloat is a foreseeable analytics problem |
 
 ## Scaling notes (future work, not implemented)
 
-- Kafka partitions by `machineId` key → ordered per machine, parallel across
+- Kafka partitions by `machineId` key â†’ ordered per machine, parallel across
   machines.
 - Consumer groups scale pipeline stages.
 - Telemetry history could move to a time-series store (TimescaleDB/ClickHouse)
   as it grows; PostgreSQL would keep domain/history summarized.
 - WebSocket scale-out: topic prefix per backend node or broker; sticky sessions.
-- ML inference is stateless and horizontally scalable behind a load balancer.
+- ML inference: stateless, horizontally scalable behind a load balancer with
+  model warm cache.
 
-These are the intended growth path and are documented as forward-looking —
+These are the intended growth path and are documented as forward-looking â€”
 only the single-node Compose topology is implemented today.

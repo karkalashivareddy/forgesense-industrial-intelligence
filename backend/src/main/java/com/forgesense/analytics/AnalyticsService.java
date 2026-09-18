@@ -68,7 +68,7 @@ public class AnalyticsService {
         kpis.put("activeMaintenance", activeMaintenance);
         kpis.put("productionEfficiency", Map.of(
                 "value", Math.round(efficiency),
-                "label", "ESTIMATED — derived from average fleet failure risk"));
+                "label", "ESTIMATED - derived from average fleet failure risk"));
         kpis.put("telemetryThroughputPerMinute", telemetryInLastMin);
         kpis.put("estimatedDowntimeRiskMinutes", Math.round(atRisk * 30.0));
         kpis.put("dataBasis", List.of("OBSERVED", "ESTIMATED"));
@@ -102,7 +102,7 @@ public class AnalyticsService {
                         + alertRepository.countByStatus(AlertStatus.INVESTIGATING),
                 "new", alertRepository.countByStatus(AlertStatus.NEW),
                 "investigating", alertRepository.countByStatus(AlertStatus.INVESTIGATING),
-                "resolvedToday", alertRepository.countByOpenedAtAfter(Instant.now().minusSeconds(86400)),
+                "resolvedToday", alertRepository.countByResolvedAtAfter(Instant.now().minusSeconds(86400)),
                 "basis", "OBSERVED");
     }
 
@@ -117,7 +117,7 @@ public class AnalyticsService {
                     "failureRisk", m.getFailureRisk() == null ? 0 : m.getFailureRisk()));
         }
         out.put("machines", rows);
-        out.put("basis", "OBSERVED — current twin state");
+        out.put("basis", "OBSERVED - current twin state");
         return out;
     }
 

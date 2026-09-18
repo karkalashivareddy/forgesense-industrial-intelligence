@@ -29,7 +29,7 @@ public class EventController {
     public Map<String, Object> timeline(@RequestParam(required = false) String machineId,
                                         @RequestParam(defaultValue = "50") int limit) {
         List<Map<String, Object>> items = (machineId == null || machineId.isBlank()
-                ? eventRepository.findTop200ByOrderByEventTimeDesc()
+                ? eventRepository.findAllByOrderByEventTimeDesc(PageRequest.of(0, limit)).getContent()
                 : eventRepository.findByMachineIdOrderByEventTimeDesc(machineId,
                         PageRequest.of(0, limit)).getContent()).stream()
                 .map(EventController::row).toList();

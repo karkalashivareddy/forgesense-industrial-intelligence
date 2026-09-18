@@ -26,7 +26,9 @@ export function activate() {
 
 export function update(s) {
   if (!root) return;
-  const ref = s.machines + '|' + s.alerts.total + '|' + (s.status || {}).simulationPaused;
+  const ref = (s.machines || []).map(m =>
+    m.machineId + ':' + m.status + ':' + (m.healthScore != null ? Math.round(m.healthScore) : '-') + ':' + (m.anomalyScore != null ? Math.round(m.anomalyScore * 100) : '-') + ':' + (m.lastTelemetryAt || '')).join('|')
+    + '|' + s.selectedMachineId + '|' + s.alerts.total + '|' + (s.status || {}).simulationPaused;
   if (ref === lastRef) return;
   lastRef = ref;
   renderBody();
@@ -56,7 +58,11 @@ function render() {
     kpi('Offline / maint', fs.offline + fs.maintenance, fs.offline + ' offline · ' + fs.maintenance + ' in maintenance', 'maint')));
 
   root.appendChild(renderToolbar());
-  root.appendChild(el('div', { class: 'card', style: { marginTop: '12px' } }, renderTable()));
+  const tableCard = el('div', { class: 'card', style: { marginTop: '12px' } });
+  const tableHost = el('div', { id: 'fleetTable' });
+  tableHost.appendChild(renderTable());
+  tableCard.appendChild(tableHost);
+  root.appendChild(tableCard);
 }
 
 function renderToolbar() {
@@ -99,7 +105,7 @@ function filterSort() {
     const bv = get(b);
     if (av < bv) return -1 * sortDir;
     if (av > bv) return 1 * sortDir;
-    return 0;
+    return String(a.machineId || '').localeCompare(String(b.machineId || ''));
   });
 }
 
@@ -139,12 +145,12 @@ function renderTable() {
       el('td', {}, healthBar(m)),
       el('td', {}, el('div', { class: 'bar-row' }, el('div', { class: 'bar' }, el('div', { class: 'bar-fill f-' + r.tone, style: { width: pct(m.failureRisk, 0) } })), el('div', { class: 'bar-cap' }, el('span', {}, r.band), el('b', {}, pct(m.failureRisk))))),
       el('td', {}, el('span', { class: 'tag tag-' + (a.tone) }, a.band), el('span', { class: 'muted small', style: { marginLeft: '6px' } }, pct(m.anomalyScore, 0))),
-      el('td', {}, m.rulEstimate != null ? int(m.rulEstimate) + ' h' : '—'),
+      el('td', {}, m.rulEstimate != null ? int(m.rulEstimate) + ' steps' : '—'),
       el('td', {}, el('span', { class: 'muted small' }, (m.modelMode || '—')), el('div', { class: 'muted small' }, 'v' + (m.modelVersion || '—'))),
       el('td', { class: 'muted small' }, m.lastTelemetryAt ? timeAgo(m.lastTelemetryAt) : '—'));
   });
   return el('div', { style: { overflowX: 'auto' } },
-    el('table', { class: 'tbl', id: 'fleetTable' }, el('thead', {}, thead), el('tbody', {}, trs)),
+    el('table', { class: 'tbl' }, el('thead', {}, thead), el('tbody', {}, trs)),
     el('div', { class: 'muted small', style: { marginTop: '8px' } }, rows.length + ' machines · risk from ML (confidence ' + modelConfidence() + ')'));
 }
 

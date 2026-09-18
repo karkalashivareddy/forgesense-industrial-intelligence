@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * A prediction snapshot: anomaly + failure risk + contributing factors
- * (SHAP attribution when the ML service is available).
+ * (baseline-importance attribution from the ML service).
  */
 @Entity
 @Table(name = "prediction", indexes = {

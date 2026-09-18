@@ -22,9 +22,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Maintenance work-order workflow: RECOMMENDED → SCHEDULED → ACTIVE → COMPLETED
+ * Maintenance work-order workflow: RECOMMENDED -> SCHEDULED -> ACTIVE -> COMPLETED
  * (or CANCELLED). Starting/Completing moves the machine through the state
- * machine (MAINTENANCE → RECOVERING) — never applied outside the state rules.
+ * machine (MAINTENANCE -> RECOVERING) - never applied outside the state rules.
  */
 @Service
 public class MaintenanceService {
@@ -61,10 +61,10 @@ public class MaintenanceService {
         MaintenanceRecord r = new MaintenanceRecord();
         r.setMachineId(machine.getMachineId());
         r.setMachineName(machine.getName());
-        r.setTitle("Recommended inspection — " + machine.getMachineId());
+        r.setTitle("Recommended inspection - " + machine.getMachineId());
         r.setDescription("Model failure risk reached " + Math.round(twin.getFailureRisk() * 100)
                 + "%. Recommend technical inspection per operating procedures.");
-        r.setRecommendedAction(machine.getType().label() + " — inspect drive assembly, bearings, vibration mounts.");
+        r.setRecommendedAction(machine.getType().label() + " - inspect drive assembly, bearings, vibration mounts.");
         r.setPriority(twin.getFailureRisk() >= 0.8 ? MaintenancePriority.URGENT : MaintenancePriority.HIGH);
         r.setStatus(MaintenanceStatus.RECOMMENDED);
         r.setReason("PREDICTED_RISK_" + Math.round(twin.getFailureRisk() * 100));

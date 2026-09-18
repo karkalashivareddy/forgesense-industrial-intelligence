@@ -3,6 +3,7 @@ package com.forgesense.common.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -17,7 +18,8 @@ public record ForgeSenseProperties(
         Machine machine,
         Simulation simulation,
         Cache cache,
-        Security security
+        Security security,
+        List<String> allowedOrigins
 ) {
 
     public record Ml(String url, Duration timeoutMs, String anomalyModelVersion, String failureModelVersion) {}

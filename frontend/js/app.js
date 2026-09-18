@@ -1,8 +1,8 @@
-import { API_BASE, getRoles, login } from './api.js';
-import { store, subscribe, selectMachine, startPolling, refreshMaintenance, set } from './state.js';
+import { API_BASE, getRoles, getToken, login } from './api.js';
+import { store, subscribe, selectMachine, startPolling, refreshMaintenance, refreshCore, applyRealtimeEvent, set, setLiveTransport } from './state.js';
 import { el, esc, int, timeAgo, fleetSummary } from './util.js';
 import { register, boot as bootRouter, go, onRoute } from './router.js';
-import { initTwin, updateMachines, resetCamera, focusOnMachine, focusOnZone, setSimMode, focusTop } from './twin3d.js';
+import { initTwin, updateMachines, resetCamera, focusOnMachine, focusOnZone, setSimMode, setRiskMode, focusTop, isTwin } from './twin3d.js';
 import * as commandView from './views/command.js';
 import * as factoryView from './views/factoryView.js';
 import * as fleetView from './views/fleet.js';
@@ -12,10 +12,13 @@ import * as simulationView from './views/simulation.js';
 import * as maintenanceView from './views/maintenance.js';
 import * as analyticsView from './views/analytics.js';
 import * as systemView from './views/system.js';
+import * as telemetryView from './views/telemetry.js';
+import * as anomaliesView from './views/anomalies.js';
+import * as eventsView from './views/events.js';
 import { openInspector, closeInspector, toggleInspector, subscribeInspector } from './views/inspector.js';
 import { initPalette, togglePalette, closePalette, openPalette, isOpen as paletteOpen } from './command.js';
+import { getRealtimeClient } from './realtime.js';
 
-let twinInited = false;
 let lastSel = null;
 const seenAlerts = new Map();
 let tick = 0;
@@ -32,9 +35,12 @@ const SHORTCUTS = [
 function $id(s) { return document.getElementById(s); }
 
 /* ---------- login ---------- */
-async function bootLogin() { showLogin(); }
+async function bootLogin() {
+  if (getToken()) return;
+  await new Promise(resolve => showLogin(resolve));
+}
 
-function showLogin() {
+function showLogin(done) {
   const input = el('input', { type: 'password', placeholder: 'configured operator password',
     onkeydown: async e => {
       if (e.key === 'Enter') {
@@ -43,6 +49,7 @@ function showLogin() {
           await login(u, input.value);
           set({ user: u, roles: getRoles() });
           overlay.remove();
+          done?.();
         } catch { input.style.borderColor = '#f25c4c'; }
       }
     } });
@@ -54,7 +61,7 @@ function showLogin() {
       userSel, ' ',
       input,
       el('button', { class: 'btn btn-primary', style: { marginTop: '10px', width: '100%' }, onClick: async () => {
-        try { await login(userSel.value, input.value); set({ user: userSel.value, roles: getRoles() }); overlay.remove(); }
+        try { await login(userSel.value, input.value); set({ user: userSel.value, roles: getRoles() }); overlay.remove(); done?.(); }
         catch { input.style.borderColor = '#f25c4c'; }
       } }, 'Connect'),
       el('div', { class: 'muted small', style: { marginTop: '8px' } }, 'Demo users: operator · engineer · admin. Passwords come from FORGESENSE_DEV_PASSWORD.')));
@@ -64,51 +71,56 @@ function showLogin() {
 
 /* ---------- 3D twin lifecycle ---------- */
 function ensureTwin() {
-  if (twinInited) return true;
   const container = $id('sceneContainer');
   if (!container) return false;
+  if (isTwin()) return true;
   initTwin(container, {
     onSelect: (machineId) => { selectMachine(machineId); openInspector(machineId); },
   });
-  twinInited = true;
   updateMachines(store.machines || []);
   return true;
 }
 
 /* ---------- top bar ---------- */
 function topbar(s) {
-  const f = s.freshness;
+  const f = s.freshness || { ok: false, failures: 0, lastOk: null };
   const age = f.lastOk ? Math.max(0, Math.floor((Date.now() - f.lastOk) / 1000)) : null;
   const sys = $id('sysStatus');
-  const dot = $id('sysDot');
+  const icon = $id('sysIcon');
   const txt = $id('sysStatusText');
-  if (!f.ok) {
-    txt.textContent = 'POLLING · ' + f.failures + ' failed' + (f.lastError ? '' : '');
-    sys.classList.add('stale');
-    dot.className = 'dot dot-bad';
-  } else if (age == null) {
-    txt.textContent = 'POLLING · 3s — waiting for first fetch';
+  const live = s.liveTransport || {};
+  const liveOpen = live.state === 'open';
+  if (liveOpen) {
+    txt.textContent = 'LIVE · STOMP' + (s.liveEventCount ? ` · ${int(s.liveEventCount)} events` : '');
     sys.classList.remove('stale');
-    dot.className = 'dot dot-warn';
+    if (icon) icon.className = 'ph ph-broadcast';
+  } else if (!f.ok) {
+    txt.textContent = 'DEGRADED · REST retry ' + f.failures;
+    sys.classList.add('stale');
+    if (icon) icon.className = 'ph ph-warning';
+  } else if (age == null) {
+    txt.textContent = 'SYNCING · REST snapshot';
+    sys.classList.remove('stale');
+    if (icon) icon.className = 'ph ph-arrows-clockwise';
   } else {
-    txt.textContent = 'POLLING · 3s · age ' + age + 's';
+    txt.textContent = 'REST FALLBACK · age ' + age + 's';
     sys.classList.toggle('stale', age >= 12);
-    dot.className = age >= 12 ? 'dot dot-bad' : age >= 8 ? 'dot dot-warn' : 'dot dot-up';
+    if (icon) icon.className = 'ph ph-arrows-clockwise';
   }
   const tel = s.telemetryStatus || {};
   const thr = $id('thrRate');
   const thrPill = $id('thrPill');
   const v = tel.telemetryPerMinute;
-  thr.textContent = v != null ? int(v) : '—';
-  thrPill.classList.toggle('stale', tel.streaming === false);
+  if (thr) thr.textContent = v != null ? int(v) : '—';
+  if (thrPill) thrPill.classList.toggle('stale', !f.ok);
 
   const ml = s.status || {};
-  const mlDot = $id('mlDot');
+  const mlIcon = $id('mlIcon');
   const mlModel = $id('mlModel');
-  mlModel.textContent = ml.mlServiceAvailable ? '· v' + (ml.mlModelVersion || '?') : 'DOWN';
-  mlDot.className = 'dot ' + (ml.mlServiceAvailable ? 'dot-up' : 'dot-bad');
-  const mlPill = mlDot.closest('.pill');
-  mlPill && mlPill.classList.toggle('stale', !ml.mlServiceAvailable);
+  if (mlModel) mlModel.textContent = ml.mlServiceAvailable ? '· v' + (ml.mlModelVersion || '?') : 'DOWN';
+  if (mlIcon) mlIcon.className = 'ph ' + (ml.mlServiceAvailable ? 'ph-brain' : 'ph-warning');
+  const mlPill = mlIcon?.closest('.pill');
+  if (mlPill) mlPill.classList.toggle('stale', !ml.mlServiceAvailable);
 
   const fs = fleetSummary(s.machines);
   const os = osLabel(fs);
@@ -133,11 +145,12 @@ function osLabel(fs) {
 
 /* ---------- status bar ---------- */
 function statusbar(s) {
-  const f = s.freshness;
+  const f = s.freshness || { ok: false, failures: 0 };
   $id('svcBackend').textContent = f.ok ? 'OK' : 'DOWN ×' + f.failures;
   const ml = s.status || {};
   $id('svcMl').textContent = ml.mlServiceAvailable ? 'v' + (ml.mlModelVersion || '?') + ' up' : 'down';
-  $id('svcKafka').textContent = (s.telemetryStatus ? (s.telemetryStatus.streaming ? 'streaming' : 'stalled') : '—');
+  $id('svcKafka').textContent = s.liveTransport?.state === 'open'
+    ? 'STOMP live' : (s.telemetryStatus && s.telemetryStatus.transport ? s.telemetryStatus.transport : 'REST fallback');
   const st = s.status || {};
   $id('svcPg').textContent = st.database == null ? '—' : (typeof st.database === 'string' ? esc(st.database) : 'connected');
   $id('svcRedis').textContent = health && health.status === 'UP' && health.components && health.components.redis ? (health.components.redis.status === 'UP' ? 'up' : 'down') : '—';
@@ -149,7 +162,25 @@ function statusbar(s) {
   }
   $id('svcLastTel').textContent = newest ? timeAgo(newest) : '—';
   const basis = st.demoMode ? 'SIMULATED' : '';
-  $id('svcBasis').textContent = (st.dataBasis || [basis || 'SIMULATED']).join('/') + ' · REST poll 3s';
+  $id('svcBasis').textContent = (st.dataBasis || [basis || 'SIMULATED']).join('/') + (s.liveTransport?.state === 'open' ? ' · STOMP live' : ' · REST fallback 3s');
+}
+
+function connectLive() {
+  const wsBase = API_BASE.replace(/^http/, 'ws');
+  const client = getRealtimeClient({
+    url: wsBase + '/ws',
+    tokenProvider: getToken,
+    onEvent: (topic, event) => {
+      applyRealtimeEvent(topic, event);
+      if (topic.startsWith('maintenance.') || topic.startsWith('simulation.')) refreshMaintenance();
+    },
+    onState: (state, detail) => {
+      setLiveTransport(state, detail);
+      if (state === 'open') refreshCore();
+    },
+    onDiagnostic: detail => setLiveTransport('degraded', detail),
+  });
+  client.connect().catch(() => setLiveTransport('closed', 'REST snapshot fallback active'));
 }
 
 /* ---------- notifications ---------- */
@@ -173,7 +204,7 @@ function alertWatcher(s) {
   const now = Date.now();
   const present = new Set();
   for (const a of items) {
-    if (a.status !== 'ACTIVE') continue;
+    if (a.status !== 'NEW') continue;
     present.add(a.id);
     if (!seenAlerts.has(a.id)) {
       seenAlerts.set(a.id, { at: now, sev: String(a.severity || '').toUpperCase() });
@@ -191,13 +222,13 @@ function alertWatcher(s) {
 function selectionFocus(s) {
   if (s.selectedMachineId && s.selectedMachineId !== lastSel) {
     lastSel = s.selectedMachineId;
-    if (twinInited) focusOnMachine(s.selectedMachineId);
+    if (isTwin()) focusOnMachine(s.selectedMachineId);
   }
   if (!s.selectedMachineId) lastSel = null;
 }
 
 /* ---------- shortcuts ---------- */
-const ROUTE_KEYS = { '1': 'command', '2': 'factory', '3': 'fleet', '4': 'alerts', '5': 'predictions', '6': 'simulation', '7': 'maintenance', '8': 'analytics', '9': 'system' };
+const ROUTE_KEYS = { '1': 'command', '2': 'factory', '3': 'fleet', '4': 'telemetry', '5': 'alerts', '6': 'predictions', '7': 'maintenance', '8': 'analytics', '9': 'system' };
 
 function onKey(e) {
   if (e.ctrlKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); togglePalette(); return; }
@@ -246,6 +277,9 @@ function registerViews() {
   register('maintenance', maintenanceView);
   register('analytics', analyticsView);
   register('system', systemView);
+  register('telemetry', telemetryView);
+  register('anomalies', anomaliesView);
+  register('events', eventsView);
 }
 
 function globalEvents() {
@@ -273,8 +307,9 @@ function globalEvents() {
     } else {
       banner.classList.add('hidden');
     }
-    if (twinInited) setSimMode(!!active, ids || []);
+    if (isTwin()) setSimMode(!!active, ids || []);
   });
+  window.addEventListener('forge:ensure3d', () => { ensureTwin(); });
   window.addEventListener('forge:shortcuts', () => showShortcuts());
 }
 
@@ -297,7 +332,7 @@ function main() {
       selectionFocus(s);
       const v = currentView();
       if (v && v.update) v.update(s);
-      if (twinInited && s.machines) updateMachines(s.machines);
+      if (isTwin() && s.machines) updateMachines(s.machines);
       if (++tick % 5 === 0) refreshMaintenance();
     });
     onRoute(({ type, payload }) => {
@@ -306,13 +341,23 @@ function main() {
       else if (type === 'inspector-close') closeInspector();
       else if (type === 'camera-reset') { if (ensureTwin()) resetCamera(); }
       else if (type === 'camera-top') { if (ensureTwin()) focusTop(); }
+      else if (type === 'risk-mode-toggle') {
+        if (ensureTwin()) {
+          const button = $id('riskBtn');
+          const active = button?.getAttribute('aria-pressed') !== 'true';
+          setRiskMode(active);
+          if (button) { button.setAttribute('aria-pressed', String(active)); button.classList.toggle('active', active); }
+        }
+      }
       else if (type === 'zone-filter') { if (ensureTwin()) { focusOnZone(payload); factoryView.setActiveZone(payload); } }
       else if (type === 'shortcuts') showShortcuts();
     });
-    const routeViews = { command: commandView, factory: factoryView, fleet: fleetView, alerts: alertsView, predictions: predictionsView, simulation: simulationView, maintenance: maintenanceView, analytics: analyticsView, system: systemView };
+    const routeViews = { command: commandView, factory: factoryView, fleet: fleetView, telemetry: telemetryView, anomalies: anomaliesView, alerts: alertsView, events: eventsView, predictions: predictionsView, simulation: simulationView, maintenance: maintenanceView, analytics: analyticsView, system: systemView };
     bootRouter('command', Object.keys(routeViews));
     startPolling();
+    connectLive();
     clock();
+    setInterval(() => { topbar(store); statusbar(store); }, 1000);
     document.addEventListener('keydown', onKey, true);
     globalEvents();
     apiHealth();
@@ -329,7 +374,7 @@ function apiHealth() {
 function currentView() {
   const byId = {
     'view-command': commandView, 'view-factory': factoryView, 'view-fleet': fleetView,
-    'view-alerts': alertsView, 'view-predictions': predictionsView, 'view-simulation': simulationView,
+    'view-telemetry': telemetryView, 'view-anomalies': anomaliesView, 'view-alerts': alertsView, 'view-events': eventsView, 'view-predictions': predictionsView, 'view-simulation': simulationView,
     'view-maintenance': maintenanceView, 'view-analytics': analyticsView, 'view-system': systemView,
   };
   const active = document.querySelector('.view.active');

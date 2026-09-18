@@ -13,8 +13,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reject tracked local credential defaults
         run: |
-          if git grep -nE 'forgesense_dev_pw|forgesense-demo-jwt-signing-key|forgeSence-DemoPW|default forgesense-dev' -- ':!.github/workflows/ci.yml'; then
-            echo "Tracked local credential material found"
+          dev_pw=$(printf '%s%s%s' 'forgesense' '_dev' '_pw')
+          demo_key=$(printf '%s%s' 'forgesense' '-demo-jwt-signing-key')
+          demo_pw=$(printf '%s%s' 'forgeSence' '-DemoPW')
+          default_pw=$(printf '%s%s' 'default forgesense' '-dev')
+          pattern="${dev_pw}|${demo_key}|${demo_pw}|${default_pw}"
+          # git grep returns 1 when there are no matches. In GitHub Actions'
+          # bash -e mode, preserve that expected result for the explicit check.
+          matching=$(git grep -lE "$pattern" -- ':!.github/workflows/ci.yml' || true)
+          if [ -n "$matching" ]; then
+            echo "Tracked local credential material found:"
+            printf '%s\n' "$matching"
             exit 1
           fi
           test ! -f .env
@@ -31,7 +40,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
-      - name: Compile + test + package
+      - name: Compile + tests + package
         run: ./mvnw -q package
       - name: Boot test (dev profile, security off)
         run: |

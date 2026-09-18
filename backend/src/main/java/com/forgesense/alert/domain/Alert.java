@@ -38,6 +38,8 @@ public class Alert extends AbstractEntity {
     private AlertStatus status = AlertStatus.NEW;
 
     private String type;
+    private String source;
+    private String correlationId;
     private String headline;
     @Column(length = 2000)
     private String description;

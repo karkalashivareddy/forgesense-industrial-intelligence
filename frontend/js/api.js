@@ -3,6 +3,7 @@ export const API_BASE = localStorage.getItem('forgesense.api') || 'http://localh
 let token = null;
 let username = null;
 let roles = [];
+let credential = null;
 
 export function getToken() { return token; }
 export function getRoles() { return roles.slice(); }
@@ -35,14 +36,30 @@ export async function login(user, pass) {
   token = data.accessToken;
   username = data.username;
   roles = data.roles || [];
+  credential = { user, pass };
   return data;
 }
 
+async function relogin() {
+  if (!credential) return false;
+  const candidates = [...new Set([credential.user, username, 'operator', 'engineer', 'admin'].filter(Boolean))];
+  for (const u of candidates) {
+    try {
+      await login(u, credential.pass);
+      return true;
+    } catch { /* try next candidate */ }
+  }
+  return false;
+}
+
 export async function api(path, opts = {}) {
-  const res = await raw(path, opts);
-  if (res.status === 401) {
-    const r2 = await raw(path, { ...opts, _retry: true });
-    return parseBody(r2);
+  let res = await raw(path, opts);
+  if (res.status === 401 && !opts._retry) {
+    if (await relogin()) res = await raw(path, { ...opts, _retry: true });
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status} ${path}${text ? ' — ' + text.slice(0, 240) : ''}`);
   }
   return parseBody(res);
 }

@@ -8,22 +8,22 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Signs and verifies JWT access tokens. Secure profiles require an explicit
- * environment-provided secret. Security-disabled test/dev profiles use an
- * ephemeral in-memory key so no reusable credential is shipped in source.
+ * environment-provided secret. In demo/security-disabled profiles a fresh
+ * random key is generated at boot so no reusable credential is shipped.
  */
 @Service
 public class JwtService {
 
     private final ForgeSenseProperties props;
-    private final SecretKey ephemeralKey = Keys.hmacShaKeyFor(
-            UUID.randomUUID().toString().replace("-", "").repeat(2).getBytes(StandardCharsets.UTF_8));
+    private volatile SecretKey cachedKey;
 
     public JwtService(ForgeSenseProperties props) {
         this.props = props;
@@ -47,16 +47,29 @@ public class JwtService {
                 .parseSignedClaims(token).getPayload();
     }
 
-    private SecretKey key() {
+private SecretKey key() {
+        if (cachedKey != null) {
+            return cachedKey;
+        }
         String secret = props.security() == null ? null : props.security().jwtSecret();
         boolean securityEnabled = props.security() == null || props.security().enabled();
-        if (secret == null || secret.isBlank()) {
-            if (!securityEnabled) return ephemeralKey;
-            throw new IllegalStateException("FORGESENSE_JWT_SECRET must be configured when security is enabled");
+        if (secret != null && secret.length() >= 32) {
+            cachedKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+            return cachedKey;
         }
-        if (secret.length() < 32) {
-            throw new IllegalStateException("FORGESENSE_JWT_SECRET must contain at least 32 characters");
+        if (securityEnabled && !props.demoMode()) {
+            throw new IllegalStateException(
+                    "FORGESENSE_SECURITY_JWT_SECRET must be at least 32 characters when security is enabled outside demo mode");
         }
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        // Demo-only: fresh random key per boot so tokens cannot be forged with a known value.
+        cachedKey = randomKey();
+        return cachedKey;
+    }
+
+    private SecretKey randomKey() {
+        byte[] bytes = new byte[48];
+        new SecureRandom().nextBytes(bytes);
+        return Keys.hmacShaKeyFor(Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+                .getBytes(StandardCharsets.UTF_8));
     }
 }

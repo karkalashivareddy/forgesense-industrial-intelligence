@@ -20,7 +20,7 @@ import java.util.Map;
 /**
  * What-if simulation engine. Runs a scenario against the dependency graph and
  * compares BASELINE vs SCENARIO. Every figure is an estimate with transparent
- * assumptions (see docs/SIMULATION.md).
+ * assumptions.
  */
 @Service
 public class SimulationService {
@@ -124,7 +124,7 @@ public class SimulationService {
                 "downtimeMinutes", record.getExpectedDowntimeMinutes(),
                 "affectedMachineCount", record.getAffectedMachineCount()));
 
-        log.info("Simulation {} on {} → {} machines affected, ~{} min",
+        log.info("Simulation {} on {} -> {} machines affected, ~{} min",
                 request.scenarioType(), request.machineId(), record.getAffectedMachineCount(),
                 record.getExpectedDowntimeMinutes());
         return record;
@@ -137,7 +137,7 @@ public class SimulationService {
                 "affectedMachines", 0,
                 "throughputLossUnits", 0.0,
                 "productionLossUnits", 0.0,
-                "note", "Normal operation — no failure injected");
+                "note", "Normal operation - no failure injected");
     }
 
     private static double clamp01(double v) {

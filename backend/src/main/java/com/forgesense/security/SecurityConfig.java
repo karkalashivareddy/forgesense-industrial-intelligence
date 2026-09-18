@@ -1,6 +1,7 @@
 package com.forgesense.security;
 
 import com.forgesense.common.config.ForgeSenseProperties;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,8 +21,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * Stateless JWT security. Public endpoints (auth, health, WebSocket,
- * Swagger, H2 console) are excluded; everything else requires a token.
+ * Stateless JWT security. Only authentication and health probes are public in
+ * secured mode; WebSocket, documentation, and database consoles are not
+ * anonymous control-plane entry points.
  * Set forgesense.security.enabled=false to open all endpoints in dev only.
  */
 @Configuration
@@ -51,6 +53,9 @@ public class SecurityConfig {
         boolean fromProps = props.security() == null || props.security().enabled();
         boolean securityEnabled = fromProps && !"false".equalsIgnoreCase(
                 System.getenv("FORGESENSE_SECURITY_ENABLED"));
+        if (!securityEnabled && !props.demoMode()) {
+            throw new IllegalStateException("Security cannot be disabled outside demo mode");
+        }
 
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -63,11 +68,22 @@ public class SecurityConfig {
             http.authorizeHttpRequests(auth -> auth
                     .requestMatchers("/api/v1/auth/**").permitAll()
                     .requestMatchers("/actuator/health/**").permitAll()
-                    .requestMatchers("/ws/**", "/ws", "/topic/**").permitAll()
-                    .requestMatchers("/h2-console/**").permitAll()
-                    .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                    // The HTTP upgrade is public; JWT auth is enforced on
+                    // the STOMP CONNECT frame because browsers cannot add an
+                    // HTTP Authorization header to a native WebSocket call.
+                    .requestMatchers("/ws/**").permitAll()
+                    .requestMatchers("/h2-console/**").access((authentication, context) ->
+                            new org.springframework.security.authorization.AuthorizationDecision(props.demoMode()))
+                    .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").access((authentication, context) ->
+                            new org.springframework.security.authorization.AuthorizationDecision(props.demoMode()))
                     .requestMatchers("/error").permitAll()
-                    .anyRequest().authenticated());
+                    .anyRequest().authenticated())
+                    .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
+                        response.getWriter().write("{\"message\":\"Authentication required\"}");
+                    }));
         } else {
             http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
         }
@@ -79,7 +95,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
+        List<String> origins = props.allowedOrigins() == null || props.allowedOrigins().isEmpty()
+                ? List.of("http://localhost:5173", "http://127.0.0.1:5173") : props.allowedOrigins();
+        config.setAllowedOrigins(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

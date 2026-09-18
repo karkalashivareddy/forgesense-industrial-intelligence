@@ -1,4 +1,4 @@
-import { el, esc, pct, num, int, statusInfo, riskInfo, healthInfo, anomalyInfo } from './util.js';
+import { el, esc, pct, num, int, statusInfo, riskInfo, healthInfo, anomalyInfo, machineState } from './util.js';
 import { store, selectMachine } from './state.js';
 import { openInspector } from './views/inspector.js';
 
@@ -7,9 +7,10 @@ export function toneColor(tone) {
 }
 
 export function statusPill(m) {
-  const s = statusInfo(m);
-  return el('span', { class: 'pill-status st-' + s.tone, title: s.hint },
-    el('span', { class: 'sq' }), s.label);
+  const s = machineState(m);
+  const cls = s.state === 'STALE' ? 'stale' : s.tone;
+  return el('span', { class: 'pill-status st-' + cls, title: s.hint },
+    el('span', { class: 'sq' }), s.label.toUpperCase());
 }
 
 export function riskPill(m) {
@@ -61,8 +62,51 @@ export function errorBox(msg) {
   return el('div', { class: 'error-box' }, msg || 'Request failed.');
 }
 
+export function fleetSegments(fs) {
+  const total = fs && fs.total ? fs.total : 0;
+  const segs = [
+    { key: 'good', label: 'Healthy', tone: 'good', count: (fs.normal || 0) + (fs.recovering || 0) },
+    { key: 'warn', label: 'Attention', tone: 'warn', count: fs.attn || 0 },
+    { key: 'down', label: 'Offline / Maint', tone: 'down', count: (fs.offline || 0) + (fs.maintenance || 0) },
+  ];
+  return { total, segs: segs.map(s => ({ ...s, pct: total ? s.count / total : 0 })) };
+}
+
+export function fleetBar(fs) {
+  const { total, segs } = fleetSegments(fs);
+  const bar = el('div', { class: 'fleetbar', role: 'img', 'aria-label': 'Fleet health: ' + total + ' machines total' },
+    segs.map(s => el('div', {
+      class: 'fleetbar-seg f-' + s.tone,
+      style: { width: s.count ? pct(s.pct, 0) : '0%' },
+      title: s.label + ': ' + s.count,
+    })));
+  const legend = el('div', { class: 'fleetbar-legend' },
+    segs.map(s => el('span', { class: 'f-' + s.tone },
+      el('i', { class: 'sq' }), s.label, ' ', el('b', {}, s.count))));
+  return el('div', { class: 'fleetbar-wrap' }, bar, legend);
+}
+
+export function insightCard({ tone = 'info', title, lead, conf, why }) {
+  const box = el('div', { class: 'insight' });
+  const main = el('div', { class: 'insight-main' },
+    el('div', { class: 'insight-acc a-' + tone }),
+    el('div', { class: 'insight-content' },
+      el('div', { class: 'insight-head' },
+        el('span', { class: 'insight-title' }, title),
+        conf ? el('span', { class: 'conf-tag conf-' + conf.scale }, conf.label + ' confidence') : null),
+      lead ? el('div', { class: 'insight-lead' }, lead) : null,
+      why ? el('button', { class: 'btn btn-sm insight-toggle', onClick: () => why.classList.toggle('hidden') }, 'Why?') : null));
+  box.appendChild(main);
+  if (why) {
+    why.classList.add('insight-why');
+    why.classList.add('hidden');
+    box.appendChild(why);
+  }
+  return box;
+}
+
 export function statusDot(m) {
-  const s = statusInfo(m);
+  const s = machineState(m);
   return el('span', {
     style: { background: toneColor(s.tone), width: '7px', height: '7px', borderRadius: '2px', display: 'inline-block' },
   });
