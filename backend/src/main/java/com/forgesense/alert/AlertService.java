@@ -84,6 +84,9 @@ public class AlertService {
 
         metrics.alertsCounter().increment();
         metrics.perTypeAlert(type).increment();
+        if (severity == AlertSeverity.CRITICAL) {
+            metrics.recordAnomaly();
+        }
 
         eventLogService.append("ALERT_CREATED", twin.getMachineId(), triggeredBy == null ? "decision-engine" : triggeredBy,
                 alert.getHeadline(), Map.of("alertId", alert.getId(), "severity", severity.name(), "correlationId", correlationId));
@@ -144,9 +147,6 @@ public class AlertService {
                 "Alert resolved: " + truncate(notes), null);
         ws.broadcast("alert.updated", toPayload(a));
         return a;
-    }
-
-    public void recommendMaintenance(MachineTwin twin, Machine machine) {
     }
 
     private static String serializeFactors(Assessment a) {

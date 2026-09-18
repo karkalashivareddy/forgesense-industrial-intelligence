@@ -26,13 +26,14 @@ Prometheus + Grafana.
   health at `/actuator/health`, Prometheus metrics at `/actuator/prometheus`.
 - Frontend: `http://localhost:5173` — prompts for the operator password.
 - Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3000` (admin/forgesense) — Prometheus datasource is
+- Grafana: `http://localhost:3000` — the admin password comes from
+  `GRAFANA_ADMIN_PASSWORD`; the Prometheus datasource is
   provisioned under `infra/grafana/`.
 
 ## IAM notes
 
 - Dev users (seeded on boot): `admin`, `operator`, `engineer`. Passwords come from
-  `FORGESENSE_DEV_PASSWORD` (default `forgesense-dev`). The JWT signing key is a
+`FORGESENSE_DEV_PASSWORD` (default `forgesense-dev`). The JWT signing key is a
   documented demo placeholder (`forgesense-demo-...`) — replace it for any real
   deployment.
 - WebSocket/STOMP endpoints are not anonymous control-plane entry points; the

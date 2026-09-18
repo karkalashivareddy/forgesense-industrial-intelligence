@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: forgesense
       POSTGRES_USER: forgesense
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-forgesense_dev_pw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -79,11 +79,11 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_DB: forgesense
       POSTGRES_USER: forgesense
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-forgesense_dev_pw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       REDIS_HOST: redis
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      FORGESENSE_DEV_PASSWORD: ${FORGESENSE_DEV_PASSWORD:?set FORGESENSE_DEV_PASSWORD in .env}
-      FORGESENSE_SECURITY_JWT_SECRET: ${FORGESENSE_SECURITY_JWT_SECRET:?set FORGESENSE_SECURITY_JWT_SECRET in .env}
+      FORGESENSE_DEV_PASSWORD: ${FORGESENSE_DEV_PASSWORD:-forgesense-dev}
+      FORGESENSE_SECURITY_JWT_SECRET: ${FORGESENSE_SECURITY_JWT_SECRET:?Set FORGESENSE_SECURITY_JWT_SECRET in .env}
     ports:
       - "8080:8080"
 
@@ -96,7 +96,7 @@ services:
         condition: service_healthy
     environment:
       FORGESENSE_BACKEND: http://backend:8080
-      FORGESENSE_DEV_PASSWORD: ${FORGESENSE_DEV_PASSWORD:-forgeSence-DemoPW-2026!}
+      FORGESENSE_DEV_PASSWORD: ${FORGESENSE_DEV_PASSWORD:-forgesense-dev}
     command: ["python", "-u", "telemetry_feed.py", "--interval", "5"]
     restart: unless-stopped
 

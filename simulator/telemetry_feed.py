@@ -40,7 +40,10 @@ SENSOR_KEYS = [
     "voltage", "power", "flow", "frequency", "airTemperature",
 ]
 
-_AUTH = {"username": "admin", "password": os.environ.get("FORGESENSE_DEV_PASSWORD", "forgesense-dev")}
+_DEV_PASSWORD = os.environ.get("FORGESENSE_DEV_PASSWORD")
+if not _DEV_PASSWORD:
+    raise RuntimeError("FORGESENSE_DEV_PASSWORD must be configured before running the simulator")
+_AUTH = {"username": "admin", "password": _DEV_PASSWORD}
 _BASE = os.environ.get("FORGESENSE_BACKEND", "http://localhost:8080")
 
 
@@ -54,8 +57,29 @@ def _post(path, payload, token=None):
         return json.loads(resp.read())
 
 
+def _get(path, token):
+    req = urllib.request.Request(f"{_BASE}{path}",
+                                 headers={"Authorization": f"Bearer {token}"}, method="GET")
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
+
+
 def login():
     return _post("/api/v1/auth/login", _AUTH)["accessToken"]
+
+
+def last_sequence(machine_id, token):
+    """Resume after the backend's highest persisted sequence so restarts are accepted.
+
+    The ingest guard compares against the maximum sequence (not the newest by
+    timestamp), so a bounded window is scanned and the max taken.
+    """
+    try:
+        rows = _get(f"/api/v1/machines/{machine_id}/telemetry?limit=1000", token).get("rows", [])
+        seqs = [r.get("sequence") for r in rows if r.get("sequence") is not None]
+        return max(seqs) if seqs else 0
+    except Exception:  # noqa: BLE001 - fall back to a fresh counter
+        return 0
 
 
 def _round_value(key, value):
@@ -88,7 +112,7 @@ def main():
     omit = set(args.omit) | ({"airTemperature", "frequency", "voltage"} if args.bare else set())
     state = {mid: dict(catalog.baseline(mid)) for mid in machines}
     degrade = {mid: 0.0 for mid in args.degrade}
-    seq = {mid: 0 for mid in machines}
+    seq = {mid: last_sequence(mid, token) for mid in machines}
     t0 = time.time()
     phase = {mid: i * 1.7 for i, mid in enumerate(machines)}
     stop = False

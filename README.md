@@ -22,7 +22,7 @@ flowchart LR
     PR --> G[Grafana]
 ```
 
-The Docker Compose topology also provisions Kafka, PostgreSQL, Redis, the ML service, the telemetry simulator, the frontend, Prometheus, and Grafana. The backend can use an in-process event bus for development and Kafka for the Compose profile.
+The Docker Compose topology provisions Kafka, PostgreSQL, Redis, the ML service, the frontend, Prometheus, and Grafana. The telemetry simulator is a standalone Python script (`simulator/telemetry_feed.py`) that pushes to the ingest API — run it separately. The backend can use an in-process event bus for development and Kafka for the Compose profile.
 
 ## Key capabilities
 
@@ -33,7 +33,7 @@ The Docker Compose topology also provisions Kafka, PostgreSQL, Redis, the ML ser
 - ML assessments from FastAPI/scikit-learn: anomaly label/score, failure risk, estimated remaining degradation steps, factors, and recommendations.
 - Maintenance scheduling, lifecycle actions, alerts, production-impact analysis, and simulation controls.
 - JWT login, role-aware backend security, WebSocket notifications, Actuator health, Prometheus metrics, and OpenAPI UI.
-- Static frontend with a Three.js factory floor, fleet/detail views, analytics, prediction, maintenance, simulation, alert, and event screens.
+- Static frontend with a Three.js factory floor, fleet/detail views, analytics, prediction, maintenance, simulation, alert, and event screens. The browser consumes Spring STOMP deltas with bounded coalescing and keeps REST snapshots as the consistency/fallback path.
 
 ## Technology stack
 
@@ -56,7 +56,7 @@ cp .env.example .env             # Linux/macOS
 Copy-Item .env.example .env      # PowerShell
 ```
 
-At minimum, set `FORGESENSE_DEV_PASSWORD` and `FORGESENSE_SECURITY_JWT_SECRET` in `.env`. Use a strong, unique JWT secret outside local development. Then run:
+At minimum, set `FORGESENSE_DEV_PASSWORD` and `FORGESENSE_JWT_SECRET` in `.env`. Use a strong, unique value for every secret. Then run:
 
 ```bash
 docker compose up --build
@@ -169,7 +169,10 @@ docs/          Architecture, data flow, deployment, ownership, and system design
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Data flow](docs/DATA_FLOW.md)
+- [Real-time transport](docs/REALTIME.md)
 - [System design](docs/SYSTEM_DESIGN.md)
+- [Engineering decisions](docs/ENGINEERING_DECISIONS.md)
+- [Interview guide](docs/INTERVIEW_GUIDE.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [Project specification](docs/PROJECT_SPECIFICATION.md)
 

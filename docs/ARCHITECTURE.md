@@ -1,4 +1,4 @@
-# ForgeSense — Architecture
+# ForgeSense â€” Architecture
 
 ```mermaid
 flowchart LR
@@ -8,18 +8,17 @@ flowchart LR
     end
 
     subgraph Streaming
-        K[Apache Kafka<br/>forge.* topics]
-        BUS[(In-process bus<br/>dev mode)]
+        K[Apache Kafka<br/>forge.* topics<br/>docker profile]
+        BUS[(In-process bus<br/>dev profile)]
     end
 
     subgraph Backend [Spring Boot Backend - port 8080]
-        CONSUMER[Kafka / bus consumers]
+        CONSUMER[Event bus consumers]
         VALIDATE[Validation + normalization]
         TWIN[Digital Twin state store]
         SM[State machine engine]
         DECISION[Decision engine]
         IMPACT[Production impact engine]
-        SIM[Simulation engine]
         MTN[Maintenance workflow]
         ALERT[Alert lifecycle]
         WS[WebSocket hub /ws/*]
@@ -30,14 +29,16 @@ flowchart LR
 
     subgraph ML [ML Service - FastAPI, port 8001]
         ANOM[Anomaly detector<br/>Isolation Forest]
-        RISK[Failure-risk model]
-        EXPL[Baseline-importance factor attribution]
+        RISK[Failure-risk model<br/>Gradient Boosting]
+        RUL[Heuristic RUL estimate]
+        ATTR[Feature attribution<br/>replace-with-baseline]
     end
 
     subgraph Frontend [Static dashboard - nginx :5173]
-        UI[Vanilla JS + Three.js via CDN]
+        UI[Vanilla ES-module JS + Three.js via CDN]
         X3D[Three.js factory floor]
         POLL[REST poll every 3 s]
+        CHARTS[Canvas chart helpers]
     end
 
     subgraph Ops [Observability]
@@ -46,28 +47,30 @@ flowchart LR
     end
 
     SIM -->|telemetry| K
-    SIM -->|telemetry| ING
+    SIM -->|POST /api/v1/telemetry/ingest| ING
+    ING --> VALIDATE
+    ING --> BUS
     K --> CONSUMER
     BUS --> CONSUMER
-    ING --> BUS
     CONSUMER --> VALIDATE
     VALIDATE --> TWIN
     TWIN --> SM
-    CONSUMER -->|feature vector| ANOM
+    TWIN -->|feature vector| ANOM
     ANOM --> RISK
-    RISK --> EXPL
-    EXPL --> DECISION
+    RISK --> RUL
+    RUL --> ATTR
+    ATTR --> DECISION
     TWIN --> DECISION
     DECISION --> IMPACT
     DECISION --> ALERT
     ALERT --> MTN
-    MTN --> SIM
     DECISION --> WS
     TWIN --> REDISC
     REDISC --> PG
     REST --> UI
     POLL --> REST
     UI --> X3D
+    UI --> CHARTS
     PROM -->|scrape /actuator/prometheus| REST
     GRA --> PROM
 ```
@@ -90,34 +93,36 @@ flowchart LR
 3. **The digital twin is authoritative.** Every machine's synchronized state
    (telemetry, health, risk, status, dependencies, recent events) is owned by
    the backend. The 3D scene and all dashboard views render from this one source
-   of truth — the frontend never invents business state.
+   of truth â€” the frontend never invents business state.
 
-4. **Infrastructure adapters.** PostgreSQL/Redis/Kafka are the production
-   adapters; H2/in-memory/in-process bus are dev adapters. Interfaces are
-   identical, so behavior is the same and the switch is environment-driven.
+4. **Infrastructure adapters.** PostgreSQL/Redis/Kafka are the Compose-profile
+   adapters; H2/in-memory/in-process bus are dev-profile adapters. Interfaces
+   are identical, so behavior stays the same and the switch is environment-driven.
 
-5. **Observability everywhere.** Micrometer counters/histograms, health
-   indicators per dependency, Prometheus export, Grafana dashboards.
+5. **Observability.** Micrometer counters/histograms/Timer, health indicators
+   per dependency (DB, Redis, Kafka, ML), Prometheus export, Grafana dashboards.
 
 ## Component responsibilities
 
 | Component | Responsibilities | Anti-responsibilities |
 |---|---|---|
-| Simulator | generate plausible machine telemetry, run scenarios, expose control API | must not decide health/risk — that is upstream of it |
+| Simulator | generate synthetic telemetry for the fleet, inject degradations, run bare mode | must not decide health/risk â€” that is upstream of it |
 | Backend | domain truth: machines, state machine, alerts, maintenance, impact, simulation, websocket, API | must not train models |
 | ML service | anomaly score, failure-risk, RUL estimate, baseline-importance factors | must not own alert policy |
 | Frontend | render synchronized state, interactions | must not compute business state |
 | Redis | latest telemetry / machine state cache, small short-lived state | not the source of truth |
-| PostgreSQL | persisted domain + history | investors-free time-series bloat becomes analytics problem |
+| PostgreSQL | persisted domain + history | telemetry history bloat is a foreseeable analytics problem |
 
-## Scaling (how this grows)
+## Scaling notes (future work, not implemented)
 
-- Kafka partitions by `machineId` key → ordered per machine, parallel across
+- Kafka partitions by `machineId` key â†’ ordered per machine, parallel across
   machines.
 - Consumer groups scale pipeline stages.
-- Telemetry history moves to a time-series store (TimescaleDB/ClickHouse) as it
-  grows; PostgreSQL keeps domain/history summarized.
+- Telemetry history could move to a time-series store (TimescaleDB/ClickHouse)
+  as it grows; PostgreSQL would keep domain/history summarized.
 - WebSocket scale-out: topic prefix per backend node or broker; sticky sessions.
 - ML inference: stateless, horizontally scalable behind a load balancer with
   model warm cache.
-- See `docs/SYSTEM_DESIGN.md:scalability`.
+
+These are the intended growth path and are documented as forward-looking â€”
+only the single-node Compose topology is implemented today.

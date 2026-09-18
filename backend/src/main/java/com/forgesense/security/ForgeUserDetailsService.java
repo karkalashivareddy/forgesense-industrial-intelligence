@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Demo user store. Credentials live in environment variables; roles are
@@ -24,11 +25,14 @@ public class ForgeUserDetailsService implements UserDetailsService {
 
     public ForgeUserDetailsService(PasswordEncoder passwordEncoder, ForgeSenseProperties props) {
         this.passwordEncoder = passwordEncoder;
+        boolean securityEnabled = props.security() == null || props.security().enabled();
         String base = System.getenv("FORGESENSE_DEV_PASSWORD");
-        if ((base == null || base.isBlank()) && !props.demoMode()) {
-            throw new IllegalStateException("FORGESENSE_DEV_PASSWORD must be provided outside demo mode");
+        if (securityEnabled && (base == null || base.isBlank()) && !props.demoMode()) {
+            throw new IllegalStateException("FORGESENSE_DEV_PASSWORD must be configured when security is enabled outside demo mode");
         }
-        if (base == null || base.isBlank()) base = "forgesense-dev";
+        if (base == null || base.isBlank()) {
+            base = props.demoMode() ? "forgesense-dev" : UUID.randomUUID().toString();
+        }
         this.passwords = Map.of(
                 "operator", base,
                 "engineer", base,

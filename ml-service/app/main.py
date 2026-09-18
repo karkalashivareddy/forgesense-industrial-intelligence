@@ -9,6 +9,7 @@ ensures any clone produces the same models.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -52,11 +53,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# The ML service is a private backend-to-backend endpoint. CORS is narrowed to
-# the configured backend origin; it is not served to the browser directly.
+# The ML service is consumed server-to-server by the Spring Boot backend, so
+# credentials/CORS are only enabled for explicitly configured origins
+# (defaults to the dev/backend origins used when running everything locally).
+_app_origins = [
+    o.strip()
+    for o in os.environ.get("FORGESENSE_ML_CORS_ORIGINS", "http://localhost:8080,http://localhost:5173").split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://localhost:5173"],
+    allow_origins=_app_origins,
     allow_credentials=False,
     allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],

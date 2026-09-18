@@ -97,6 +97,26 @@ export function bindRail() {
   if (topBtn) {
     topBtn.addEventListener('click', () => notifyHandlers('camera-top'));
   }
+  const riskBtn = document.getElementById('riskBtn');
+  if (riskBtn) {
+    riskBtn.addEventListener('click', () => notifyHandlers('risk-mode-toggle'));
+  }
+  const mobileNavToggle = document.getElementById('mobileNavToggle');
+  const primaryNav = document.getElementById('primaryNav');
+  if (mobileNavToggle && primaryNav) {
+    mobileNavToggle.addEventListener('click', () => {
+      const open = primaryNav.classList.toggle('mobile-open');
+      mobileNavToggle.setAttribute('aria-expanded', String(open));
+      mobileNavToggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+    });
+    primaryNav.addEventListener('click', e => {
+      if (e.target.closest('.rail-btn')) {
+        primaryNav.classList.remove('mobile-open');
+        mobileNavToggle.setAttribute('aria-expanded', 'false');
+        mobileNavToggle.setAttribute('aria-label', 'Open navigation');
+      }
+    });
+  }
   const zoneHost = document.getElementById('zoneChips');
   if (zoneHost) {
     zoneHost.addEventListener('click', (e) => {

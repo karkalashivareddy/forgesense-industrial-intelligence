@@ -6,6 +6,26 @@ on:
   pull_request:
 
 jobs:
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject tracked local credential defaults
+        run: |
+          dev_pw=$(printf '%s%s%s' 'forgesense' '_dev' '_pw')
+          demo_key=$(printf '%s%s' 'forgesense' '-demo-jwt-signing-key')
+          demo_pw=$(printf '%s%s' 'forgeSence' '-DemoPW')
+          default_pw=$(printf '%s%s' 'default forgesense' '-dev')
+          pattern="${dev_pw}|${demo_key}|${demo_pw}|${default_pw}"
+          matching=$(git grep -lE "$pattern" -- ':!.github/workflows/ci.yml')
+          if [ -n "$matching" ]; then
+            echo "Tracked local credential material found:"
+            printf '%s\n' "$matching"
+            exit 1
+          fi
+          test ! -f .env
+
   backend:
     name: Backend (Spring Boot 4)
     runs-on: ubuntu-latest

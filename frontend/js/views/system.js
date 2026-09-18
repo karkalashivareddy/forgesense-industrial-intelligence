@@ -20,7 +20,7 @@ export function unmount() { /* stateless */ }
 
 export function update(s) {
   if (!root) return;
-  const ref = JSON.stringify([s.status, s.telemetryStatus, s.analytics]);
+  const ref = JSON.stringify([s.status, s.telemetryStatus, s.analytics, s.liveTransport]);
   if (ref === lastRef) return;
   lastRef = ref;
   render();
@@ -116,9 +116,11 @@ function pipelineCard(st, ts) {
   return card('Data pipeline', 'REST-polled control room · interval ' + (st.pollIntervalSeconds || 3) + 's',
     kv('Source', 'simulator ' + esc(ts.source || '—') + ' (synthetic, ~5s samples)'),
     kv('Backend input', esc(st.inputTransport || ts.transport || 'IN_PROCESS')),
-    kv('UI transport', 'REST poll · ' + (st.pollIntervalSeconds || 3) + 's · no WebSocket subscription'),
+    kv('UI transport', store.liveTransport?.state === 'open'
+      ? 'STOMP live deltas · REST snapshot every ' + (st.pollIntervalSeconds || 3) + 's'
+      : 'REST fallback · ' + (st.pollIntervalSeconds || 3) + 's · reconnecting live transport'),
     kv('Freshness', 'age shown in top bar · basis ' + esc(basis) + ' from backend'),
     kv('Auth', 'JWT bearer + RBAC (OPERATOR/ENGINEER/ADMIN)'),
     el('div', { class: 'muted small', style: { marginTop: '8px' } },
-      'The backend exposes SockJS/STOMP topics (machine.updated, alert.created, impact.updated, …). This UI deliberately polls REST so every number it shows is the same single source of truth.'));
+      'The backend exposes SockJS/STOMP topics for live deltas. REST remains the snapshot authority so a reconnect can reconcile missed events.'));
 }

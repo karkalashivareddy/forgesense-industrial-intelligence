@@ -50,28 +50,29 @@ function opState(fs) {
 
 function render() {
   root.innerHTML = '';
+  root.className = 'view active command-page';
   const fs = fleetSummary(store.machines);
   const avg = avgHealth(store.machines);
   const op = opState(fs);
   const critList = (store.machines || []).filter(m => m.status !== 'NORMAL');
 
-  root.appendChild(el('div', { class: 'page-title' }, 'Command Center',
+  root.appendChild(el('div', { class: 'page-title command-masthead' }, 'Command Center',
     el('span', { class: 'pill-status st-' + op.tone, id: 'cmdOpState' }, 'Factory ' + op.label),
     el('span', { class: 'sub' }, 'avg health ' + (avg != null ? num(avg, 0) + '%' : '—') + ' · synthetic demo plant')));
 
-  root.appendChild(el('div', { class: 'grid cols-5' },
+  root.appendChild(el('div', { class: 'ops-strip' },
     kpi('Healthy', fs.normal + '/' + fs.total, 'operating within bounds', 'good'),
     kpi('Attention', fs.attn, fs.degraded + ' degraded · ' + fs.warning + ' warning', 'warn'),
     kpi('Critical', fs.critical, 'immediate focus', fs.critical ? 'critical' : 'good'),
     kpi('Offline & maintenance', (fs.offline + fs.maintenance), fs.offline + ' offline · ' + fs.maintenance + ' in maint', 'maint'),
     kpi('At risk (≥ 50%)', fs.atRisk, 'modeled failure risk', fs.atRisk ? 'warn' : 'good')));
 
-  root.appendChild(el('div', { class: 'card', style: { marginTop: '12px' } },
+  root.appendChild(el('div', { class: 'card fleet-signal', style: { marginTop: '12px' } },
     el('div', { class: 'card-head' }, el('h3', { class: 'card-title' }, 'Fleet health'),
       el('span', { class: 'card-sub' }, 'aggregate across zones · live from telemetry feed')),
     fleetBar(fs)));
 
-  root.appendChild(el('div', { class: 'grid cols-3', style: { marginTop: '12px' } },
+  root.appendChild(el('div', { class: 'command-layout', style: { marginTop: '12px' } },
     situationsCard(critList),
     zoneMapCard(),
     sideColumn(fs)));
@@ -101,7 +102,9 @@ function situationsCard(critList) {
           el('span', {}, 'anomaly ' + pct(m.anomalyScore) + ' · ' + a.band),
           m.rulEstimate != null ? el('span', {}, 'est steps ' + int(m.rulEstimate)) : null), s.guidance ? el('div', { class: 'alert-guide' }, s.guidance) : null)));
   }
-  return card('Situation', 'machines not NORMAL', body);
+  const panel = card('Situation', 'machines not NORMAL', body);
+  panel.classList.add('situation-panel');
+  return panel;
 }
 
 function zoneMapCard() {
@@ -131,7 +134,9 @@ function zoneMapCard() {
         el('span', { class: 'muted small', style: { marginLeft: 'auto' } },
           Object.keys(stc).map(k => k + ':' + stc[k]).join(' ')))));
   }
-  return card('Factory map', 'zoom into 3D or open inspector', body);
+  const panel = card('Factory map', 'zoom into 3D or open inspector', body);
+  panel.classList.add('zone-panel');
+  return panel;
 }
 
 function sideColumn(fs) {
@@ -148,7 +153,9 @@ function sideColumn(fs) {
   body.appendChild(el('div', { class: 'btn-row', style: { marginTop: '10px', flexDirection: 'column', alignItems: 'stretch', gap: '6px' } },
     el('button', { class: 'btn btn-primary', onClick: () => window.location.hash = '#/factory' }, '◉ Open the interactive 3D twin'),
     el('button', { class: 'btn', onClick: () => window.location.hash = '#/simulation' }, 'Run a what-if scenario')));
-  return card('Production impact', 'estimate from impact engine', body);
+  const panel = card('Production impact', 'estimate from impact engine', body);
+  panel.classList.add('impact-panel');
+  return panel;
 }
 
 function renderImpact() {
@@ -163,8 +170,10 @@ function renderImpact() {
 }
 
 function detectionChain() {
-  return card('Detection chain', 'from sensor to action (all steps live from the same REST feed)',
+  const panel = card('Detection chain', 'from sensor to action (live snapshot + event stream)',
     el('div', { class: 'btn-row', style: { justifyContent: 'space-between', flexWrap: 'wrap' } },
       ['Telemetry', 'ML · risk/anomaly', 'State', 'Alert', 'Impact', 'Maintenance', 'Recovery → Normal'].map((s, i) =>
         el('span', { class: 'badge2', style: { fontSize: '11px' } }, (i + 1) + '. ' + s))));
+  panel.classList.add('detection-chain');
+  return panel;
 }

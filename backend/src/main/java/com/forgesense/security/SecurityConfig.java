@@ -68,6 +68,10 @@ public class SecurityConfig {
             http.authorizeHttpRequests(auth -> auth
                     .requestMatchers("/api/v1/auth/**").permitAll()
                     .requestMatchers("/actuator/health/**").permitAll()
+                    // The HTTP upgrade is public; JWT auth is enforced on
+                    // the STOMP CONNECT frame because browsers cannot add an
+                    // HTTP Authorization header to a native WebSocket call.
+                    .requestMatchers("/ws/**").permitAll()
                     .requestMatchers("/h2-console/**").access((authentication, context) ->
                             new org.springframework.security.authorization.AuthorizationDecision(props.demoMode()))
                     .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").access((authentication, context) ->

@@ -24,6 +24,10 @@ let tab = 'overview';
 let mCache = {};
 let lastBodyRender = 0;
 let idleTimer = null;
+let liveRenderTimer = null;
+let previousFocus = null;
+let trapHandler = null;
+let lastLiveEventCount = 0;
 const teleCfg = { metric: null, range: '300' };
 
 function panel() { return document.getElementById('inspector'); }
@@ -38,13 +42,17 @@ export function isOpen() {
 }
 
 export function openInspector(machineId, tabName) {
+  if (!isOpen()) previousFocus = document.activeElement;
   id = machineId;
   tab = tabName || 'overview';
   panel().classList.remove('collapsed');
   panel().setAttribute('aria-hidden', 'false');
+  lastLiveEventCount = store.liveEventCount || 0;
   renderHead();
   renderTabs();
   renderTab();
+  requestAnimationFrame(() => panel()?.focus());
+  installFocusTrap();
   startIdleRefresh();
 }
 
@@ -52,6 +60,34 @@ export function closeInspector() {
   stopIdleRefresh();
   panel().classList.add('collapsed');
   panel().setAttribute('aria-hidden', 'true');
+  if (trapHandler) panel().removeEventListener('keydown', trapHandler);
+  trapHandler = null;
+  if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+  previousFocus = null;
+}
+
+function focusables() {
+  const p = panel();
+  return p ? [...p.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')] : [];
+}
+
+function installFocusTrap() {
+  if (trapHandler) panel().removeEventListener('keydown', trapHandler);
+  trapHandler = e => {
+    if (e.key === 'Escape') { e.preventDefault(); closeInspector(); return; }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      const tabs = [...tabsEl().querySelectorAll('[role="tab"]')];
+      const current = tabs.indexOf(document.activeElement);
+      if (current >= 0) { e.preventDefault(); const next = tabs[(current + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]; next.focus(); next.click(); return; }
+    }
+    if (e.key !== 'Tab') return;
+    const items = focusables();
+    if (!items.length) return;
+    const first = items[0]; const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+  panel().addEventListener('keydown', trapHandler);
 }
 
 function startIdleRefresh() {
@@ -69,6 +105,7 @@ function stopIdleRefresh() {
     clearInterval(idleTimer);
     idleTimer = null;
   }
+  if (liveRenderTimer) { clearTimeout(liveRenderTimer); liveRenderTimer = null; }
 }
 
 export function toggleInspector() {
@@ -92,6 +129,8 @@ function renderTabs() {
       class: 'tab-btn' + (key === tab ? ' active' : ''),
       role: 'tab',
       'aria-selected': key === tab ? 'true' : 'false',
+      tabindex: key === tab ? '0' : '-1',
+      'aria-controls': 'inspBody',
       onClick: () => { tab = key; renderTabs(); renderTab(); },
     }, label));
   }
@@ -516,6 +555,13 @@ export function subscribeInspector() {
       renderHead();
       renderTabs();
       if (isOpen()) renderTab();
+    }
+    if (isOpen() && s.selectedMachineId === id && s.liveEventCount !== lastLiveEventCount) {
+      lastLiveEventCount = s.liveEventCount;
+      if (tab === 'overview' || tab === 'telemetry' || tab === 'prediction') {
+        if (liveRenderTimer) window.clearTimeout(liveRenderTimer);
+        liveRenderTimer = window.setTimeout(() => { liveRenderTimer = null; if (isOpen()) { bust(); renderHead(); renderTab(); } }, 120);
+      }
     }
   });
 }

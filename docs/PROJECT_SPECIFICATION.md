@@ -1,8 +1,8 @@
 # ForgeSense — Project Specification
 
-> **Version:** 1.0
-> **Status:** Baseline specification adopted at project start
-> **Date:** 2026-09-12
+> **Version:** 1.1
+> **Status:** Revised specification reflecting the implemented system
+> **Date:** 2026-09-16
 
 ---
 
@@ -24,7 +24,7 @@ answer the questions operators actually need:
 ForgeSense is a decision-support platform that closes that loop:
 
 ```
-TELEMETRY → EVENT STREAM → DIGITAL TWIN → ML → EXPLANATION
+TELEMETRY → VALIDATION/NORMALIZATION → DIGITAL TWIN → ML ASSESSMENT
 → ALERT → PRODUCTION IMPACT → WHAT-IF SIMULATION → MAINTENANCE → RECOVERY
 ```
 
@@ -46,10 +46,10 @@ TELEMETRY → EVENT STREAM → DIGITAL TWIN → ML → EXPLANATION
   rest of the product consumes.
 - Track the operational event timeline (telemetry → anomaly → risk → alert →
   action → maintenance → recovery) backed by real system events.
-- Be observable (metrics, health, dashboards), secure (roles, auth), testable,
+- Be observable (metrics, health, dashboards), secure (roles, JWT), testable,
   and reproducible (Docker Compose).
-- Be genuinely functional: no dead buttons, no fake connectivity badges, no
-  fabricated ML metrics or fake telemetry posing as real factory data.
+- Be genuinely functional: no dead buttons, no fake connectivity badges, and
+  no fabricated ML metrics or telemetry posing as real factory data.
 
 ## 3. Non-Goals (explicit)
 
@@ -59,12 +59,13 @@ TELEMETRY → EVENT STREAM → DIGITAL TWIN → ML → EXPLANATION
   decision-support system; humans act.
 - **No safety-critical certification** (IEC 61508 / ISO 26262 etc.).
 - **No real RUL (remaining useful life) claims.** RUL is shown only as a
-  clearly labeled heuristic regressor estimate (there is no run-to-failure
+clearly labeled heuristic regressor estimate (there is no run-to-failure
   dataset behind it).
 - **No fabricated monetary loss figures.** Production impact is presented as a
   labeled *estimate* with transparent assumptions.
-- **No production-grade multi-region fault-tolerant infrastructure.** We
-  document how the system scales; we do not build a giant cluster locally.
+- **No production-grade multi-region fault-tolerant infrastructure.** The
+  system is documented to explain how it could scale; only a single-node
+  Compose topology is built.
 
 ## 4. Architecture Decisions (summary)
 
@@ -89,35 +90,34 @@ See `docs/ARCHITECTURE.md` and `docs/SYSTEM_DESIGN.md` for the full rationale.
 
 ### 4.1 Infrastructure adapters (graceful degradation)
 
-Real deployments use PostgreSQL / Redis / Kafka. Local development must remain
-possible without Docker. ForgeSense therefore defines **infrastructure
+Real Compose deployments use PostgreSQL / Redis / Kafka. Local development must
+remain possible without Docker. ForgeSense therefore defines **infrastructure
 adapter interfaces**:
 
-- `Database`: PostgreSQL (docker profile) **or** H2 in PostgreSQL mode (dev)
-- `CacheStore`: Redis (docker) **or** in-memory hash map (dev)
+- `CacheStore`: Redis (docker) **or** in-memory (dev)
 - `EventBus`: Kafka (docker) **or** in-process event bus (dev)
-- `MlClient`: FastAPI HTTP client (default) **or** local in-process heuristics
+- `MlClient`: FastAPI HTTP client (default) **or** heuristic scorer
   (only when the ML service is unreachable — explicitly marked)
 
-Selection is driven by environment variables (`forgesense.streaming.kafka.enabled`,
-`spring.profiles.active`, `FORGESENSE_ML_URL`, …). Every path is visible to the
-operator: the UI never claims "Kafka connected" unless Kafka is actually used.
+Selection is driven by environment variables (`spring.profiles.active`,
+`FORGESENSE_ML_URL`, …). Every path is visible to the operator: the UI never
+claims "Kafka connected" unless Kafka is actually used.
 
 ## 5. Domain Model
 
-Primary entities (see `docs/SYSTEM_DESIGN.md`):
+Primary entities under `backend/src/main/java/com/forgesense/**/domain/` (see
+`docs/SYSTEM_DESIGN.md`):
 
 - `Factory` — production site (Factory Alpha).
 - `Zone` — operational area (Machining, Assembly, Packaging, Utilities).
-- `ProductionLine` — ordered grouping of machines (Line A, Line B).
+- `ProductionLine` — ordered grouping of machines.
 - `Machine` — physical asset with type, sensors, health, risk, status.
-- `MachineDependency` — `upstream → downstream` edges (configurable at runtime).
+- `MachineDependency` — `upstream → downstream` edges.
 - `Telemetry` — normalized sensor reading.
-- `Prediction` — anomaly + failure-risk prediction snapshot.
-- `Anomaly` — detected anomaly record.
+- `Prediction` / `Assessment` — anomaly + failure-risk assessment snapshot.
 - `Alert` — operational alert with lifecycle.
 - `MaintenanceRecord` — recommended/scheduled/active/completed work order.
-- `SimulationScenario` — scenario definition + run results.
+- `SimulationScenario` / `SimulationControl` — scenario definitions and controls.
 - `ProductionImpact` — computed consequence of a (simulated or predicted) failure.
 - `OperatorAction` — audit trail of operator decisions.
 - `EventLog` — ordered operational event timeline.
@@ -135,8 +135,7 @@ Versioned event envelopes published over Kafka (and the in-process bus):
   "sequence": 123456,
   "payload": { ... },
   "source": "simulator|backend|ml-service",
-  "schemaVersion": "1.0",
-  "correlationId": "uuid"
+  "schemaVersion": "1.0"
 }
 ```
 
@@ -165,8 +164,8 @@ never invented by the UI (see `docs/SYSTEM_DESIGN.md`).
   decision threshold.
 - **RUL:** a Gradient Boosting regressor produces `rulEstimate`, reported only
   as estimated remaining degradation steps from the synthetic simulator horizon;
-  it is not physical hours or a calibrated remaining-useful-life claim.
-  as a clearly labeled heuristic (no run-to-failure data exists).
+  it is not physical hours or a calibrated remaining-useful-life claim — a
+  clearly labeled heuristic (no run-to-failure data exists).
 - **Explainability:** replace-with-baseline perturbation attribution aggregated
   to features (`ml-service/app/explanation.py`); deliberately **not** SHAP or
   any external explainability library.
@@ -191,10 +190,12 @@ never invented by the UI (see `docs/SYSTEM_DESIGN.md`).
 
 Industrial control-room aesthetic: near-black graphite, subtle borders,
 technical typography, semantic status colors, high information density.
-A single static page renders Fleet Overview (3D factory + KPIs), a Machine
-Inspector (telemetry sparkline, risk factors, explanation), an Event Feed, and
-an Alerts panel. All data is fetched from the backend REST API every 3 s;
-loading/empty/error/offline states render everywhere.
+Pages: Dashboard (KPI + live 3D factory + telemetry strip), Machines, Machine
+Inspector (telemetry sparkline, risk factors, explanation), Alerts, Analytics,
+Maintenance, Simulation, Impact, and an Event Feed. A command palette
+(`Ctrl/Cmd+K`) and keyboard shortcuts are supported. All data is fetched from
+the backend REST API every 3 s; WebSocket broadcast is implemented
+server-side, and loading/empty/error/offline states render everywhere.
 
 ## 11. Infrastructure
 
@@ -202,28 +203,33 @@ Docker Compose: `frontend, backend, ml-service, simulator, postgres, redis,
 kafka, prometheus, grafana`. Prometheus scrapes the backend
 (`/actuator/prometheus`); Grafana is provisioned with the Prometheus datasource
 (dashboards are created manually). GitHub Actions CI: builds + tests the
-backend (`./mvnw package`), runs the ML pytest suite, and syntax-checks the
-frontend (`node --check app.js`).
+backend (`./mvnw package`), runs the ML pytest suite, syntax-checks the
+frontend (`node --check`), and enforces repository hygiene.
 
 ## 12. Risks & Assumptions
 
-- Docker Desktop may be unavailable in some environments → infra adapters
-  (PostgreSQL/Redis/Kafka ↔ H2/in-memory/in-process bus).
+- AI4I-style labeled data is not bundled; the live demo uses the simulator.
 - The models are trained on **synthetic** telemetry derived from
   `config/machine_profiles.json`, not real factory data → clearly documented;
-  the live demo uses the simulator.
+  they should **not** be assumed to transfer to real factories — re-training
+  on real data is required.
+- Docker Desktop may be unavailable in some environments → infra adapters
+  (PostgreSQL/Redis/Kafka ↔ H2/in-memory/in-process bus).
 - Dependencies (machines/edges, throughput, downtime factors) are **modeled
   assumptions**, not measured physics.
 
 ## 13. Milestones
 
-1. Spec + repo skeleton
-2. Domain + database + state engine
-3. Telemetry simulator + scenarios
-4. Kafka pipeline + backend APIs + digital twin + WebSocket
-5. ML training + inference service + explainability
-6. Frontend foundation + dashboard + 3D factory + inspector
-7. Alerts, analytics, impact, simulation, maintenance workflow
-8. Observability + security
-9. Tests, Docker, CI
-10. Documentation, validation, demo scenario, release
+1. Spec + repo skeleton — done
+2. Domain + database + state engine — done
+3. Telemetry simulator + scenarios — done
+4. Event backbone (Kafka/in-process) + backend APIs + digital twin + WebSocket — done
+5. ML training + inference service + attribution — done
+6. Frontend (dashboard + 3D factory + inspector) — done
+7. Alerts, analytics, impact, simulation, maintenance — done
+8. Observability + security — done
+9. Tests, Docker, CI — done
+10. Documentation, validation, demo scenario, release — in progress
+
+Future roadmap items include frontend WebSocket subscription, Testcontainers
+integration tests, and, if data supports it, calibrated RUL modeling.

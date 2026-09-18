@@ -33,6 +33,7 @@ const zoneBoxes = new Map();
 let focusTarget = null;
 let resetPose = null;
 let highlightZone = null;
+let riskMode = false;
 let depsVersion = -1;
 let disposed = false;
 
@@ -303,17 +304,23 @@ function applyStatus(m) {
   if (!node) return;
   const s = machineState(m);
   const tone = s.tone === 'muted' ? 'good' : s.tone;
+  const risk = Number(m.failureRisk ?? 0);
+  const riskTone = risk >= 0.8 ? 'critical' : risk >= 0.5 ? 'warn' : tone;
   if (SIM_OVERLAY.active && SIM_OVERLAY.ids.has(m.machineId)) {
     node.glow.emissive.setHex(0x38c7ea);
     node.glow.emissiveIntensity = 1.0;
+  } else if (riskMode) {
+    node.glow.emissive.setHex(GLOW[riskTone]);
+    node.glow.emissiveIntensity = risk >= 0.5 ? 1.0 : 0.35;
   } else {
     node.glow.emissive.setHex(GLOW[tone]);
     node.glow.emissiveIntensity = tone === 'critical' ? 1.1 : 0.62;
   }
   node.group.scale.set(1, tone === 'critical' ? 1.06 : 1, 1);
-  const showRing = store.selectedMachineId === m.machineId || s.state === 'STALE';
+  const showRing = store.selectedMachineId === m.machineId || s.state === 'STALE' || (riskMode && risk >= 0.5);
   node.ring.visible = showRing;
-  const dim = highlightZone && m.zone !== highlightZone;
+  const dim = (highlightZone && m.zone !== highlightZone)
+    || (riskMode && risk < 0.5 && store.selectedMachineId !== m.machineId);
   node.group.traverse(o => {
     if (o.isMesh && o.material && !o.isSprite) {
       o.material.transparent = true;
@@ -532,6 +539,11 @@ export function setSimMode(active, ids = []) {
   for (const m of machines.values()) applyStatus(m);
 }
 
+export function setRiskMode(active) {
+  riskMode = !!active;
+  for (const m of machines.values()) applyStatus(m);
+}
+
 export function disposeTwin() {
   if (disposed) return;
   disposed = true;
@@ -562,6 +574,7 @@ export function disposeTwin() {
   zoneBoxes.clear();
   focusTarget = null;
   highlightZone = null;
+  riskMode = false;
   depsVersion = -1;
   QUALITY.tiers = [];
 }

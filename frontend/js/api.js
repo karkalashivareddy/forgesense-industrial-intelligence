@@ -3,6 +3,7 @@ export const API_BASE = localStorage.getItem('forgesense.api') || 'http://localh
 let token = null;
 let username = null;
 let roles = [];
+let credential = null;
 
 export function getToken() { return token; }
 export function getRoles() { return roles.slice(); }
@@ -35,14 +36,16 @@ export async function login(user, pass) {
   token = data.accessToken;
   username = data.username;
   roles = data.roles || [];
+  credential = { user, pass };
   return data;
 }
 
 async function relogin() {
-  const pw = decodePw() || 'forgesense-dev';
-  for (const u of username ? [username] : ['operator', 'engineer', 'admin']) {
+  if (!credential) return false;
+  const candidates = [...new Set([credential.user, username, 'operator', 'engineer', 'admin'].filter(Boolean))];
+  for (const u of candidates) {
     try {
-      await login(u, pw);
+      await login(u, credential.pass);
       return true;
     } catch { /* try next candidate */ }
   }
@@ -63,8 +66,4 @@ export async function api(path, opts = {}) {
 
 export function post(path, body) {
   return api(path, { method: 'POST', body: JSON.stringify(body || {}) });
-}
-
-export function decodePw() {
-  return localStorage.getItem('forgesense.pw') || '';
 }

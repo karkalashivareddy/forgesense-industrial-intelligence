@@ -12,18 +12,18 @@ com.forgesense
 ├── common        Config, domain events, ids, errors, abstract infra adapters
 ├── factory       Factory + Zone + ProductionLine domain
 ├── machine       Machine, MachineDependency, MachineStateMachine, Twin
-├── telemetry     Ingestion REST, validation, normalization, TelemetryService
-├── streaming     Kafka config, producers, consumers, in-process bus adapter
-├── prediction    ML client, Prediction model, RiskService
-├── anomaly       Anomaly detection pipeline + persistence
+├── telemetry     Ingestion REST, validation, normalization, pipeline
+├── streaming     Kafka config, event bus + in-process bus adapter
+├── prediction    ML client (HTTP + heuristic fallback), DecisionEngine, gateway
 ├── alert         Alert lifecycle (NEW/ACKNOWLEDGED/INVESTIGATING/RESOLVED)
 ├── maintenance   MaintenanceRecord workflow + recommendations
-├── simulation    Scenario types, SimulationEngine, scenario control
+├── simulation    Scenario types, scenario control + engine
 ├── impact        Dependency traversal, ProductionImpact estimation
 ├── analytics     Aggregation queries, KPI + analytic endpoints
+├── events        Operational event timeline + persistence
 ├── websocket     WebSocket registry + outbound events
-├── security      Auth (dev + JWT), roles, auth principles
-└── observability Micrometer metrics, health indicators, tracing ids
+├── security      Auth (dev + JWT), roles, auth filter chain
+└── observability Micrometer metrics, health indicators
 ```
 
 ## 2. Machine state machine
@@ -45,25 +45,30 @@ OFFLINE → RECOVERING
 The state machine is authoritative. If telemetry suggests `CRITICAL`, the
 transition is validated against the current state before being applied, and
 `MACHINE_STATE_CHANGED` events are emitted only for accepted transitions.
+`OFFLINE → NORMAL` is intentionally rejected; the machine must pass through
+`RECOVERING`.
 
-State derivation from signals (telemetry + ML):
-- anomaly/risk/time-series heuristic → *intent* (`DEGRADED`, `WARNING`,
-  `CRITICAL`), which the state machine validates.
+State derivation from signals (telemetry + ML): anomaly/risk thresholds →
+*intent* (`DEGRADED`, `WARNING`, `CRITICAL`), which the state machine validates.
 
 ## 3. Digital twin
 
-`MachineTwin` is an in-memory + persisted view:
+`MachineTwin` is an in-memory synchronized state view:
 
 ```
 identity, physicalType, latestTelemetry, healthScore, failureRisk,
-anomalyScore, rulEstimate (labeled heuristic), status, maintenanceStatus,
-dependencies, recentEvents[10], connectivity, lastTelemetryAt, modelVersion
+anomalyScore, rulEstimate (labeled heuristic, not calibrated RUL), status,
+maintenanceStatus, dependencies, recentEvents, connectivity,
+lastTelemetryAt, modelVersion
 ```
 
-Flow: normalized telemetry → `TwinService.update(machineId, sample)` →
-recompute indicators → state-machine intent → apply transition → write
-`forge.machine.state` event → publish WebSocket `machine.updated` /
-`machine.state.changed`.
+Flow: normalized telemetry → `TwinService.applyTelemetry` → recompute
+indicators → state-machine intent → apply transition → write
+`forge.machine.state` event → WebSocket broadcast.
+
+Connectivity is monitored independently by `ConnectivityMonitor`: after
+`forgesense.machine.offline-after-seconds` (default 30) without data the twin
+moves to `STALE → OFFLINE`, then `RECOVERING` when data resumes.
 
 ## 4. Event streaming (Kafka)
 
@@ -80,14 +85,15 @@ forge.maintenance
 forge.simulation.commands
 ```
 
-Transport adapter: `EventBus` interface has `KafkaEventBus` (spring-kafka) and
-`InMemoryEventBus` (dev). Producers/consumers depend only on the interface.
-Envelope fields: eventId, eventType, machineId, timestamp, sequence,
-correlationId, source, schemaVersion, payload.
+Transport adapter: the `EventBus` interface has `KafkaEventBus`
+(spring-kafka, docker profile) and `InMemoryEventBus` (dev profile).
+Runtime components depend only on the interface. `EventRoutes` maps event
+types to topic names. Envelope fields: eventId, eventType, machineId,
+timestamp, sequence, source, payload.
 
-Idempotency: consumers track processed `eventId`s in a small recent-set and
-deduplicate; timestamps are validated for staleness; ordering per machine
-key maintained.
+Monotonicity/dedup design notes: the pipeline relies on validation (staleness
+window, physical bounds) rather than a distributed idempotency store; this is
+acceptable for the single-node demo topology.
 
 ## 5. ML integration
 
@@ -108,17 +114,19 @@ clearly labeled `HEURISTIC`, and the UI shows `MODEL: unavailable`.
 
 ## 6. Decision engine
 
-Configurable rules (`application-*.yml` → `DecisionRule` entity), e.g.:
+`DecisionEngine.evaluate` maps model signals to operational state:
 
 ```
-if failureRisk >= 0.8 and anomalyLabel in (HIGH) and criticality >= HIGH
-   → create CRITICAL alert; compute impact; recommend inspection
-if failureRisk >= 0.5 and anomalyLabel in (MEDIUM)
-   → create WARNING alert
+if risk >= 0.80 or anomaly >= 0.70 → intent CRITICAL
+if risk >= 0.50 or anomaly >= 0.45 → intent WARNING
+if risk >= 0.30 or anomaly >= 0.25 → intent DEGRADED
+else                               → intent NORMAL
 ```
 
-Rules trigger: alert creation, impact computation, maintenance recommendation,
-websocket broadcast.
+On elevated signals it creates alerts via `AlertService.ensureAlert`
+(CRITICAL for risk ≥ 0.8 or anomaly ≥ 0.7, WARNING otherwise) and, when risk
+≥ 0.7, triggers a maintenance recommendation. No alerts are raised while a
+machine is in MAINTENANCE.
 
 ## 7. Production impact engine
 
@@ -126,19 +134,18 @@ Inputs: failure machine, dependency graph (directed edges with per-edge
 `propagationDelayMinutes`, `propagationFactor`), machine throughput
 (units/period), line membership.
 
-Algorithm: BFS over downstream dependencies applying per-edge factor to downtime
-and throughput; aggregate to line/zone; produce `ProductionImpact` with explicit
-assumptions (`ESTIMATED`, `ASSUMED`). Never presented as hard fact.
+Behavior: dependency traversal applies per-edge factors to estimate affected
+machines, downtime, and production loss; results are labeled `ESTIMATED` and
+never presented as hard production facts.
 
 ## 8. What-if simulation
 
 `SimulationScenario` types: `FAILURE, OVERHEATING, BEARING_DEGRADATION,
 VIBRATION_SPIKE, OFFLINE, SENSOR_FAILURE, LOAD_INCREASE, MAINTENANCE_DELAY`.
 
-Engine: clone dependency graph and run impact estimation under scenario’s
-perturbation applied to the affected machine; produce Baseline vs Scenario
-comparison (downtime, throughput, affected line count, production loss units).
-Stored + versioned; a `forge.simulation.commands` event is emitted.
+Control service records simulation controls in `SimulationControl`, and the
+simulator reads them to adjust behavior. Scenario runs are exposed through
+the simulation REST surface.
 
 ## 9. Persistence
 
@@ -148,7 +155,11 @@ uses JPA `ddl-auto: update`; there is no checked-in SQL schema.
 
 ## 10. WebSocket protocol
 
-Endpoints `/ws/telemetry` (machine updates + telemetry), topics:
+Endpoints `/ws` and `/ws/telemetry` (STOMP/SockJS) with a simple in-memory
+broker under `/topic`. Topics include `machine.updated`,
+`machine.state.changed`, `telemetry.updated`, `prediction.updated`,
+`alert.created`, `alert.updated`, `maintenance.created`, `impact.updated`,
+`events.updated`.
 
 ```
 machine.updated | machine.state.changed | telemetry.updated
@@ -156,35 +167,44 @@ prediction.updated | anomaly.detected | alert.created | alert.updated
 maintenance.created | simulation.updated | impact.updated
 ```
 
-JSON envelopes mirror domain events; the server exposes these topics for any
-subscriber, but the current dashboard does **not** open a WebSocket — it polls
-the REST API every 3 s and WebSocket remains server-side capability.
+JSON envelopes mirror domain events. The server broadcasts on domain events and
+exposes these topics for any subscriber, but the current static frontend polls
+REST every 3 s and does not subscribe to WebSocket topics — the socket surface
+is implemented and testable server-side, and client-side subscription is a
+planned enhancement.
 
 ## 11. Security
 
-Dev-mode login with three roles (OPERATOR/ENGINEER/ADMIN) loaded from
-config; JWT bearer authentication (BCrypt password hashing, configurable
-expiry); CSRF disabled for the stateless API; actuator endpoints restricted;
-environment-driven secrets (.env → env vars), no hard-coded credentials
-unless `FORGESENSE_DEV_PASSWORD` is unset.
+- Dev-mode login (`POST /api/v1/auth/login`) issues JWT bearer tokens with
+  three roles (OPERATOR/ENGINEER/ADMIN) loaded from config; BCrypt password
+  hashing, configurable expiry; CSRF disabled for the stateless JSON API.
+- `JwtService` enforces a ≥32-character `FORGESENSE_JWT_SECRET` when security
+  is enabled; dev/discovery profiles may run with a transient signing key.
+- `ForgeUserDetailsService` fails fast if `FORGESENSE_DEV_PASSWORD` is unset
+  while security is enabled.
+- Actuator endpoints restricted (`health,info,metrics,prometheus` only).
+- All secrets come from environment variables; `.env` is gitignored and
+  `.env.example` documents every variable — no hard-coded credentials.
 
 ## 12. Observability
 
-Micrometer counters/histograms/gauge (`ForgeMetrics`): `forgesense.telemetry.received.total`,
-`forgesense.telemetry.dropped.total`, `forgesense.telemetry.processing.latency`,
-`forgesense.ml.inference.latency`, `forgesense.predictions.total`,
-`forgesense.alerts.total`, `forgesense.machines.online`,
+Micrometer counters/histograms/gauge registered in `ForgeMetrics`:
+`forgesense.telemetry.received.total`, `forgesense.telemetry.dropped.total`,
+`forgesense.telemetry.processing.latency`, `forgesense.ml.inference.latency`,
+`forgesense.predictions.total`, `forgesense.anomalies.total`
+(critical-alert events), `forgesense.alerts.total`, `forgesense.machines.online`,
 `forgesense.websocket.connections`, `forgesense.simulation.runs.total`,
 `forgesense.events.total`, `forgesense.maintenance.total`.
+
 Actuator health groups: `liveness`, `readiness`, `dependencies`
-(db/redis/kafka/ml). Prometheus scrapes only the backend `/actuator/prometheus`; Grafana
-visualizes it.
+(db/redis/kafka/ml). Prometheus scrapes only the backend
+`/actuator/prometheus`; Grafana visualizes it.
 
 ## 13. Failures & degradation (summary)
 
 | Failure | Behavior | UI indication |
 |---|---|---|
-| Kafka down | in-process bus (dev) OR clear error + telemetry queued/alerted | `STREAMING: Kafka unavailable (fallback)` |
+| Kafka down | in-process bus (dev) OR publish error (docker) logged | `STREAMING` fallback messaging |
 | Redis down | cache falls back to memory; PostgreSQL unaffected | `CACHE: fallback` |
 | PostgreSQL down | health down; writes rejected; reads degraded | `DB: DOWN` + error states |
 | ML down | heuristic scorer + `MODEL: unavailable` badge | explanation uses heuristic |
@@ -193,12 +213,13 @@ visualizes it.
 
 ## 14. Environment & configuration
 
-- Profiles: `dev` (H2/mem/bus), `docker` (PG/Redis/Kafka).
+- Profiles: `dev` (H2/in-memory/bus), `docker` (Postgres/Redis/Kafka).
 - `.env` consumed by compose; Spring maps via `${VAR}` placeholders in
   `application.yml`. `.env.example` documents every variable.
-- ML URL, demo mode, security toggle, thresholds all configurable.
+- ML URL, demo mode, security toggle, staleness windows, offline threshold,
+  prediction throttle — all configurable.
 
-## 15. Testing strategy
+## 15. Testing strategy (current)
 
 - Backend: JUnit + Spring Boot Test — state machine, telemetry validation,
   twin, decision rules, alert lifecycle, and an end-to-end RBAC integration
@@ -207,4 +228,9 @@ visualizes it.
   stability, evaluation metrics.
 - Simulator: exercised end-to-end via docker compose (`--degrade`, `--bare`,
   `--omit`); no dedicated test suite at present.
-- Frontend: no test suite; CI runs a syntax check (`node --check app.js`).
+- Frontend: `node --check` on all modules plus a `node:test` unit suite
+  (`test/util.test.mjs`, run in CI).
+- Testcontainers, Vitest/Testing Library, and Playwright E2E are **not**
+  currently implemented; they are candidate next steps.
+
+The CI workflow is at `.github/workflows/ci.yml`.

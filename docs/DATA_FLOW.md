@@ -1,69 +1,70 @@
 # ForgeSense — Data Flow
 
-The central data flow of the platform, described end-to-end. This is the
-"heart of the project" — every UI element maps to one of these steps.
+The data flow of the platform, end to end. Every UI element maps to one of
+these steps.
 
 ## 1. The primary flow
 
 ```mermaid
 sequenceDiagram
     participant S as Simulator
-    participant K as Kafka (forge.*)
+    participant I as Ingest API
     participant B as Backend digital twin
     participant M as ML service
     participant D as Decision engine
-    participant I as Impact engine
+    participant X as Impact engine
     participant A as Alert/Maintenance
     participant W as WebSocket
     participant F as Frontend / 3D
 
-    S->>K: telemetry.raw (~0.2 Hz = 1 batch / 5 s per machine)
-    K->>B: consume raw
-    B->>B: validate + normalize
-    B->>K: telemetry.normalized
-    B->>M: POST /assess
-    M-->>B: anomalyScore, riskScore, rulEstimate, factors
-    B->>B: update MachineTwin (health, risk, status intent)
-    B->>K: machine.state changed
+S->>I: POST /api/v1/telemetry/ingest (bearer token)
+    I->>B: validate + normalize
+    B->>B: update MachineTwin
+    B->>M: POST /assess (feature vector per machine type)
+    M-->>B: anomaly label/score, failure risk, heuristic RUL, factors, recommendations
     B->>D: evaluate decision rules
-    D->>I: (risk high) compute production impact
-    I-->>D: impacted machines + line + downtime est.
+    D->>X: (risk high) compute production impact
+    X-->>D: impacted machines + line + downtime est.
     D->>A: create alert / recommend maintenance
     A-->>B: alert / maintenance events
-    B->>W: machine.updated / telemetry.updated / prediction.updated
+B->>W: machine.updated / telemetry.updated / prediction.updated
     B->>W: anomaly.detected / alert.created / impact.updated
     F->>B: REST poll every 3 s → 3D scene + KPI + panels react
     F->>B: operator actions (ack alert, run simulation, schedule maintenance)
     B-->>S: scenario command (via control API) → simulator changes behavior
+    F->>F: render fleet/detail/analytics/etc. from REST + WS events
 ```
 
 ## 2. Telemetry ingestion paths
 
-ForgeSense supports two equivalent production paths selected by configuration:
+ForgeSense supports two ingestion paths selected by configuration:
 
-**Path A — Kafka-first (docker profile):**
+**Dev profile (default):**
 ```
-Simulator → (kafka-python producer) → forge.telemetry.raw → backend consumer
-```
-
-**Path B — HTTP-first (dev profile):**
-```
-Simulator → POST /api/v1/telemetry/ingest → in-process EventBus → same consumer
+Simulator → POST /api/v1/telemetry/ingest → in-process EventBus → validation → twin
 ```
 
-Both paths land in the identical normalization/twin/ML pipeline. The backend
-reports which backend input mode is configured (`forgesense.streaming.kafka.enabled`
-via `/api/v1/system/status`); the browser transport is REST polling.
+**Docker/Compose profile:**
+```
+Simulator (external) → POST /api/v1/telemetry/ingest → Kafka raw topic → backend consumer → validation → twin
+```
+
+Both paths land in the identical normalization/twin/ML pipeline, and in both
+cases the ingest endpoint is HTTP — Kafka is the event backbone inside the
+backend in the docker profile, not a simulator transport. The backend reports
+which input mode is configured (`forgesense.streaming.kafka.enabled` via
+`/api/v1/system/status`); the browser transport is REST polling.
 
 ## 3. Machine state change flow
 
 1. Normalized telemetry updates `MachineTwin.latestTelemetry`.
-2. `HealthScore` recomputed from anomaly/risk/threshold model.
+2. ML assessment (or heuristic fallback) yields anomaly score + failure risk.
 3. State-machine intent computed (`NORMAL → DEGRADED → WARNING → CRITICAL …`).
 4. Valid transition applied by `MachineStateMachine` (or rejected).
 5. On accepted change → `MACHINE_STATE_CHANGED` event + `machine.state.changed`
-   WebSocket message (server-side capability; the dashboard reflects persisted
-   state on its next 3 s REST poll).
+WebSocket message — a server-side capability. Broadcasts can drive 3D
+   machine color/animation; the dashboard also reflects persisted state on its
+   next 3 s REST poll.
 
 ## 4. Alert lifecycle
 
@@ -80,7 +81,7 @@ Telemetry signals anomaly/risk threshold
 
 ## 5. Demonstration scenario (M-104)
 
-The canonical story the product demonstrates end-to-end:
+The canonical story the system demonstrates end-to-end:
 
 ```
 1. M-104 (Conveyor Drive Motor) starts NORMAL.
@@ -91,7 +92,7 @@ The canonical story the product demonstrates end-to-end:
 6. Impact engine: M-106 waits, Assembly line throughput ↓, downtime estimate.
 7. Operator runs what-if simulation (baseline vs scenario).
 8. Maintenance scheduled → MAINTENANCE state → RECOVERING → NORMAL.
-9. Materials fully driven by the simulator + pipeline; nothing hand-edited.
+9. All numbers come from the simulator + pipeline; nothing hand-edited.
 ```
 
 ## 6. UI state sources
@@ -116,7 +117,7 @@ subscribers.
 
 - Normalization rejects timestamps older than `forgesense.telemetry.maxStaleness`
   (default 60s) to avoid replay flooding the twin.
-- Duplicate `eventId`s are dropped (recently-seen set).
+- Out-of-range physical values are rejected or clamped by the normalizer.
 - If telemetry for a machine stops for > `forgesense.machine.offlineAfter`
   (default 30s), the twin marks connectivity `STALE/OFFLINE`.
 - Per-machine ordering preserved (keyed by machineId); cross-machine order is

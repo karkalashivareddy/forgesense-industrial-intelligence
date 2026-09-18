@@ -97,6 +97,7 @@ public class TelemetryPipeline implements EventSink {
             eventBus.publish(EventEnvelope.of(EventType.TELEMETRY_NORMALIZED, sample.machineId(), "backend",
                     Map.of("sequence", sample.sequence(), "machineId", sample.machineId())));
 
+            var processing = metrics.startProcessing();
             MachineTwin twin = twinService.applyTelemetry(sample);
 
             // persist telemetry (fast sync; could be async for high volume)
@@ -110,7 +111,8 @@ public class TelemetryPipeline implements EventSink {
                 rec.setSchemaVersion(envelope.getSchemaVersion());
                 telemetryRepository.save(rec);
             }
-            twinService.persistBudgets(twin);
+twinService.persistBudgets(twin);
+            metrics.stopProcessing(processing);
             metrics.recordTelemetry();
 
             // event log - throttled

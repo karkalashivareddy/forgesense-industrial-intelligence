@@ -22,6 +22,11 @@ export const store = {
   maintenanceStats: null,
   eventFreq: null,
   selectedMachineId: null,
+  liveTelemetry: {},
+  liveTransport: { state: 'closed', detail: null, lastEventAt: null },
+  liveEventCount: 0,
+  realtimeCursors: {},
+  recentRealtimeEvents: {},
   freshness: { ok: false, lastOk: null, polls: 0, failures: 0, lastError: null },
   uiRawStates: {},
   recoverySeen: {},
@@ -62,6 +67,85 @@ export function setFreshness(ok, err = null) {
 export function selectMachine(id) {
   store.selectedMachineId = id;
   set({});
+}
+
+/**
+ * Apply a validated STOMP delta without inventing a second operational state
+ * model. The next REST snapshot remains authoritative and can reconcile any
+ * missed event after a reconnect.
+ */
+export function applyRealtimeEvent(topic, event) {
+  if (!event || typeof event !== 'object' || !event.payload || typeof event.payload !== 'object') return false;
+  const payload = event.payload;
+  const now = Date.now();
+  const machineId = payload.machineId || event.assetId;
+  const cursorKey = `${topic}:${machineId || payload.id || 'global'}`;
+  const recent = { ...(store.recentRealtimeEvents || {}) };
+  const cursors = { ...(store.realtimeCursors || {}) };
+  if (event.eventId && recent[event.eventId]) return false;
+  const previous = cursors[cursorKey];
+  if (previous && Number.isSafeInteger(event.sequence) && event.sequence <= previous.sequence) return false;
+  if (previous && !Number.isSafeInteger(event.sequence) && Date.parse(event.timestamp) <= Date.parse(previous.timestamp)) return false;
+  if (event.eventId) {
+    recent[event.eventId] = now;
+    const ids = Object.entries(recent).sort((a, b) => a[1] - b[1]);
+    while (ids.length > 4096) delete recent[ids.shift()[0]];
+  }
+  cursors[cursorKey] = { sequence: event.sequence, timestamp: event.timestamp };
+  const transport = { ...store.liveTransport, lastEventAt: now };
+  const accepted = { recentRealtimeEvents: recent, realtimeCursors: cursors, liveTransport: transport };
+
+  if (topic === 'telemetry.updated' && typeof machineId === 'string') {
+    const liveTelemetry = { ...store.liveTelemetry, [machineId]: { ...payload, eventId: event.eventId, eventSequence: event.sequence, publishedAt: event.timestamp, receivedAt: now } };
+    const machine = store.machineMap.get(machineId);
+    if (machine) machine.lastTelemetryAt = payload.timestamp || machine.lastTelemetryAt;
+    set({ ...accepted, liveTelemetry, liveEventCount: store.liveEventCount + 1 });
+    return true;
+  }
+
+  if ((topic === 'machine.updated' || topic === 'machine.state.changed' || topic === 'prediction.updated') && typeof machineId === 'string') {
+    const current = store.machineMap.get(machineId);
+    if (!current) return false;
+    const next = topic === 'machine.state.changed'
+      ? { ...current, status: payload.to || current.status, previousStatus: payload.from || current.status }
+      : { ...current, ...payload };
+    const index = store.machines.findIndex(m => m.machineId === machineId);
+    const machines = store.machines.slice();
+    if (index >= 0) machines[index] = next;
+    const machineMap = new Map(store.machineMap);
+    machineMap.set(machineId, next);
+    set({ ...accepted, machines, machineMap, liveEventCount: store.liveEventCount + 1 });
+    return true;
+  }
+
+  if (topic === 'alert.created' || topic === 'alert.updated') {
+    const previous = store.alerts || { items: [], total: 0 };
+    const identity = payload.id || event.eventId;
+    const items = (previous.items || []).filter(item => (item.id || item.eventId) !== identity);
+    items.unshift({ ...payload, eventId: event.eventId });
+    set({ ...accepted, alerts: { ...previous, items: items.slice(0, 100), total: Math.max(previous.total || 0, items.length) }, liveEventCount: store.liveEventCount + 1 });
+    return true;
+  }
+
+  if (topic === 'events.updated') {
+    const previous = store.events || { items: [], count: 0 };
+    const item = payload.eventType ? payload : null;
+    const items = item && !(previous.items || []).some(existing => existing.eventId === event.eventId)
+      ? [{ ...item, eventId: event.eventId, eventSequence: event.sequence }, ...(previous.items || [])].slice(0, 50)
+      : previous.items || [];
+    set({ ...accepted, events: { ...previous, items, count: Math.max(previous.count || 0, items.length) }, liveEventCount: store.liveEventCount + 1 });
+    return true;
+  }
+
+  if (topic.startsWith('maintenance.') || topic.startsWith('simulation.') || topic === 'impact.updated') {
+    set({ ...accepted, liveEventCount: store.liveEventCount + 1 });
+    return true;
+  }
+  return false;
+}
+
+export function setLiveTransport(state, detail = null) {
+  set({ liveTransport: { state, detail, lastEventAt: store.liveTransport.lastEventAt } });
 }
 
 export async function initScaffold() {

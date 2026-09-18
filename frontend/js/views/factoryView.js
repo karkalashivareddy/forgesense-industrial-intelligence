@@ -1,6 +1,7 @@
 import { el, esc, fleetSummary, statusInfo } from '../util.js';
-import { store } from '../state.js';
+import { store, selectMachine } from '../state.js';
 import { isTwin, disposeTwin } from '../twin3d.js';
+import { openInspector } from './inspector.js';
 
 let root = null;
 let activeZone = null;
@@ -47,5 +48,20 @@ function renderChips() {
       onClick: () => window.dispatchEvent(new CustomEvent('forge:zone', { detail: { code: z.code, toggle: true } })),
     }, (z.code || '') + ' · ' + inZone.length + (warn ? ' · ' + warn + '! ' : ''));
     host.appendChild(btn);
+  }
+  const assets = document.getElementById('twinAssetList');
+  if (assets) {
+    assets.innerHTML = '';
+    for (const m of store.machines || []) {
+      const selected = store.selectedMachineId === m.machineId;
+      const button = el('button', {
+        class: 'twin-asset' + (selected ? ' selected' : ''),
+        role: 'listitem',
+        'aria-pressed': String(selected),
+        onClick: () => { selectMachine(m.machineId); openInspector(m.machineId); },
+      }, el('span', { class: 'twin-asset-dot st-' + (m.status === 'CRITICAL' ? 'critical' : m.status === 'WARNING' ? 'warn' : 'good'), 'aria-hidden': 'true' }),
+      el('span', {}, el('b', {}, m.machineId), el('small', {}, m.name || m.typeLabel || 'asset')));
+      assets.appendChild(button);
+    }
   }
 }
