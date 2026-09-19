@@ -19,7 +19,8 @@
  *   QA_MIRROR_PORT  local mirror port               default 9456
  *   QA_BROWSER      chrome/edge executable          default auto-detect on Windows
  *   QA_USER         login username                  default operator
- *   QA_PASS         login password                  default forgesense-dev (dev seed)
+ *   QA_PASS         login password                  REQUIRED (dev seed credentials;
+ *                                                  supply via environment)
  *   QA_VPS          viewports as JSON               default five sizes below
  *
  * Console error policy:
@@ -48,7 +49,7 @@ const APP = process.env.BASE_URL || 'http://localhost:5173';
 const PORT = Number(process.env.QA_CDP_PORT || 9350);
 const MIRROR_PORT = Number(process.env.QA_MIRROR_PORT || 9456);
 const USER = process.env.QA_USER || 'operator';
-const PASSWD = process.env.QA_PASS || 'forgesense-dev';
+const PASSWD = process.env.QA_PASS || '';
 const LOG = join(OUT, 'qafinal.txt');
 const MIRROR = join(OUT, '.mirror');
 const PROFILE = join(tmpdir(), 'forgesense-qafinal-' + Date.now());
@@ -374,6 +375,11 @@ async function runViewport(cdp, vp, step, results) {
 async function main() {
   mkdirSync(OUT, { recursive: true });
   rmSync(LOG, { force: true });
+
+  if (!PASSWD) {
+    log('FATAL QA_PASS is required (login password). Set QA_PASS before running.');
+    process.exit(2);
+  }
 
   const cred = checkSecrets({ user: USER });
   log('username=' + cred.user + ' password=' + cred.pass);
