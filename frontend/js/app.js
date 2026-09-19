@@ -353,13 +353,13 @@ function main() {
       else if (type === 'shortcuts') showShortcuts();
     });
     const routeViews = { command: commandView, factory: factoryView, fleet: fleetView, telemetry: telemetryView, anomalies: anomaliesView, alerts: alertsView, events: eventsView, predictions: predictionsView, simulation: simulationView, maintenance: maintenanceView, analytics: analyticsView, system: systemView };
+    globalEvents();
+    document.addEventListener('keydown', onKey, true);
+    clock();
     bootRouter('command', Object.keys(routeViews));
     startPolling();
     connectLive();
-    clock();
     setInterval(() => { topbar(store); statusbar(store); }, 1000);
-    document.addEventListener('keydown', onKey, true);
-    globalEvents();
     apiHealth();
   });
 }

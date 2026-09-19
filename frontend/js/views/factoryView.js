@@ -23,6 +23,7 @@ export function activate() {
 
 export function update(s) {
   if (!root) return;
+  renderBasis(s);
   const ref = JSON.stringify((s.machines || []).map(m => m.machineId + m.status + m.zone));
   if (ref === lastRef) return;
   lastRef = ref;
@@ -32,6 +33,34 @@ export function update(s) {
 export function setActiveZone(code) {
   activeZone = code;
   renderChips();
+}
+
+function renderBasis(s) {
+  const badge = document.getElementById('twinBasis');
+  if (!badge) return;
+  const live = s.liveTransport && s.liveTransport.state === 'open';
+  const f = s.freshness || { ok: false };
+  const sim = !!((s.status && s.status.demoMode) || (s.status && s.status.dataBasis && s.status.dataBasis.includes('SIMULATED')));
+  let label = '';
+  let tone = 't-warn';
+  if (!f.ok) {
+    label = 'DISCONNECTED · RETRY';
+    tone = 't-err';
+  } else if (live) {
+    label = 'LIVE · STOMP';
+    tone = 't-live';
+  } else if (sim) {
+    label = 'SIMULATION';
+    tone = 't-sim';
+  } else {
+    label = 'REST SNAPSHOT';
+    tone = 't-warn';
+  }
+  badge.textContent = label;
+  badge.className = 'basis-badge ' + tone;
+  badge.title = live
+    ? 'Live stream: STOMP over WebSocket to ' + (s.liveTransport && s.liveTransport.detail ? s.liveTransport.detail : 'backend')
+    : f.ok ? 'Telemetry delivered over REST snapshots (3s poll)' : 'Transport failed — retrying against the backend';
 }
 
 function renderChips() {

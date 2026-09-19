@@ -4,5 +4,9 @@
   "name": "forgesense-frontend",
   "engines": {
     "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test",
+    "qa:visual": "node ../tools/visual-qa/qa_final.mjs"
   }
 }

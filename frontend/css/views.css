@@ -83,25 +83,85 @@
 .insp-title { margin: 0; font-size: var(--fs-14); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .insp-body { flex: 1; overflow-y: auto; padding: var(--sp3) 14px 20px; }
 
-/* ============ Responsive ============ */
-@media (max-width: 1200px) {
-  :root { --insp-w: 400px; }
-}
-@media (max-width: 980px) {
-  :root { --rail-w: 56px; }
-  .rail { padding: 10px 6px; }
-  .rail-btn { justify-content: center; padding: 8px 4px; }
-  .rail-btn .idx { display: none; }
-  .rail-btn { font-size: 0; }
-  .rail-btn::after { content: attr(data-label); font-size: 9px; text-align: center; display: block; }
-  .rail-foot { display: none; }
-  .brand .tag { display: none; }
-}
-@media (max-width: 760px) {
-  .inspector { position: fixed; inset: var(--header-height) 0 24px; right: auto; top: auto; bottom: auto; width: 100vw; max-width: none; z-index: var(--z-drawer); transform: translateX(100%); transition: transform var(--duration-normal) var(--ease-decelerate); margin-right: 0; }
+/* ============ Responsive shell ============ */
+/*
+ * Breakpoint strategy (see docs/audit/VISUAL_UPGRADE_IMPLEMENTATION.md):
+ *   >1180px  full sidebar + inline inspector        (desktop command center)
+ *   701–1180 full sidebar + factory, inspector = right drawer
+ *   <=700px  mobile: sidebar = off-canvas drawer, inspector = bottom sheet
+ * Navigation labels are NEVER collapsed to 9px text — every rail item keeps a
+ * readable full label at every width the rail is shown (see base.css .rail-btn).
+ */
+@media (max-width: 1180px) {
+  .inspector {
+    position: fixed;
+    top: var(--header-height); right: 0; bottom: 24px;
+    width: min(400px, 92vw);
+    max-width: none;
+    z-index: var(--z-drawer);
+    margin-right: 0;
+    transform: translateX(102%);
+    transition: transform var(--duration-normal) var(--ease-decelerate);
+    box-shadow: var(--shadow-4);
+  }
   .inspector:not(.collapsed) { transform: translateX(0); }
   .inspector.collapsed { margin-right: 0; }
-  .topbar .tag { display: none; }
-  .clock { display: none; }
-  .factory-chip { display: none; }
+}
+
+@media (max-width: 900px) {
+  :root { --rail-width: var(--rail-width-compact); }
+  .rail { padding: var(--space-2) 6px; }
+  .rail-btn { padding: 8px 9px; gap: 8px; }
+  .rail-btn i { width: 18px; height: 18px; font-size: 16px; }
+  .brand .tag { display: none; }
+}
+
+@media (max-width: 700px) {
+  .clock, .topbar-status .sep, .topbar-status .user { display: none; }
+  .topbar-status { gap: 4px; }
+  .topbar-status .pill { padding: 3px 8px; }
+  .factory-chip { padding: var(--space-1) var(--space-2); }
+  .factory-chip .fc-name { display: none; }
+
+  /* sidebar -> off-canvas drawer */
+  .rail {
+    position: fixed; left: 0; top: var(--header-height); bottom: 24px;
+    width: min(290px, 86vw);
+    z-index: var(--z-drawer);
+    transform: translateX(-105%);
+    transition: transform var(--duration-normal) var(--ease-decelerate);
+    box-shadow: var(--shadow-4);
+  }
+  .rail.mobile-open { transform: translateX(0); }
+  .rail-btn { padding: 11px 12px; gap: 10px; font-size: var(--text-body-sm); border-radius: var(--radius-md); }
+  .rail-btn .idx { display: inline-block; }
+  .rail-foot { padding-top: var(--space-3); }
+
+  /* inspector -> bottom sheet */
+  .inspector {
+    top: auto; left: 0; right: 0; bottom: 24px;
+    width: 100vw; max-width: none;
+    height: var(--inspector-height-mobile);
+    border-left: none;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    transform: translateY(105%);
+    transition: transform var(--duration-normal) var(--ease-decelerate);
+    box-shadow: var(--shadow-4);
+  }
+  .inspector:not(.collapsed) { transform: translateY(0); }
+  .inspector.collapsed { margin-right: 0; }
+
+  .view { padding: var(--space-3); }
+  #view-factory { min-height: calc(100vh - var(--header-height) - 24px); }
+  #factoryHud { top: 8px; left: 8px; right: 8px; }
+  .twin-assets { top: 48px; left: 8px; max-height: 30vh; }
+  .twin-asset { min-width: 122px; }
+  #zoneChips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  #sceneLegend, #depLegend { left: 8px; right: 8px; bottom: 8px; }
+  #depLegend { bottom: 54px; }
+  .sim-banner { top: 52px; left: 8px; right: 8px; transform: none; width: auto; text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inspector, .rail { transition: none; }
 }

@@ -292,28 +292,22 @@
   .command-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .impact-panel { grid-column: 1 / -1; min-height: auto !important; }
 }
-@media (max-width: 760px) {
+@media (max-width: 1300px) {
+  .topbar-status .pill.thr-pill { display: none; }
+}
+@media (max-width: 1120px) {
+  .topbar-status .pill.ml-pill { display: none; }
+}
+@media (max-width: 700px) {
   .topbar { padding: 0 var(--space-3); gap: var(--space-2); }
   .mobile-nav-toggle { display: inline-flex; flex: 0 0 auto; }
   .topbar-status { gap: 4px; }
-  .topbar-status .pill:nth-of-type(n+2), .topbar-status .sep, .topbar-status .user { display: none; }
-  .rail { position: fixed; left: 0; top: var(--header-height); bottom: 24px; width: min(280px, 86vw); z-index: var(--z-rail); transform: translateX(-105%); transition: transform var(--duration-normal) var(--ease-decelerate); box-shadow: var(--shadow-4); }
-  .rail.mobile-open { transform: translateX(0); }
-  .rail-btn { padding: 11px 12px; font-size: var(--text-body-sm); }
-  .rail-btn .idx { display: inline-block; }
-  .rail-btn::after { display: none; }
+  .topbar-status .pill.thr-pill, .topbar-status .pill.ml-pill { display: none; }
   .view { padding: var(--space-3); }
   .ops-strip { grid-template-columns: repeat(2, 1fr); }
   .ops-strip .kpi { min-height: 92px; }
   .command-layout { grid-template-columns: 1fr; }
   .impact-panel { grid-column: auto; }
-  #view-factory { min-height: calc(100vh - var(--header-height) - 24px); }
-  #factoryHud { top: 10px; left: 10px; right: 10px; }
-  #sceneLegend, #depLegend { left: 10px; right: 10px; bottom: 10px; }
-  #depLegend { bottom: 62px; }
-  .inspector { position: fixed; inset: var(--header-height) 0 24px; width: 100vw; max-width: none; z-index: var(--z-drawer); transform: translateX(100%); transition: transform var(--duration-normal) var(--ease-decelerate); margin-right: 0; }
-  .inspector:not(.collapsed) { transform: translateX(0); }
-  .inspector.collapsed { margin-right: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rail, .inspector { transition: none; }
@@ -411,3 +405,100 @@ canvas.chart.sm { height: 120px; }
 /* ============ Inline link ============ */
 .link { color: var(--accent); cursor: pointer; }
 .link:hover { text-decoration: underline; }
+
+/* ============================================================================
+   Control-room upgrade components (see docs/audit/VISUAL_UPGRADE_IMPLEMENTATION.md)
+   ============================================================================ */
+
+/* ---- Live / simulation / degradation basis badge ---- */
+.basis-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  flex: 0 0 auto;
+  font-size: var(--fs-10); font-weight: 650; letter-spacing: 1px; text-transform: uppercase;
+  padding: 4px 10px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border); background: var(--glass-bg);
+  color: var(--muted); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  font-variant-numeric: tabular-nums; cursor: default;
+}
+.basis-badge::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor; flex: 0 0 auto;
+}
+.basis-badge.t-live { color: var(--good); border-color: rgba(59,201,127,.45); background: rgba(16,185,129,.1); }
+.basis-badge.t-live::before { box-shadow: 0 0 6px var(--glow-good); animation: pulse-dot 1.8s var(--ease-standard) infinite; }
+.basis-badge.t-sim { color: var(--maint); border-color: rgba(143,123,255,.45); background: rgba(143,123,255,.1); }
+.basis-badge.t-sim::before { box-shadow: 0 0 6px rgba(143,123,255,.9); animation: pulse-dot 2.2s var(--ease-standard) infinite; }
+.basis-badge.t-warn { color: var(--warn); border-color: rgba(240,180,80,.45); background: rgba(240,180,80,.1); }
+.basis-badge.t-err { color: var(--critical); border-color: rgba(242,92,76,.5); background: var(--critical-dim); }
+.basis-badge.t-err::before { animation: pulse-dot 1s var(--ease-standard) infinite; }
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .45; transform: scale(.82); }
+}
+
+/* ---- Zone chips ---- */
+.chip[data-zone="MACHINING"]:hover, .chip[data-zone="MACHINING"].active {
+  border-color: var(--viz-1); color: var(--viz-1);
+}
+.chip[data-zone="ASSEMBLY"]:hover, .chip[data-zone="ASSEMBLY"].active {
+  border-color: var(--viz-2); color: var(--viz-2);
+}
+.chip[data-zone="PACKAGING"]:hover, .chip[data-zone="PACKAGING"].active {
+  border-color: var(--viz-3); color: var(--viz-3);
+}
+.chip[data-zone="UTILITIES"]:hover, .chip[data-zone="UTILITIES"].active {
+  border-color: var(--viz-4); color: var(--viz-4);
+}
+.chip[data-zone="MATERIAL_HANDLING"]:hover, .chip[data-zone="MATERIAL_HANDLING"].active {
+  border-color: var(--viz-6); color: var(--viz-6);
+}
+.chip[data-zone="INSPECTION"]:hover, .chip[data-zone="INSPECTION"].active {
+  border-color: var(--viz-8); color: var(--viz-8);
+}
+
+/* ---- Twin asset list ---- */
+.twin-assets { scrollbar-width: thin; }
+.twin-assets .twin-asset { font-variant-numeric: tabular-nums; }
+.twin-assets .twin-asset.selected { box-shadow: var(--shadow-1); }
+.twin-assets .twin-asset .ta-sub { display: flex; gap: 6px; align-items: center; }
+.twin-assets .twin-asset.basis-stale { opacity: .55; }
+.twin-assets .twin-asset.basis-stale .twin-asset-dot { background: var(--down); }
+
+/* ---- Inspector polish ---- */
+.inspector { box-shadow: -8px 0 24px rgba(0,0,0,.18); }
+.insp-head { background: linear-gradient(180deg, var(--color-surface-elevated), var(--color-surface)); }
+.insp-breadcrumb { color: var(--color-copper); }
+.insp-title { font-family: var(--font-display); font-size: var(--fs-15); }
+.tabs .tab-btn { position: relative; }
+.tabs .tab-btn.active { color: var(--color-text); }
+.insp-body .insp-head-line .name { gap: var(--sp2); }
+.stat-box { position: relative; overflow: hidden; }
+.stat-box::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: var(--border); opacity: .6;
+}
+.stat-box.tone-good::after { background: var(--good); }
+.stat-box.tone-warn::after { background: var(--warn); }
+.stat-box.tone-critical::after { background: var(--critical); }
+.stat-box.tone-maint::after { background: var(--maint); }
+.stat-box.tone-info::after { background: var(--accent); }
+.meter {
+  height: 4px; border-radius: var(--radius-pill);
+  background: var(--panel3); overflow: hidden; margin-top: 5px; min-width: 0;
+}
+.meter .meter-fill { height: 100%; width: 0; border-radius: var(--radius-pill); transition: width var(--dur) var(--ease), background var(--dur-fast) var(--ease); }
+.meter .meter-fill.m-good { background: var(--good); }
+.meter .meter-fill.m-warn { background: var(--warn); }
+.meter .meter-fill.m-critical { background: var(--critical); }
+.meter .meter-fill.m-maint { background: var(--maint); }
+.meter .meter-fill.m-info { background: var(--accent); }
+
+/* ---- HUD buttons (scene controls) ---- */
+.hud-btn { display: inline-flex; align-items: center; gap: 6px; letter-spacing: .3px; }
+.hud-btn i { font-size: 14px; }
+#riskBtn.active { background: rgba(240,180,80,.12); border-color: var(--warn); color: var(--warn); }
+
+/* ---- Toast polish ---- */
+.toast { border-left-width: 3px; }
+.toast.err { border-left-color: var(--critical); }
+.toast.ok { border-left-color: var(--good); }

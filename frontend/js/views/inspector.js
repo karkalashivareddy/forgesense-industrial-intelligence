@@ -173,11 +173,18 @@ function renderTab() {
   }
 }
 
-function statBox(label, value, sub) {
-  return el('div', { class: 'stat-box' },
+function meterBox(frac, tone) {
+  const f = clamp01(frac == null ? 0 : +frac);
+  return el('div', { class: 'meter' }, el('div', { class: 'meter-fill m-' + tone, style: { width: pct(f, 0) } }));
+}
+
+function statBox(label, value, sub, meter) {
+  const cls = 'stat-box' + (meter && meter.tone ? ' tone-' + meter.tone : '');
+  return el('div', { class: cls },
     el('div', { class: 'l' }, label),
     el('div', { class: 'v' }, value),
-    sub ? el('div', { class: 's' }, sub) : null);
+    sub ? el('div', { class: 's' }, sub) : null,
+    meter ? meterBox(meter.frac, meter.tone) : null);
 }
 
 function kvRow(label, value) {
@@ -200,9 +207,9 @@ async function overview(host, m) {
     host.appendChild(el('div', { class: 'alert-guide', style: { marginTop: '6px', marginBottom: '4px' } }, s.guidance));
   }
   host.appendChild(el('div', { class: 'stat-grid' },
-    statBox('Health', m.healthScore != null ? num(m.healthScore, 1) + '%' : '—', hTone === 'good' ? 'within operating bounds' : hTone === 'warn' ? 'low — inspect' : 'critical — act now'),
-    statBox('Anomaly score', pct(m.anomalyScore), a.band + ' divergence from baseline'),
-    statBox('Failure risk', pct(m.failureRisk), riskInfo(m.failureRisk).band + ' over modeled horizon'),
+    statBox('Health', m.healthScore != null ? num(m.healthScore, 1) + '%' : '—', hTone === 'good' ? 'within operating bounds' : hTone === 'warn' ? 'low — inspect' : 'critical — act now', m.healthScore != null ? { frac: m.healthScore / 100, tone: hTone } : null),
+    statBox('Anomaly score', pct(m.anomalyScore), a.band + ' divergence from baseline', m.anomalyScore != null ? { frac: m.anomalyScore, tone: a.tone } : null),
+    statBox('Failure risk', pct(m.failureRisk), riskInfo(m.failureRisk).band + ' over modeled horizon', m.failureRisk != null ? { frac: m.failureRisk, tone: riskInfo(m.failureRisk).tone } : null),
     statBox('Est. remaining steps', m.rulEstimate != null ? int(m.rulEstimate) + ' steps' : '—', 'synthetic model output'),
     statBox('Model', (m.modelMode || '—') + ' · v' + (m.modelVersion || '—'), 'mode · version'),
     statBox('Last telemetry', m.lastTelemetryAt ? timeAgo(m.lastTelemetryAt) : '—', 'sample received')));

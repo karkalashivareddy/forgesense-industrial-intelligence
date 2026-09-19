@@ -102,10 +102,13 @@
   --layout-max: 1440px;
   --layout-gutter: 24px;
   --layout-gutter-mobile: 16px;
-  --rail-width: 72px;
+  --rail-width: 224px;
   --rail-width-expanded: 240px;
+  --rail-width-compact: 184px;
+  --rail-width-icon: 60px;
   --inspector-width: 384px;
   --inspector-width-mobile: 100vw;
+  --inspector-height-mobile: min(76vh, 640px);
   --header-height: 56px;
   --twin-aspect: 16 / 9;
 

@@ -31,7 +31,7 @@ import java.util.Map;
 
 /**
  * Seeds Factory Alpha from the authoritative catalog (config/machine_profiles.json):
- * zones, lines, the 8 machine fleet, dependency graph, twin registration, and a
+ * zones, lines, the 18 machine fleet, dependency graph, twin registration, and a
  * handful of historic telemetry samples generated around each machine's nominal
  * operating point - so the UI has real data on a cold start. Idempotent - runs
  * only when the machine table is empty.
@@ -41,15 +41,30 @@ public class DataSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
-    private static final Map<String, double[]> POSITIONS = Map.of(
-            "M-101", new double[]{-12.0, 3.0, 0.0},
-            "M-102", new double[]{12.0, 3.0, 0.0},
-            "M-103", new double[]{-6.0, 7.2, 0.0},
-            "M-104", new double[]{-18.0, 1.5, 0.0},
-            "M-105", new double[]{0.0, 7.2, 0.0},
-            "M-106", new double[]{-22.0, 5.0, 0.0},
-            "M-107", new double[]{6.0, 7.2, 0.0},
-            "M-108", new double[]{0.0, 9.5, 0.0});
+    private static final Map<String, double[]> POSITIONS = positions();
+
+    private static Map<String, double[]> positions() {
+        Map<String, double[]> pos = new HashMap<>();
+        pos.put("M-101", new double[]{-12.0, 3.0, 0.0});
+        pos.put("M-102", new double[]{12.0, 3.0, 0.0});
+        pos.put("M-103", new double[]{-6.0, 7.2, 0.0});
+        pos.put("M-104", new double[]{-18.0, 1.5, 0.0});
+        pos.put("M-105", new double[]{0.0, 7.2, 0.0});
+        pos.put("M-106", new double[]{-22.0, 5.0, 0.0});
+        pos.put("M-107", new double[]{6.0, 7.2, 0.0});
+        pos.put("M-108", new double[]{0.0, 9.5, 0.0});
+        pos.put("M-109", new double[]{-16.0, 0.0, 0.0});
+        pos.put("M-110", new double[]{-14.0, 6.0, 0.0});
+        pos.put("M-111", new double[]{-8.0, 1.5, 0.0});
+        pos.put("M-112", new double[]{-26.0, 3.5, 0.0});
+        pos.put("M-113", new double[]{-24.0, 6.5, 0.0});
+        pos.put("M-114", new double[]{16.0, 1.0, 0.0});
+        pos.put("M-115", new double[]{-20.0, 3.0, 0.0});
+        pos.put("M-116", new double[]{-10.0, 4.5, 0.0});
+        pos.put("M-117", new double[]{-6.0, 5.0, 0.0});
+        pos.put("M-118", new double[]{4.0, 11.0, 0.0});
+        return Map.copyOf(pos);
+    }
 
     private final FactoryRepository factoryRepository;
     private final ZoneRepository zoneRepository;

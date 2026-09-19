@@ -113,7 +113,9 @@
     { "code": "MACHINING", "name": "Machining", "order": 1 },
     { "code": "ASSEMBLY", "name": "Assembly", "order": 2 },
     { "code": "PACKAGING", "name": "Packaging", "order": 3 },
-    { "code": "UTILITIES", "name": "Utilities", "order": 4 }
+    { "code": "UTILITIES", "name": "Utilities", "order": 4 },
+    { "code": "MATERIAL_HANDLING", "name": "Material Handling", "order": 5 },
+    { "code": "INSPECTION", "name": "Inspection", "order": 6 }
   ],
   "lines": [
     { "code": "LINE-A", "name": "Machining → Assembly", "order": 1 },
@@ -127,7 +129,17 @@
     { "machineId": "M-105", "name": "Compressor", "type": "COMPRESSOR", "zone": "UTILITIES", "line": "LINE-B", "criticality": "HIGH", "throughputPerHour": 60.0, "operatingHours": 16420.0, "description": "Air compressor supplying pneumatic systems." },
     { "machineId": "M-106", "name": "Robotic Arm", "type": "ROBOTIC_ARM", "zone": "ASSEMBLY", "line": "LINE-A", "criticality": "CRITICAL", "throughputPerHour": 150.0, "operatingHours": 13800.0, "description": "Assembly robotic arm (4-axis)." },
     { "machineId": "M-107", "name": "Cooling Unit", "type": "COOLING_UNIT", "zone": "UTILITIES", "line": "LINE-B", "criticality": "HIGH", "throughputPerHour": 40.0, "operatingHours": 24880.0, "description": "Coolant circulation unit for CNC and drive motors." },
-    { "machineId": "M-108", "name": "Generator", "type": "GENERATOR", "zone": "UTILITIES", "line": "LINE-B", "criticality": "CRITICAL", "throughputPerHour": 100.0, "operatingHours": 41330.0, "description": "Backup generator supplying critical loads." }
+    { "machineId": "M-108", "name": "Generator", "type": "GENERATOR", "zone": "UTILITIES", "line": "LINE-B", "criticality": "CRITICAL", "throughputPerHour": 100.0, "operatingHours": 41330.0, "description": "Backup generator supplying critical loads." },
+    { "machineId": "M-109", "name": "CNC Mill B", "type": "CNC_MILL", "zone": "MACHINING", "line": "LINE-A", "criticality": "CRITICAL", "throughputPerHour": 85.0, "operatingHours": 9860.0, "description": "High-speed vertical machining center (CNC Mill), line partner of M-101." },
+    { "machineId": "M-110", "name": "CNC Lathe", "type": "CNC_MILL", "zone": "MACHINING", "line": "LINE-A", "criticality": "HIGH", "throughputPerHour": 72.0, "operatingHours": 6840.0, "description": "CNC lathe producing turned parts feeding the assembly conveyor." },
+    { "machineId": "M-111", "name": "Hydraulic Press", "type": "HYDRAULIC_PUMP", "zone": "MACHINING", "line": "LINE-A", "criticality": "HIGH", "throughputPerHour": 45.0, "operatingHours": 4420.0, "description": "Hydraulic stamping press forming sheet-metal components." },
+    { "machineId": "M-112", "name": "Welding Robot", "type": "ROBOTIC_ARM", "zone": "ASSEMBLY", "line": "LINE-A", "criticality": "CRITICAL", "throughputPerHour": 90.0, "operatingHours": 7230.0, "description": "Robotic welding cell (6-axis) joining fabricated assemblies." },
+    { "machineId": "M-113", "name": "Assembly Robot B", "type": "ROBOTIC_ARM", "zone": "ASSEMBLY", "line": "LINE-A", "criticality": "HIGH", "throughputPerHour": 135.0, "operatingHours": 5060.0, "description": "Second assembly robotic arm peforming fastening and placement." },
+    { "machineId": "M-114", "name": "Package Conveyor", "type": "CONVEYOR_DRIVE_MOTOR", "zone": "PACKAGING", "line": "LINE-B", "criticality": "MEDIUM", "throughputPerHour": 165.0, "operatingHours": 12740.0, "description": "Packaging line infeed conveyor drive." },
+    { "machineId": "M-115", "name": "Material Handling Robot", "type": "ROBOTIC_ARM", "zone": "MATERIAL_HANDLING", "line": "LINE-A", "criticality": "HIGH", "throughputPerHour": 175.0, "operatingHours": 4180.0, "description": "Gantry-style pick-and-place robot bridging machining and assembly." },
+    { "machineId": "M-116", "name": "Line Feeder Conveyor", "type": "CONVEYOR_DRIVE_MOTOR", "zone": "MATERIAL_HANDLING", "line": "LINE-A", "criticality": "MEDIUM", "throughputPerHour": 190.0, "operatingHours": 3120.0, "description": "Line feeder conveyor moving pallets between stations." },
+    { "machineId": "M-117", "name": "Inspection Gantry", "type": "ROBOTIC_ARM", "zone": "INSPECTION", "line": "LINE-A", "criticality": "MEDIUM", "throughputPerHour": 55.0, "operatingHours": 2810.0, "description": "Automated dimensional inspection gantry with scan head." },
+    { "machineId": "M-118", "name": "Air Dryer Unit", "type": "COMPRESSOR", "zone": "UTILITIES", "line": "LINE-B", "criticality": "MEDIUM", "throughputPerHour": 35.0, "operatingHours": 20560.0, "description": "Desiccant air dryer conditioning pneumatic supply." }
   ],
   "dependencies": [
     { "upstream": "M-101", "downstream": "M-104", "relationType": "MATERIAL", "propagationFactor": 0.90, "delayMinutes": 12.0 },
@@ -138,6 +150,17 @@
     { "upstream": "M-108", "downstream": "M-105", "relationType": "POWER", "propagationFactor": 0.95, "delayMinutes": 2.0 },
     { "upstream": "M-108", "downstream": "M-107", "relationType": "POWER", "propagationFactor": 0.90, "delayMinutes": 2.0 },
     { "upstream": "M-107", "downstream": "M-101", "relationType": "COOLING", "propagationFactor": 0.75, "delayMinutes": 20.0 },
-    { "upstream": "M-107", "downstream": "M-104", "relationType": "COOLING", "propagationFactor": 0.65, "delayMinutes": 20.0 }
+    { "upstream": "M-107", "downstream": "M-104", "relationType": "COOLING", "propagationFactor": 0.65, "delayMinutes": 20.0 },
+    { "upstream": "M-109", "downstream": "M-104", "relationType": "MATERIAL", "propagationFactor": 0.80, "delayMinutes": 9.0 },
+    { "upstream": "M-110", "downstream": "M-104", "relationType": "MATERIAL", "propagationFactor": 0.75, "delayMinutes": 10.0 },
+    { "upstream": "M-111", "downstream": "M-112", "relationType": "MATERIAL", "propagationFactor": 0.65, "delayMinutes": 6.0 },
+    { "upstream": "M-104", "downstream": "M-115", "relationType": "MATERIAL", "propagationFactor": 0.72, "delayMinutes": 6.0 },
+    { "upstream": "M-115", "downstream": "M-106", "relationType": "MATERIAL", "propagationFactor": 0.85, "delayMinutes": 5.0 },
+    { "upstream": "M-116", "downstream": "M-114", "relationType": "MATERIAL", "propagationFactor": 0.78, "delayMinutes": 7.0 },
+    { "upstream": "M-112", "downstream": "M-113", "relationType": "MATERIAL", "propagationFactor": 0.60, "delayMinutes": 4.0 },
+    { "upstream": "M-113", "downstream": "M-117", "relationType": "MATERIAL", "propagationFactor": 0.55, "delayMinutes": 5.0 },
+    { "upstream": "M-105", "downstream": "M-118", "relationType": "SERVICE", "propagationFactor": 0.55, "delayMinutes": 4.0 },
+    { "upstream": "M-118", "downstream": "M-117", "relationType": "SERVICE", "propagationFactor": 0.50, "delayMinutes": 3.0 },
+    { "upstream": "M-107", "downstream": "M-112", "relationType": "COOLING", "propagationFactor": 0.60, "delayMinutes": 14.0 }
   ]
 }
