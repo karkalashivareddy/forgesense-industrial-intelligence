@@ -7,6 +7,7 @@ import { openInspector } from './views/inspector.js';
 let open = false;
 let items = [];
 let sel = 0;
+let invoker = null;
 
 const overlay = () => document.getElementById('palette');
 const input = () => document.getElementById('paletteInput');
@@ -15,6 +16,8 @@ const listEl = () => document.getElementById('paletteList');
 export function isOpen() { return open; }
 
 export function openPalette() {
+  const a = document.activeElement;
+  invoker = (a && a instanceof HTMLElement) ? a : null;
   open = true;
   overlay().classList.remove('hidden');
   build();
@@ -25,6 +28,9 @@ export function openPalette() {
 export function closePalette() {
   open = false;
   overlay().classList.add('hidden');
+  input().removeAttribute('aria-activedescendant');
+  if (invoker && invoker.isConnected && typeof invoker.focus === 'function') invoker.focus();
+  invoker = null;
 }
 
 export function togglePalette() {
@@ -107,7 +113,7 @@ function renderList(filter) {
       host.appendChild(el('li', { class: 'pl-g muted small', style: { padding: '4px 10px', letterSpacing: '1px', textTransform: 'uppercase' } }, it.g));
       lastG = it.g;
     }
-    const li = el('li', { class: 'pl-item' + (idx === sel ? ' active' : ''), 'data-i': idx, role: 'option' },
+    const li = el('li', { class: 'pl-item' + (idx === sel ? ' active' : ''), 'data-i': idx, role: 'option', id: 'pl-opt-' + idx, 'aria-selected': String(idx === sel) },
       el('span', { class: 'k' }, it.k || ''),
       el('span', {}, it.label), el('span', { class: 'g' }, it.g));
     li.addEventListener('click', () => run(it));
@@ -117,13 +123,21 @@ function renderList(filter) {
   });
   host.scrollTop = 0;
   sel = Math.min(sel, Math.max(0, visible.length - 1));
+  paint();
 }
 
 function paint() {
+  let activeId = null;
   Array.from(listEl().querySelectorAll('.pl-item')).forEach((li, idx) => {
-    li.classList.toggle('active', idx === sel);
-    if (idx === sel) li.scrollIntoView({ block: 'nearest' });
+    const isSel = idx === sel;
+    li.classList.toggle('active', isSel);
+    li.setAttribute('aria-selected', String(isSel));
+    if (isSel) { activeId = li.id; li.scrollIntoView({ block: 'nearest' }); }
   });
+  if (activeId) {
+    const inp = input();
+    if (inp) inp.setAttribute('aria-activedescendant', activeId);
+  }
 }
 
 function run(it) {
@@ -140,6 +154,7 @@ export function initPalette() {
     else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); paint(); }
     else if (e.key === 'Enter') { e.preventDefault(); const li = vis[sel]; if (li) { const idx = +li.dataset.i; const q = inp.value.trim().toLowerCase(); const source = q ? items.filter(i => (i.label + ' ' + i.k + ' ' + i.g).toLowerCase().includes(q)) : items; run(source[idx]); } }
     else if (e.key === 'Escape') { closePalette(); }
+    else if (e.key === 'Tab') { e.preventDefault(); inp.focus(); }
   });
   overlay().addEventListener('click', (e) => { if (e.target === overlay()) closePalette(); });
 }

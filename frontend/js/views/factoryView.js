@@ -24,7 +24,8 @@ export function activate() {
 export function update(s) {
   if (!root) return;
   renderBasis(s);
-  const ref = JSON.stringify((s.machines || []).map(m => m.machineId + m.status + m.zone));
+  const ref = (s.machines || []).map(m => m.machineId + m.status + m.zone).join('|')
+    + '|' + (s.zones || []).map(z => z.code).join('|');
   if (ref === lastRef) return;
   lastRef = ref;
   renderChips();
@@ -74,6 +75,7 @@ function renderChips() {
     const btn = el('button', {
       class: 'chip' + (activeZone === z.code ? ' active' : ''),
       'data-zone': z.code,
+      'aria-pressed': String(activeZone === z.code),
       onClick: () => window.dispatchEvent(new CustomEvent('forge:zone', { detail: { code: z.code, toggle: true } })),
     }, (z.code || '') + ' · ' + inZone.length + (warn ? ' · ' + warn + '! ' : ''));
     host.appendChild(btn);
@@ -85,7 +87,6 @@ function renderChips() {
       const selected = store.selectedMachineId === m.machineId;
       const button = el('button', {
         class: 'twin-asset' + (selected ? ' selected' : ''),
-        role: 'listitem',
         'aria-pressed': String(selected),
         onClick: () => { selectMachine(m.machineId); openInspector(m.machineId); },
       }, el('span', { class: 'twin-asset-dot st-' + (m.status === 'CRITICAL' ? 'critical' : m.status === 'WARNING' ? 'warn' : 'good'), 'aria-hidden': 'true' }),

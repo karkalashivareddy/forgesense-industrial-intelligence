@@ -1,9 +1,41 @@
-import { el, esc, pct, num, int, statusInfo, riskInfo, healthInfo, anomalyInfo, machineState } from './util.js';
+import { el, pct, num, healthInfo, machineState } from './util.js';
 import { store, selectMachine } from './state.js';
 import { openInspector } from './views/inspector.js';
 
+let toneCache = null;
+function computedToken(name, fallback) {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v ? v : fallback;
+  } catch { return fallback; }
+}
+export function refreshToneCache() { toneCache = null; }
+
 export function toneColor(tone) {
-  return { good: '#3bc97f', warn: '#f0b450', critical: '#f25c4c', maint: '#8f7bff', down: '#5a6780', info: '#38c7ea', muted: '#4d5a6b' }[tone] || '#4d5a6b';
+  if (!toneCache) {
+    toneCache = {
+      good: computedToken('--color-emerald', '#3bc97f'),
+      warn: computedToken('--color-amber', '#f0b450'),
+      critical: computedToken('--color-crimson', '#f25c4c'),
+      maint: computedToken('--color-cyan', '#38c7ea'),
+      down: computedToken('--color-text-muted', '#5a6780'),
+      info: computedToken('--color-cyan', '#38c7ea'),
+      muted: computedToken('--color-text-muted', '#4d5a6b'),
+    };
+  }
+  return toneCache[tone] || toneCache.muted;
+}
+
+export function toast(msg, kind) {
+  const box = document.getElementById('toast');
+  if (!box) return;
+  box.innerHTML = '';
+  box.classList.remove('hidden');
+  box.classList.toggle('err', kind === 'err');
+  box.classList.toggle('ok', kind === 'ok');
+  box.appendChild(el('span', {}, msg));
+  box.appendChild(el('button', { class: 'btn btn-sm', onClick: () => box.classList.add('hidden') }, 'OK'));
+  window.setTimeout(() => box.classList.add('hidden'), 6000);
 }
 
 export function statusPill(m) {
@@ -11,11 +43,6 @@ export function statusPill(m) {
   const cls = s.state === 'STALE' ? 'stale' : s.tone;
   return el('span', { class: 'pill-status st-' + cls, title: s.hint },
     el('span', { class: 'sq' }), s.label.toUpperCase());
-}
-
-export function riskPill(m) {
-  const r = riskInfo(m && m.failureRisk);
-  return el('span', { class: 'pill-status st-' + r.tone }, r.band, ' ', pct(m && m.failureRisk, 0));
 }
 
 export function kpi(label, value, sub, tone) {
@@ -52,10 +79,6 @@ export function kv(label, value) {
 
 export function emptyBox(msg) {
   return el('div', { class: 'empty' }, msg || 'No data to display yet.');
-}
-
-export function loadingBox() {
-  return el('div', { class: 'loading' }, 'Loading…');
 }
 
 export function errorBox(msg) {
@@ -115,10 +138,4 @@ export function statusDot(m) {
 export function machineClick(m) {
   selectMachine(m.machineId);
   openInspector(m.machineId);
-}
-
-export function chartLegend(entries) {
-  return el('div', { class: 'chart-legend' },
-    entries.map(([color, label]) =>
-      el('span', {}, el('span', { class: 'csw', style: { background: color } }), label)));
 }

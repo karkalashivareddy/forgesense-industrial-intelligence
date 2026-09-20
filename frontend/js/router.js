@@ -75,6 +75,8 @@ export function bindRail() {
   document.querySelectorAll('[data-action]').forEach(btn => {
     if (btn.dataset.action === 'shortcuts') {
       btn.addEventListener('click', () => notifyHandlers('shortcuts'));
+    } else if (btn.dataset.action === 'logout') {
+      btn.addEventListener('click', () => notifyHandlers('logout'));
     }
   });
   const inspToggle = document.getElementById('inspToggle');

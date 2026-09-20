@@ -31,6 +31,11 @@ export const store = {
   uiRawStates: {},
   recoverySeen: {},
   derivedAt: null,
+  lastGlobalSeq: -1,
+  reconcilePending: false,
+  reconcileReason: null,
+  reconcileCount: 0,
+  lastReconcileAt: 0,
 };
 
 const listeners = new Set();
@@ -69,10 +74,41 @@ export function selectMachine(id) {
   set({});
 }
 
+const RECONCILE_MIN_INTERVAL_MS = 1000;
+let reconcileTimer = null;
+
+/**
+ * Request an immediate snapshot refresh (coalesced). Used when the live feed
+ * shows a sequence discontinuity so a missed delta does not have to wait for
+ * the next REST poll. Deduplicates concurrent requests and throttles to at
+ * most one refresh per `RECONCILE_MIN_INTERVAL_MS`.
+ */
+export function requestReconcile(reason = '') {
+  if (store.reconcilePending) return;
+  const now = Date.now();
+  if (now - store.lastReconcileAt < RECONCILE_MIN_INTERVAL_MS) return;
+  store.reconcilePending = true;
+  store.reconcileReason = reason || store.reconcileReason;
+  reconcileTimer = setTimeout(() => {
+    reconcileTimer = null;
+    store.reconcilePending = false;
+    store.lastReconcileAt = Date.now();
+    store.reconcileCount = store.reconcileCount + 1;
+    refreshCore();
+  }, 0);
+}
+
 /**
  * Apply a validated STOMP delta without inventing a second operational state
  * model. The next REST snapshot remains authoritative and can reconcile any
- * missed event after a reconnect.
+ * missed event after a reconnect or an in-session discontinuity.
+ *
+ * Gap detection: the feed is a single producer with a monotonic per-process
+ * envelope sequence. Because the client coalesces per entity per frame, deltas
+ * delivered to application state keep that monotonic global order. A delivered
+ * sequence that regresses therefore indicates a discontinuity (dropped or
+ * replayed envelope while the transport stayed up); we raise `requestReconcile`
+ * so the authority snapshot is fetched immediately instead of on the next poll.
  */
 export function applyRealtimeEvent(topic, event) {
   if (!event || typeof event !== 'object' || !event.payload || typeof event.payload !== 'object') return false;
@@ -83,6 +119,9 @@ export function applyRealtimeEvent(topic, event) {
   const recent = { ...(store.recentRealtimeEvents || {}) };
   const cursors = { ...(store.realtimeCursors || {}) };
   if (event.eventId && recent[event.eventId]) return false;
+  if (Number.isSafeInteger(event.sequence) && store.lastGlobalSeq >= 0 && event.sequence < store.lastGlobalSeq) {
+    requestReconcile('sequence-regression');
+  }
   const previous = cursors[cursorKey];
   if (previous && Number.isSafeInteger(event.sequence) && event.sequence <= previous.sequence) return false;
   if (previous && !Number.isSafeInteger(event.sequence) && Date.parse(event.timestamp) <= Date.parse(previous.timestamp)) return false;
@@ -93,7 +132,8 @@ export function applyRealtimeEvent(topic, event) {
   }
   cursors[cursorKey] = { sequence: event.sequence, timestamp: event.timestamp };
   const transport = { ...store.liveTransport, lastEventAt: now };
-  const accepted = { recentRealtimeEvents: recent, realtimeCursors: cursors, liveTransport: transport };
+  const lastGlobalSeq = Math.max(store.lastGlobalSeq, Number.isSafeInteger(event.sequence) ? event.sequence : store.lastGlobalSeq);
+  const accepted = { recentRealtimeEvents: recent, realtimeCursors: cursors, liveTransport: transport, lastGlobalSeq };
 
   if (topic === 'telemetry.updated' && typeof machineId === 'string') {
     const liveTelemetry = { ...store.liveTelemetry, [machineId]: { ...payload, eventId: event.eventId, eventSequence: event.sequence, publishedAt: event.timestamp, receivedAt: now } };

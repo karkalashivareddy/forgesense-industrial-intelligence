@@ -46,6 +46,25 @@
   --color-text-muted: #94a3b8;
   --color-text-inverse: #0a0e14;
 
+  /* Derived Semantic Dims — status with a soft panel tint (never color-only) */
+  --color-accent-dim: color-mix(in srgb, var(--color-copper) 14%, transparent);
+  --color-accent-hover: color-mix(in srgb, var(--color-copper) 24%, transparent);
+  --color-good-dim: color-mix(in srgb, var(--color-emerald) 14%, transparent);
+  --color-warn-dim: color-mix(in srgb, var(--color-amber) 14%, transparent);
+  --color-critical-dim: color-mix(in srgb, var(--color-crimson) 14%, transparent);
+  --color-maint-dim: color-mix(in srgb, var(--color-cyan) 14%, transparent);
+  --color-down-dim: color-mix(in srgb, var(--color-border) 18%, transparent);
+  --color-info-dim: color-mix(in srgb, var(--color-cyan) 14%, transparent);
+
+  /* Overlay Scrim */
+  --color-overlay: rgba(10, 14, 20, 0.82);
+
+  /* Glow Effects — matched to status tokens */
+  --glow-good: 0 0 6px var(--color-emerald);
+  --glow-warn: 0 0 6px var(--color-amber);
+  --glow-critical: 0 0 6px var(--color-crimson);
+  --glow-accent: 0 0 6px var(--color-copper);
+
   /* =========================================================================
      TYPOGRAPHY
      ========================================================================= */
@@ -64,6 +83,14 @@
   --text-caption: 0.75rem;
   --text-mono: 0.8125rem;
   --text-mono-lg: 0.9375rem;
+
+  /* Micro Scale — fine labels, tags, table cells */
+  --text-10: 0.625rem;
+  --text-11: 0.6875rem;
+  --text-12: 0.75rem;
+  --text-13: 0.8125rem;
+  --text-14: 0.875rem;
+  --text-15: 0.9375rem;
 
   --leading-tight: 1.1;
   --leading-normal: 1.5;
@@ -255,78 +282,4 @@ body {
 
 *::-webkit-scrollbar-thumb:hover {
   background: var(--color-border-strong);
-}
-
-/* =========================================================================
-   LEGACY TOKEN ALIASES — For backward compatibility during migration
-   ========================================================================= */
-:root {
-  /* Legacy aliases — DEPRECATED, remove after migration */
-  --bg: var(--color-bg);
-  --bg-soft: var(--color-surface);
-  --panel: var(--color-surface);
-  --panel2: var(--color-surface-elevated);
-  --panel3: var(--color-surface-elevated);
-  --overlay: rgba(10, 14, 20, 0.82);
-  --border: var(--color-border);
-  --border-soft: var(--color-border);
-  --text: var(--color-text);
-  --muted: var(--color-text-muted);
-  --faint: var(--color-border);
-  --accent: var(--color-copper);
-  --accent-dim: color-mix(in srgb, var(--color-copper) 14%, transparent);
-  --accent-hover: color-mix(in srgb, var(--color-copper) 24%, transparent);
-  --good: var(--color-emerald);
-  --good-dim: color-mix(in srgb, var(--color-emerald) 14%, transparent);
-  --warn: var(--color-amber);
-  --warn-dim: color-mix(in srgb, var(--color-amber) 14%, transparent);
-  --critical: var(--color-crimson);
-  --critical-dim: color-mix(in srgb, var(--color-crimson) 14%, transparent);
-  --maint: var(--color-cyan);
-  --maint-dim: color-mix(in srgb, var(--color-cyan) 14%, transparent);
-  --down: var(--color-border);
-  --down-dim: color-mix(in srgb, var(--color-border) 18%, transparent);
-  --info: var(--color-cyan);
-  --info-dim: color-mix(in srgb, var(--color-cyan) 14%, transparent);
-  --font: var(--font-ui);
-  --mono: var(--font-mono);
-  --fs-10: 10px;
-  --fs-11: 11px;
-  --fs-12: 12px;
-  --fs-13: 13px;
-  --fs-14: var(--text-body);
-  --fs-16: var(--text-body-lg);
-  --fs-18: var(--text-h3);
-  --fs-20: var(--text-h2);
-  --fs-24: var(--text-h1);
-  --fs-28: var(--text-display);
-  --sp1: var(--space-1);
-  --sp2: var(--space-2);
-  --sp3: var(--space-3);
-  --sp4: var(--space-4);
-  --sp5: var(--space-5);
-  --sp6: var(--space-6);
-  --sp7: 28px;
-  --sp8: var(--space-8);
-  --radius: var(--radius-md);
-  --radius-pill: var(--radius-full);
-  --shadow-sm: var(--shadow-1);
-  --shadow: var(--shadow-2);
-  --shadow-lg: var(--shadow-3);
-  --glow-good: 0 0 6px var(--color-emerald);
-  --glow-warn: 0 0 6px var(--color-amber);
-  --glow-critical: 0 0 6px var(--color-crimson);
-  --glow-accent: 0 0 6px var(--color-copper);
-  --dur-micro: var(--duration-fast);
-  --dur-fast: var(--duration-normal);
-  --dur: var(--duration-slow);
-  --dur-slow: var(--duration-cinematic);
-  --ease: var(--ease-standard);
-  --ease-out: var(--ease-decelerate);
-  --rail-w: var(--rail-width);
-  --insp-w: var(--inspector-width);
-  --topbar-h: var(--header-height);
-  --glass-bg: var(--color-surface-elevated);
-  --glass-border: var(--color-border);
-  --border-strong: var(--color-border-strong);
 }

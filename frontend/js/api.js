@@ -1,13 +1,47 @@
 export const API_BASE = localStorage.getItem('forgesense.api') || 'http://localhost:8080';
 
+export class SessionExpiredError extends Error {
+  constructor(message = 'Authenticated session required — please sign in again') {
+    super(message);
+    this.name = 'SessionExpiredError';
+  }
+}
+
 let token = null;
 let username = null;
 let roles = [];
-let credential = null;
+const authRequiredListeners = new Set();
 
 export function getToken() { return token; }
 export function getRoles() { return roles.slice(); }
 export function getUsername() { return username; }
+export function isAuthenticated() { return !!token; }
+
+export function onAuthRequired(fn) {
+  authRequiredListeners.add(fn);
+  return () => authRequiredListeners.delete(fn);
+}
+
+function notifyAuthRequired() {
+  for (const fn of [...authRequiredListeners]) {
+    try { fn(); } catch { /* listener failures are isolated */ }
+  }
+}
+
+/** Drop the session without touching the backend. Notifies re-authentication. */
+export function clearSession() {
+  const hadToken = !!token;
+  token = null;
+  username = null;
+  roles = [];
+  if (hadToken) notifyAuthRequired();
+  return hadToken;
+}
+
+/** Explicit sign-out: clears local session state. */
+export function logout() {
+  clearSession();
+}
 
 async function raw(path, opts = {}) {
   const headers = { Accept: 'application/json', ...(opts.headers || {}) };
@@ -34,28 +68,21 @@ export async function login(user, pass) {
   if (!res.ok) throw new Error('Login failed — check credentials');
   const data = await parseBody(res);
   token = data.accessToken;
-  username = data.username;
+  username = data.username || user;
   roles = data.roles || [];
-  credential = { user, pass };
   return data;
 }
 
-async function relogin() {
-  if (!credential) return false;
-  const candidates = [...new Set([credential.user, username, 'operator', 'engineer', 'admin'].filter(Boolean))];
-  for (const u of candidates) {
-    try {
-      await login(u, credential.pass);
-      return true;
-    } catch { /* try next candidate */ }
-  }
-  return false;
-}
-
+/**
+ * Authorized REST call. A 401 invalidates the local session and raises
+ * SessionExpiredError. There is deliberately NO silent re-login: the app re-opens
+ * the sign-in gate so the operator explicitly confirms identity and role.
+ */
 export async function api(path, opts = {}) {
-  let res = await raw(path, opts);
-  if (res.status === 401 && !opts._retry) {
-    if (await relogin()) res = await raw(path, { ...opts, _retry: true });
+  const res = await raw(path, opts);
+  if (res.status === 401) {
+    clearSession();
+    throw new SessionExpiredError();
   }
   if (!res.ok) {
     const text = await res.text().catch(() => '');

@@ -2,6 +2,29 @@ function dpr() {
   return Math.min(window.devicePixelRatio || 1, 2);
 }
 
+function token(name, fallback) {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch { return fallback; }
+}
+const TOKEN_MONO = () => token('--font-mono', 'monospace');
+const TOKEN_MUTED = () => token('--color-text-muted', '#7b93ab');
+const TOKEN_CRIMSON = () => token('--color-crimson', '#f25c4c');
+
+function hexA(hex, alpha) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) return 'rgba(123,147,171,.14)';
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+const TOKEN_GRID = () => {
+  const m = TOKEN_MUTED();
+  return /^#[0-9a-f]{6}$/i.test(m) ? hexA(m, 0.14) : 'rgba(123,147,171,.14)';
+};
+const TOKEN_THRESHOLD = () => hexA(TOKEN_CRIMSON(), 0.75);
+
 function resizeCanvas(canvas) {
   const w = Math.max(canvas.clientWidth, 40);
   const h = Math.max(canvas.clientHeight || 200, 40);
@@ -58,9 +81,9 @@ export function drawLineChart(canvas, cfg = {}) {
   const xClip = Math.max(1, n - 1);
 
   const fmt = cfg.yFormat || ((v) => Number(v).toFixed(1));
-  ctx.font = '10px sans-serif';
+  ctx.font = '10px ' + TOKEN_MONO();
   ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#7b93ab';
+  ctx.fillStyle = TOKEN_MUTED();
   const yTicks = 4;
   for (let i = 0; i <= yTicks; i++) {
     const v = bound.min + (range * i) / yTicks;
@@ -68,7 +91,7 @@ export function drawLineChart(canvas, cfg = {}) {
     ctx.beginPath();
     ctx.moveTo(margins.l, y);
     ctx.lineTo(margins.l + pw, y);
-    ctx.strokeStyle = 'rgba(123,147,171,.14)';
+    ctx.strokeStyle = TOKEN_GRID();
     ctx.stroke();
     ctx.fillText(fmt(v), margins.l - 6, y);
   }
@@ -77,7 +100,7 @@ export function drawLineChart(canvas, cfg = {}) {
     const y = margins.t + ph - (ph * (t.value - bound.min)) / range;
     ctx.save();
     ctx.setLineDash([5, 4]);
-    ctx.strokeStyle = t.color || 'rgba(242,92,76,.75)';
+    ctx.strokeStyle = t.color || TOKEN_THRESHOLD();
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(margins.l, y);
@@ -86,7 +109,7 @@ export function drawLineChart(canvas, cfg = {}) {
     ctx.restore();
     if (t.label) {
       ctx.textBaseline = 'top';
-      ctx.fillStyle = t.color || '#f25c4c';
+      ctx.fillStyle = t.color || TOKEN_CRIMSON();
       ctx.fillText(t.label, margins.l + 4, y + 2);
       ctx.textBaseline = 'middle';
     }
@@ -99,7 +122,7 @@ export function drawLineChart(canvas, cfg = {}) {
     ctx.beginPath();
     ctx.moveTo(x, margins.t);
     ctx.lineTo(x, margins.t + ph);
-    ctx.strokeStyle = 'rgba(123,147,171,.14)';
+    ctx.strokeStyle = TOKEN_GRID();
     ctx.stroke();
   }
 
@@ -127,7 +150,7 @@ export function drawLineChart(canvas, cfg = {}) {
 
   if (cfg.xTicks) {
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#7b93ab';
+    ctx.fillStyle = TOKEN_MUTED();
     for (let i = 0; i < labels.length; i += timeStep) {
       const x = margins.l + (pw * i) / Math.max(1, n - 1);
       ctx.fillText(cfg.xTicks[i] || '', x, h - 6);
@@ -136,62 +159,18 @@ export function drawLineChart(canvas, cfg = {}) {
   }
 }
 
-export function drawSpark(canvas, arr = [], color = '#38c7ea', fill = true) {
-  const { w, h, d } = resizeCanvas(canvas);
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(d, 0, 0, d, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-  const bg = getComputedStyle(canvas).backgroundColor || '#16202c';
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
-  const vals = arr.map(Number).filter(v => !Number.isNaN(v));
-  if (vals.length < 2) return;
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const range = max - min || 1;
-  const padV = range * 0.1;
-  const lo = min - padV;
-  const hi = max + padV;
-  const rng = hi - lo;
-  const step = (w - 8) / (vals.length - 1);
-  const pt = (i, v) => [4 + i * step, h - 4 - ((h - 8) * (v - lo)) / rng];
-  ctx.beginPath();
-  vals.forEach((v, i) => {
-    const [x, y] = pt(i, v);
-    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-  });
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  if (fill) {
-    ctx.lineTo(4 + (vals.length - 1) * step, h - 3);
-    ctx.lineTo(4, h - 3);
-    ctx.closePath();
-    ctx.fillStyle = hexA(color, 0.12);
-    ctx.fill();
-  }
-}
-
-function hexA(hex, alpha) {
-  if (!/^#[0-9a-f]{6}$/i.test(hex)) return 'transparent';
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
 export const COLORS = {
-  temperature: '#38c7ea',
-  vibration: '#f0b450',
+  temperature: token('--color-cyan', '#38c7ea'),
+  vibration: token('--color-amber', '#f0b450'),
   pressure: '#8fb8d8',
-  rpm: '#62c99b',
+  rpm: token('--color-emerald', '#62c99b'),
   torque: '#e8a33d',
   current: '#c294ff',
   voltage: '#7dcd85',
   power: '#5aa7ff',
   flow: '#4f9fdd',
   frequency: '#d9a6ff',
-  health: '#3bc97f',
-  anomaly: '#f0b450',
-  risk: '#f25c4c',
+  health: token('--color-emerald', '#3bc97f'),
+  anomaly: token('--color-amber', '#f0b450'),
+  risk: token('--color-crimson', '#f25c4c'),
 };

@@ -24,12 +24,14 @@ function render() {
   const body = rows.length ? rows.map(m => {
     const a = anomalyInfo(m.anomalyScore);
     const linked = alerts.find(x => x.machineId === m.machineId);
-    return el('div', { class: 'list-item clickable', tabindex: '0', onClick: () => machineClick(m), onkeydown: e => { if (e.key === 'Enter') machineClick(m); } },
+    return el('div', { class: 'list-item clickable', tabindex: '0', role: 'button', onClick: () => machineClick(m), onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); machineClick(m); } } },
       el('div', { class: 'alert-row' },
         el('div', { class: 'alert-sev st-' + (a.tone === 'critical' ? 'critical' : 'warn') }, a.band),
         el('div', { class: 'alert-main' }, el('div', { class: 'alert-title' }, `${m.machineId} · ${esc(m.name || '')}`),
           el('div', { class: 'alert-meta' }, statusPill(m), el('span', {}, `anomaly ${pct(m.anomalyScore)}`), el('span', {}, `risk ${pct(m.failureRisk)}`), linked ? el('span', {}, esc(linked.headline || linked.type || 'active alert')) : null, el('span', {}, m.lastTelemetryAt ? timeAgo(m.lastTelemetryAt) : 'no timestamp'))),
         el('div', { class: 'alert-desc' }, machineState(m).guidance || 'Investigate the contributing telemetry signals in the inspector.')));
-  }) : [emptyBox('No active anomalies. The current asset set is inside its monitored operating bands.')];
+  }) : [(store.machines || []).length === 0
+    ? emptyBox('No asset data is loaded yet — the backend snapshot is unavailable, so anomaly evaluation cannot run.')
+    : emptyBox('No active anomalies. The current asset set is inside its monitored operating bands.')];
   root.appendChild(card('Condition deviations', 'Prioritized by current asset state', el('div', { class: 'list' }, body)));
 }

@@ -6,6 +6,17 @@ import { store, selectMachine, subscribe, refreshMaintenance } from '../state.js
 import { api, post, getRoles } from '../api.js';
 import { drawLineChart, COLORS } from '../charts.js';
 
+function flashError(e) {
+  const box = document.getElementById('toast');
+  if (!box) return;
+  box.innerHTML = '';
+  box.classList.remove('hidden');
+  box.classList.add('err');
+  box.appendChild(el('span', {}, (e && e.message) ? e.message : 'Action failed — check the backend connection.'));
+  box.appendChild(el('button', { class: 'btn btn-sm', onClick: () => box.classList.add('hidden') }, 'OK'));
+  window.setTimeout(() => box.classList.add('hidden'), 6000);
+}
+
 const TABS = [
   ['overview', 'Overview'],
   ['telemetry', 'Telemetry'],
@@ -500,7 +511,10 @@ function orderCard(o) {
       class: 'btn btn-sm',
       disabled: dis ? 'disabled' : null,
       title: !canEdit ? 'Requires ENGINEER role' : '',
-      onClick: async () => { await fn(); refreshMaintenance(); },
+      onClick: async () => {
+      try { await fn(); refreshMaintenance(); }
+      catch (e) { flashError(e); }
+    },
     }, label);
   };
   const isOpen = s => !['COMPLETED', 'CANCELLED'].includes(s);
@@ -521,7 +535,7 @@ function orderCard(o) {
       o.priority ? el('span', { class: 'badge2' }, 'P' + esc(o.priority)) : null,
       o.assignedRole ? el('span', { class: 'badge2' }, esc(o.assignedRole)) : null,
       o.riskAtCreation != null ? el('span', { class: 'muted small' }, 'risk at creation ' + pct(o.riskAtCreation)) : null),
-    el('div', { style: { fontWeight: '600', fontSize: '13px', margin: '6px 0 2px' } }, esc(o.title || 'Work order')),
+    el('div', { style: { fontWeight: '600', fontSize: 'var(--text-13)', margin: '6px 0 2px' } }, esc(o.title || 'Work order')),
     el('div', { class: 'alert-desc' }, esc(o.description || '')),
     el('div', { class: 'alert-meta', style: { marginTop: '6px' } },
       (o.estimatedDurationMinutes ? '~' + int(o.estimatedDurationMinutes) + ' min · ' : ''),
@@ -545,8 +559,10 @@ function schedulePrompt(o) {
     onClick: async () => {
       const iso = new Date(input.value).toISOString();
       toast.classList.add('hidden');
-      await post(`${W_ORDER_ENDPOINT}/${o.id}/schedule`, { scheduledAt: iso });
-      refreshMaintenance();
+      try {
+        await post(`${W_ORDER_ENDPOINT}/${o.id}/schedule`, { scheduledAt: iso });
+        refreshMaintenance();
+      } catch (e) { flashError(e); }
     },
   }, 'Schedule'));
   toast.appendChild(el('button', { class: 'btn btn-sm', onClick: () => toast.classList.add('hidden') }, 'Cancel'));

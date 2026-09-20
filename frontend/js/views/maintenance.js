@@ -1,8 +1,8 @@
-import { el, esc, pct, num, int, fmtDateTime, userCan, timeAgo } from '../util.js';
-import { api, post, getRoles } from '../api.js';
+import { el, esc, pct, int, fmtDateTime, userCan, timeAgo } from '../util.js';
+import { post, getRoles } from '../api.js';
 import { store, selectMachine, refreshMaintenance, refreshSlow } from '../state.js';
 import { openInspector } from './inspector.js';
-import { kpi, card, emptyBox } from '../shared.js';
+import { kpi, card, emptyBox, toast } from '../shared.js';
 
 let root = null;
 let fStatus = 'ALL';
@@ -22,7 +22,7 @@ export function update(s) {
   if (!root) return;
   const items = (s.maintenance && s.maintenance.items) || [];
   const stats = s.maintenanceStats || {};
-  const ref = items.length + '|' + JSON.stringify([stats.recommended, stats.scheduled, stats.active, stats.completed]);
+  const ref = items.length + '|' + items.map(o => o.id + ':' + o.status).join('|') + '|' + JSON.stringify([stats.recommended, stats.scheduled, stats.active, stats.completed]);
   if (ref === lastRef) return;
   lastRef = ref;
   render();
@@ -89,7 +89,10 @@ function orderCard(o) {
       class: 'btn btn-sm' + (dis ? '' : ' btn-primary'),
       disabled: dis ? 'disabled' : null,
       title: !canEdit ? 'Requires ENGINEER role' : '',
-      onClick: async () => { await fn(); refreshMaintenance(); refreshSlow(); },
+      onClick: async () => {
+        try { await fn(); refreshMaintenance(); refreshSlow(); }
+        catch (e) { toast((e && e.message) ? e.message : 'Action failed — check the backend connection.', 'err'); }
+      },
     }, label);
   };
   if (o.status === 'RECOMMENDED') actions.appendChild(act('Schedule', () => schedulePrompt(o), s => s === 'RECOMMENDED'));
@@ -112,9 +115,9 @@ function orderCard(o) {
         style: { marginLeft: 'auto', cursor: 'pointer' },
         onClick: () => { selectMachine(o.machineId); openInspector(o.machineId, 'maintenance'); },
       }, 'view ' + o.machineId + ' →')),
-    el('div', { style: { fontWeight: '600', fontSize: '13px', margin: '6px 0 2px' } }, esc(o.title || 'Work order')),
+    el('div', { style: { fontWeight: '600', fontSize: 'var(--text-13)', margin: '6px 0 2px' } }, esc(o.title || 'Work order')),
     el('div', { class: 'alert-desc' }, esc(o.description || '')),
-    o.recommendedAction ? el('div', { class: 'alert-meta', style: { marginTop: '4px' } }, el('span', { style: { color: '#8dc6a8' } }, 'Recommended: ' + esc(o.recommendedAction))) : null,
+    o.recommendedAction ? el('div', { class: 'alert-meta', style: { marginTop: '4px' } }, el('span', { style: { color: 'var(--color-emerald)' } }, 'Recommended: ' + esc(o.recommendedAction))) : null,
     el('div', { class: 'alert-meta', style: { marginTop: '6px' } },
       (o.estimatedDurationMinutes ? '~' + int(o.estimatedDurationMinutes) + ' min · ' : ''),
       (o.scheduledAt ? 'scheduled ' + fmtDateTime(o.scheduledAt) + ' · ' : ''),
@@ -138,8 +141,10 @@ function schedulePrompt(o) {
     onClick: async () => {
       const iso = new Date(input.value).toISOString();
       toast.classList.add('hidden');
-      await post(`/api/v1/maintenance/${o.id}/schedule`, { scheduledAt: iso });
-      refreshMaintenance();
+      try {
+        await post(`/api/v1/maintenance/${o.id}/schedule`, { scheduledAt: iso });
+        refreshMaintenance();
+      } catch (e) { toast((e && e.message) ? e.message : 'Schedule failed — check the backend connection.', 'err'); }
     },
   }, 'Schedule'));
   toast.appendChild(el('button', { class: 'btn btn-sm', onClick: () => toast.classList.add('hidden') }, 'Cancel'));

@@ -1,4 +1,4 @@
-import { API_BASE, getRoles, getToken, login } from './api.js';
+import { API_BASE, getRoles, getToken, getUsername, login, logout, onAuthRequired } from './api.js';
 import { store, subscribe, selectMachine, startPolling, refreshMaintenance, refreshCore, applyRealtimeEvent, set, setLiveTransport } from './state.js';
 import { el, esc, int, timeAgo, fleetSummary } from './util.js';
 import { register, boot as bootRouter, go, onRoute } from './router.js';
@@ -17,7 +17,7 @@ import * as anomaliesView from './views/anomalies.js';
 import * as eventsView from './views/events.js';
 import { openInspector, closeInspector, toggleInspector, subscribeInspector } from './views/inspector.js';
 import { initPalette, togglePalette, closePalette, openPalette, isOpen as paletteOpen } from './command.js';
-import { getRealtimeClient } from './realtime.js';
+import { getRealtimeClient, destroyRealtimeClient } from './realtime.js';
 
 let lastSel = null;
 const seenAlerts = new Map();
@@ -35,36 +35,65 @@ const SHORTCUTS = [
 function $id(s) { return document.getElementById(s); }
 
 /* ---------- login ---------- */
+let authGate = null;
+
 async function bootLogin() {
   if (getToken()) return;
-  await new Promise(resolve => showLogin(resolve));
+  if (authGate) return authGate;
+  authGate = new Promise(resolve => showLogin(resolve));
+  try { await authGate; } finally { authGate = null; }
 }
 
 function showLogin(done) {
-  const input = el('input', { type: 'password', placeholder: 'configured operator password',
-    onkeydown: async e => {
-      if (e.key === 'Enter') {
-        const u = document.getElementById('loginUser').value;
-        try {
-          await login(u, input.value);
-          set({ user: u, roles: getRoles() });
-          overlay.remove();
-          done?.();
-        } catch { input.style.borderColor = '#f25c4c'; }
-      }
-    } });
-  const userSel = el('select', { id: 'loginUser' },
+  const err = el('div', { class: 'login-error', role: 'alert' });
+  const userSel = el('select', { id: 'loginUser', autocomplete: 'username', required: true },
     ['operator', 'engineer', 'admin'].map(u => el('option', { value: u }, u)));
-  const overlay = el('div', { style: { position: 'fixed', inset: 0, zIndex: 99, background: 'rgba(6,9,13,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
-    el('div', { class: 'card', style: { width: 'min(360px, 90vw)' } },
-      el('div', { class: 'card-head' }, el('h3', { class: 'card-title' }, 'ForgeSense sign-in')),
-      userSel, ' ',
-      input,
-      el('button', { class: 'btn btn-primary', style: { marginTop: '10px', width: '100%' }, onClick: async () => {
-        try { await login(userSel.value, input.value); set({ user: userSel.value, roles: getRoles() }); overlay.remove(); done?.(); }
-        catch { input.style.borderColor = '#f25c4c'; }
-      } }, 'Connect'),
-      el('div', { class: 'muted small', style: { marginTop: '8px' } }, 'Demo users: operator · engineer · admin. Passwords come from FORGESENSE_DEV_PASSWORD.')));
+  const input = el('input', {
+    id: 'loginPassword', type: 'password', required: true,
+    autocomplete: 'current-password', spellcheck: 'false',
+    placeholder: 'configured operator password',
+    oninput: () => err.classList.remove('visible'),
+  });
+  const btn = el('button', { class: 'btn btn-primary', type: 'button', style: { width: '100%' } }, 'Connect');
+  let busy = false;
+  const setBusy = b => {
+    busy = b;
+    btn.disabled = b;
+    btn.textContent = b ? 'Connecting…' : 'Connect';
+  };
+  const attempt = async () => {
+    const user = userSel.value, pass = input.value;
+    if (busy || !user || !pass) return;
+    err.classList.remove('visible');
+    setBusy(true);
+    try {
+      await login(user, pass);
+      set({ user, roles: getRoles() });
+      overlay.remove();
+      done?.();
+    } catch (e) {
+      err.textContent = (e && e.message) ? e.message : 'Login failed — check credentials.';
+      err.classList.add('visible');
+      input.select();
+      setBusy(false);
+    }
+  };
+  btn.addEventListener('click', attempt);
+  const form = el('form', {
+    class: 'login-card', role: 'dialog', 'aria-modal': 'true',
+    'aria-labelledby': 'loginTitle',
+    onSubmit: e => { e.preventDefault(); attempt(); },
+  },
+    el('div', { class: 'login-brand' },
+      el('i', { class: 'ph ph-gear-six logo', 'aria-hidden': 'true' }),
+      el('h1', { id: 'loginTitle', class: 'login-title' }, 'ForgeSense')),
+    el('p', { class: 'login-sub' }, 'Industrial Intelligence control room sign-in'),
+    el('div', { class: 'login-field' }, el('label', { for: 'loginUser' }, 'Role'), userSel),
+    el('div', { class: 'login-field' }, el('label', { for: 'loginPassword' }, 'Password'), input),
+    err,
+    btn,
+    el('p', { class: 'login-hint' }, 'Demo users: operator · engineer · admin. Passwords come from FORGESENSE_DEV_PASSWORD.'));
+  const overlay = el('div', { class: 'login-overlay' }, form);
   document.body.appendChild(overlay);
   input.focus();
 }
@@ -165,7 +194,10 @@ function statusbar(s) {
   $id('svcBasis').textContent = (st.dataBasis || [basis || 'SIMULATED']).join('/') + (s.liveTransport?.state === 'open' ? ' · STOMP live' : ' · REST fallback 3s');
 }
 
+let liveConnected = false;
+
 function connectLive() {
+  if (liveConnected) return;
   const wsBase = API_BASE.replace(/^http/, 'ws');
   const client = getRealtimeClient({
     url: wsBase + '/ws',
@@ -180,7 +212,28 @@ function connectLive() {
     },
     onDiagnostic: detail => setLiveTransport('degraded', detail),
   });
+  liveConnected = true;
   client.connect().catch(() => setLiveTransport('closed', 'REST snapshot fallback active'));
+}
+
+function teardownLive() {
+  liveConnected = false;
+  destroyRealtimeClient();
+}
+
+function guardSession() {
+  onAuthRequired(() => {
+    teardownLive();
+    setLiveTransport('closed', 'session ended — re-authentication required');
+    set({ user: null, roles: [], selectedMachineId: null });
+    bootLogin().then(() => {
+      if (getToken()) {
+        set({ user: getUsername() || store.user, roles: getRoles() });
+        connectLive();
+        refreshCore();
+      }
+    });
+  });
 }
 
 /* ---------- notifications ---------- */
@@ -337,6 +390,7 @@ function main() {
     });
     onRoute(({ type, payload }) => {
       if (type === 'palette') togglePalette();
+      else if (type === 'logout') { closePalette(); closeInspector(); logout(); }
       else if (type === 'inspector-toggle') toggleInspector();
       else if (type === 'inspector-close') closeInspector();
       else if (type === 'camera-reset') { if (ensureTwin()) resetCamera(); }
@@ -354,6 +408,7 @@ function main() {
     });
     const routeViews = { command: commandView, factory: factoryView, fleet: fleetView, telemetry: telemetryView, anomalies: anomaliesView, alerts: alertsView, events: eventsView, predictions: predictionsView, simulation: simulationView, maintenance: maintenanceView, analytics: analyticsView, system: systemView };
     globalEvents();
+    guardSession();
     document.addEventListener('keydown', onKey, true);
     clock();
     bootRouter('command', Object.keys(routeViews));

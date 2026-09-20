@@ -64,9 +64,10 @@ function alertPanel(a) {
 }
 
 function stat(v, l, tone) {
+  const color = { good: 'var(--color-emerald)', warn: 'var(--color-amber)', critical: 'var(--color-crimson)', info: 'var(--color-cyan)' }[tone];
   return el('div', { class: 'stat-box' },
     el('div', { class: 'l' }, l),
-    el('div', { class: 'v', style: { color: { good: '#3bc97f', warn: '#f0b450', critical: '#f25c4c', info: '#38c7ea' }[tone] } }, v != null ? int(v) : '—'));
+    el('div', { class: 'v', style: { color } }, v != null ? int(v) : '—'));
 }
 
 function riskPanel(risk) {
@@ -76,7 +77,12 @@ function riskPanel(risk) {
   const max = Math.max(...sorted.map(r => r.failureRisk ?? 0), 0.01);
   for (const r of sorted.slice(0, 8)) {
     body.appendChild(el('div', { class: 'factor-row' },
-      el('div', { class: 'fa', onClick: () => { selectMachine(r.machineId); openInspector(r.machineId); }, style: { cursor: 'pointer' } }, r.machineId),
+      el('div', {
+      class: 'fa', tabindex: '0', role: 'button',
+      onClick: () => { selectMachine(r.machineId); openInspector(r.machineId); },
+      onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMachine(r.machineId); openInspector(r.machineId); } },
+      style: { cursor: 'pointer' },
+    }, r.machineId),
       el('div', { class: 'fb' },
         el('div', { class: 'pc' },
           el('div', { class: 'bar' }, el('div', { class: 'bar-fill f-' + (r.failureRisk >= 0.5 ? 'warn' : 'good'), style: { width: pct((r.failureRisk ?? 0) / max, 0) } })),
@@ -97,7 +103,12 @@ function healthPanel(h) {
   for (const mm of machines) {
     const m = store.machineMap.get(mm.machineId);
     body.appendChild(el('div', { class: 'factor-row' },
-      el('div', { class: 'fa', onClick: () => { selectMachine(mm.machineId); openInspector(mm.machineId); }, style: { cursor: 'pointer' } }, mm.machineId),
+      el('div', {
+      class: 'fa', tabindex: '0', role: 'button',
+      onClick: () => { selectMachine(mm.machineId); openInspector(mm.machineId); },
+      onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMachine(mm.machineId); openInspector(mm.machineId); } },
+      style: { cursor: 'pointer' },
+    }, mm.machineId),
       el('div', { class: 'fb' },
         el('div', { class: 'pc' },
           el('div', { class: 'bar' }, el('div', { class: 'bar-fill f-' + (mm.healthScore < 60 ? 'critical' : mm.healthScore < 80 ? 'warn' : 'good'), style: { width: pct((mm.healthScore ?? 0) / maxH, 0) } })),

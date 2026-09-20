@@ -3,13 +3,20 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { store } from './state.js';
 import { machineState, statusInfo } from './util.js';
 
+function tokenColor(name, fallback) {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v ? v : fallback;
+  } catch { return fallback; }
+}
+
 const GLOW = {
-  good: 0x3bc97f,
-  warn: 0xf0b450,
-  critical: 0xf25c4c,
-  maint: 0x8f7bff,
-  down: 0x5a6780,
-  info: 0x38c7ea,
+  good: new THREE.Color(tokenColor('--color-emerald', '#3bc97f')),
+  warn: new THREE.Color(tokenColor('--color-amber', '#f0b450')),
+  critical: new THREE.Color(tokenColor('--color-crimson', '#f25c4c')),
+  maint: new THREE.Color(tokenColor('--color-cyan', '#38c7ea')),
+  down: new THREE.Color(tokenColor('--color-text-muted', '#5a6780')),
+  info: new THREE.Color(tokenColor('--color-cyan', '#38c7ea')),
 };
 
 const BODY = 0x2b3a4c;
@@ -612,8 +619,13 @@ function buildEdges() {
   depLines.length = 0;
   const edges = updateEdges();
   if (!edges.length) return;
-  const colors = { MATERIAL: 0x8fb8d8, POWER: 0xe8a33d, COOLING: 0x4f9fdd, SERVICE: 0x62c99b };
-  const defaultCol = 0x8fb8d8;
+  const colors = {
+    MATERIAL: new THREE.Color(tokenColor('--viz-1', '#c9762e')),
+    POWER: new THREE.Color(tokenColor('--viz-2', '#06b6d4')),
+    COOLING: new THREE.Color(tokenColor('--viz-3', '#10b981')),
+    SERVICE: new THREE.Color(tokenColor('--viz-4', '#f59e0b')),
+  };
+  const defaultCol = colors.MATERIAL;
   for (const e of edges) {
     const aMach = machines3d.get(e.upstream);
     const bMach = machines3d.get(e.downstream);
@@ -666,13 +678,13 @@ function applyStatus(m) {
   const sel = store.selectedMachineId === m.machineId;
   node.gain = 1;
   if (simHit) {
-    node.indicator.material.emissive.setHex(GLOW.info);
+    node.indicator.material.emissive.copy(GLOW.info);
     node.indicator.material.emissiveIntensity = 1.0;
   } else if (riskMode) {
-    node.indicator.material.emissive.setHex(GLOW[riskTone]);
+    node.indicator.material.emissive.copy(GLOW[riskTone]);
     node.indicator.material.emissiveIntensity = risk >= 0.5 ? 1.0 : 0.35;
   } else {
-    node.indicator.material.emissive.setHex(GLOW[tone]);
+    node.indicator.material.emissive.copy(GLOW[tone]);
     node.indicator.material.emissiveIntensity = tone === 'critical' ? 1.2 : tone === 'good' ? 0.55 : 0.85;
   }
   node.baseEmissive = node.indicator.material.emissive.getHex();

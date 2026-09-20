@@ -2,7 +2,7 @@ import { el, esc, pct, num, fmtDateTime, timeAgo, alertSeverityTag, statusInfo, 
 import { api, post, getRoles } from '../api.js';
 import { store, selectMachine, refreshCore } from '../state.js';
 import { openInspector } from './inspector.js';
-import { kpi } from '../shared.js';
+import { kpi, toast } from '../shared.js';
 
 let root = null;
 let fStatus = 'ALL';
@@ -20,10 +20,12 @@ export function unmount() { /* stateless */ }
 
 export function update(s) {
   if (!root) return;
-  const ref = (s.alerts || {}).total + '|' + ((s.alerts || {}).items || []).length + '|' + fStatus;
+  const items = ((s.alerts || {}).items) || [];
+  const sig = items.map(a => a.id + ':' + a.status + ':' + a.severity).join('|');
+  const ref = (s.alerts.total || 0) + '|' + sig + '|' + fStatus;
   if (ref === lastRef) return;
   lastRef = ref;
-  renderBody();
+  render();
 }
 
 function render() {
@@ -93,7 +95,10 @@ function alertCard(a) {
       class: 'btn btn-sm' + (dis ? '' : ' btn-primary'),
       disabled: dis ? 'disabled' : null,
       title: !userCan(roles, need) ? 'Requires ' + need + ' role' : '',
-      onClick: async () => { await fn(); refreshCore(); },
+      onClick: async () => {
+        try { await fn(); refreshCore(); }
+        catch (e) { toast((e && e.message) ? e.message : 'Action failed — check the backend connection.', 'err'); }
+      },
     }, label);
   };
   const active = s => s === 'NEW';
@@ -115,11 +120,19 @@ function alertCard(a) {
         el('div', {
           class: 'alert-title',
           style: 'cursor:pointer',
+          tabindex: '0',
+          role: 'button',
           onClick: () => { selectMachine(a.machineId); openInspector(a.machineId); },
+          onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMachine(a.machineId); openInspector(a.machineId); } },
         }, esc(a.headline || 'Alert ' + a.id)),
         el('div', { class: 'alert-meta' },
           el('span', { class: 'pill-status st-' + stTone }, st),
-          el('span', { onClick: () => { selectMachine(a.machineId); openInspector(a.machineId); }, style: { cursor: 'pointer' } },
+          el('span', {
+            onClick: () => { selectMachine(a.machineId); openInspector(a.machineId); },
+            tabindex: '0', role: 'button',
+            style: { cursor: 'pointer' },
+            onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMachine(a.machineId); openInspector(a.machineId); } },
+          },
             m ? m.machineId + ' · ' + esc(m.name) : esc(a.machineId)),
           el('span', { class: 'badge2' }, esc(a.type || '')),
           a.riskAtCreation != null ? el('span', {}, 'risk ' + pct(a.riskAtCreation) + ' at creation') : null,
@@ -130,11 +143,6 @@ function alertCard(a) {
       a.factorsSummary ? el('div', { class: 'alert-meta' },
         String(a.factorsSummary).split(/\s+/).filter(Boolean).map(f => el('span', { class: 'badge2' }, esc(String(f || '')).slice(0, 24)))) : null,
       a.recommendedAction ? el('div', { class: 'alert-meta' },
-        el('span', { style: { color: '#8dc6a8' } }, 'Recommended: ' + esc(a.recommendedAction))) : null,
+        el('span', { style: { color: 'var(--color-emerald)' } }, 'Recommended: ' + esc(a.recommendedAction))) : null,
       actions));
-}
-
-export function focusAlert(a) {
-  selectMachine(a.machineId);
-  openInspector(a.machineId);
 }

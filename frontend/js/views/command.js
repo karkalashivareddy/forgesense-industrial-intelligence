@@ -1,8 +1,8 @@
-import { el, esc, pct, num, int, fmtTime, timeAgo, statusInfo, riskInfo, anomalyInfo, machineState, fleetSummary, avgHealth } from '../util.js';
+import { el, esc, pct, num, int, riskInfo, anomalyInfo, machineState, fleetSummary, avgHealth } from '../util.js';
 import { api } from '../api.js';
 import { store, selectMachine } from '../state.js';
 import { openInspector } from './inspector.js';
-import { kpi, card, statusPill, healthBar, statusDot, toneColor, fleetBar } from '../shared.js';
+import { kpi, card, statusPill, statusDot, toneColor, fleetBar } from '../shared.js';
 
 let root = null;
 let lastRef = null;
@@ -91,7 +91,9 @@ function situationsCard(critList) {
     const a = anomalyInfo(m.anomalyScore);
     body.appendChild(el('div', {
       class: 'list-item clickable',
+      tabindex: '0', role: 'button',
       onClick: () => { selectMachine(m.machineId); openInspector(m.machineId); },
+      onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMachine(m.machineId); openInspector(m.machineId); } },
     },
       el('div', { class: 'alert-main' },
         el('div', { class: 'alert-title' }, statusDot(m), ' ', m.machineId, ' · ', esc(m.name || ''), ' ',
@@ -120,7 +122,9 @@ function zoneMapCard() {
     inZone.forEach(m => { const t = machineState(m).tone; stc[t] = (stc[t] || 0) + 1; });
     body.appendChild(el('div', {
       class: 'zone-cell',
+      tabindex: '0', role: 'button',
       onClick: () => window.dispatchEvent(new CustomEvent('forge:zone', { detail: { code: z.code } })),
+      onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.dispatchEvent(new CustomEvent('forge:zone', { detail: { code: z.code } })); } },
     },
       el('div', { class: 'zc-head' },
         el('span', { class: 'zc-name' }, z.name || z.code),
@@ -173,7 +177,7 @@ function detectionChain() {
   const panel = card('Detection chain', 'from sensor to action (live snapshot + event stream)',
     el('div', { class: 'btn-row', style: { justifyContent: 'space-between', flexWrap: 'wrap' } },
       ['Telemetry', 'ML · risk/anomaly', 'State', 'Alert', 'Impact', 'Maintenance', 'Recovery → Normal'].map((s, i) =>
-        el('span', { class: 'badge2', style: { fontSize: '11px' } }, (i + 1) + '. ' + s))));
+        el('span', { class: 'badge2', style: { fontSize: 'var(--text-11)' } }, (i + 1) + '. ' + s))));
   panel.classList.add('detection-chain');
   return panel;
 }

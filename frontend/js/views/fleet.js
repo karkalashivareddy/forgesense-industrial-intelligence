@@ -20,10 +20,6 @@ export function mount(container) {
 
 export function unmount() { /* stateless */ }
 
-export function activate() {
-  if (root && root.querySelector('.loading')) render();
-}
-
 export function update(s) {
   if (!root) return;
   const ref = (s.machines || []).map(m =>
@@ -71,6 +67,7 @@ function renderToolbar() {
       className: 'search',
       id: 'fleetQ',
       placeholder: 'Search machines…',
+      'aria-label': 'Search machines',
       value: q,
       oninput: e => { q = e.target.value; renderBody(); },
     }),
@@ -83,8 +80,14 @@ function renderToolbar() {
   return out;
 }
 
-function sortLabel(key) {
-  return el('span', { class: 'sortable', onClick: () => { if (sortKey === key) sortDir = -sortDir; else { sortKey = key; sortDir = -1; } renderBody(); } }, key + (sortKey === key ? (sortDir < 0 ? ' ↓' : ' ↑') : ''));
+function sortableTh(key, label) {
+  const active = sortKey === key;
+  return el('th', { 'aria-sort': active ? (sortDir < 0 ? 'descending' : 'ascending') : undefined },
+    el('button', {
+      class: 'sort-btn',
+      title: 'Sort by ' + label,
+      onClick: () => { if (sortKey === key) sortDir = -sortDir; else { sortKey = key; sortDir = -1; } renderBody(); },
+    }, label + (active ? (sortDir < 0 ? ' ↓' : ' ↑') : '')));
 }
 
 function filterSort() {
@@ -120,9 +123,9 @@ function renderBody() {
 function renderTable() {
   const rows = filterSort();
   const thead = el('tr', {},
-    el('th', {}, sortLabel('machine')),
+    sortableTh('machine', 'Machine'),
     el('th', {}, 'Zone / Line'),
-    el('th', {}, sortLabel('status')),
+    sortableTh('status', 'Status'),
     el('th', {}, 'Health', el('span', { class: 'muted small' }, ' · 0-100')),
     el('th', {}, 'Risk', el('span', { class: 'muted small' }, ' · 0-100%')),
     el('th', {}, 'Anomaly'),
@@ -138,7 +141,7 @@ function renderTable() {
     const a = anomalyInfo(m.anomalyScore);
     const r = riskInfo(m.failureRisk);
     const selected = store.selectedMachineId === m.machineId;
-    return el('tr', { class: selected ? 'selected' : '', onClick: () => { selectMachine(m.machineId); openInspector(m.machineId); } },
+    return el('tr', { class: selected ? 'selected' : '', tabindex: '0', onClick: () => { selectMachine(m.machineId); openInspector(m.machineId); }, onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMachine(m.machineId); openInspector(m.machineId); } } },
       el('td', {}, el('div', { style: { fontWeight: '600' } }, m.machineId), el('div', { class: 'muted small' }, esc(m.name || '') + (m.typeLabel ? ' · ' + esc(m.typeLabel) : ''))),
       el('td', {}, m.zone || '—', el('div', { class: 'muted small' }, m.line || '')),
       el('td', {}, statusPill(m)),

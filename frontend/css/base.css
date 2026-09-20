@@ -178,7 +178,7 @@ select:disabled, input:disabled, button:disabled { cursor: not-allowed; }
 .icon-btn {
   background: var(--color-surface-elevated); border: 1px solid var(--color-border);
   color: var(--color-text); border-radius: var(--radius-sm);
-  width: 30px; height: 30px; font-size: 15px; cursor: pointer; line-height: 1;
+  width: 30px; height: 30px; font-size: var(--icon-sm); cursor: pointer; line-height: 1;
   transition: border-color var(--duration-fast) var(--ease-standard),
               color var(--duration-fast) var(--ease-standard),
               transform var(--duration-fast) var(--ease-standard);
@@ -221,7 +221,7 @@ select:disabled, input:disabled, button:disabled { cursor: not-allowed; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.rail-btn i { font-size: 18px; width: 20px; height: 20px; flex: 0 0 auto; align-self: center; }
+.rail-btn i { font-size: var(--icon-md); width: 20px; height: 20px; flex: 0 0 auto; align-self: center; }
 .rail-btn::after { display: none; }
 .rail-btn:hover { color: var(--color-text); background: var(--color-surface-elevated); }
 .rail-btn.active,
@@ -282,25 +282,3 @@ select:disabled, input:disabled, button:disabled { cursor: not-allowed; }
 
 /* Status Icons in Status Bar */
 .svc .status-icon { width: var(--icon-sm); height: var(--icon-sm); flex-shrink: 0; }
-
-/* ============ Accessibility ============ */
-:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-  border-radius: var(--radius-sm);
-}
-
-.visually-hidden {
-  position: absolute; width: 1px; height: 1px;
-  margin: -1px; padding: 0; border: 0;
-  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
-}
-
-button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
-select, input, button { cursor: pointer; }
-select:disabled, input:disabled, button:disabled { cursor: not-allowed; }
-
-a { color: var(--color-cyan); text-decoration: none; }
-a:hover { text-decoration: underline; }
-
-::selection { background: color-mix(in srgb, var(--color-copper) 30%, transparent); color: var(--color-text-inverse); }

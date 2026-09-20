@@ -2,7 +2,7 @@ import { el, esc, pct, num, int, fmtDateTime, timeAgo, statusInfo, riskInfo, ano
 import { api } from '../api.js';
 import { store, selectMachine } from '../state.js';
 import { openInspector } from './inspector.js';
-import { kpi, card, segBar, riskPill, statusPill, errorBox, emptyBox, insightCard } from '../shared.js';
+import { kpi, card, segBar, statusPill, errorBox, emptyBox, insightCard } from '../shared.js';
 
 let root = null;
 let lastRef = null;
@@ -115,7 +115,7 @@ function riskTable(list) {
     const s = statusInfo(m);
     const r = riskInfo(m.failureRisk);
     const g = modelGrade(m.modelMode);
-    return el('tr', { onClick: () => { selectMachine(m.machineId); openInspector(m.machineId, 'prediction'); }, style: { cursor: 'pointer' } },
+    return el('tr', { tabindex: '0', role: 'button', onClick: () => { selectMachine(m.machineId); openInspector(m.machineId, 'prediction'); }, onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMachine(m.machineId); openInspector(m.machineId, 'prediction'); } }, style: { cursor: 'pointer' } },
       el('td', {}, m.machineId, el('div', { class: 'muted small' }, esc(m.name || '') + ' · ' + esc(m.zone || ''))),
       el('td', {}, statusPill(m)),
       el('td', {}, el('span', { class: 'tag tag-' + r.tone }, r.band), el('span', { class: 'muted small', style: { marginLeft: '6px' } }, pct(m.failureRisk))),

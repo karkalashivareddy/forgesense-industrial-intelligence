@@ -1,8 +1,8 @@
-import { el, esc, pct, num, int, fmtDateTime, fmtTime, SCENARIO_LABELS, userCan, statusInfo } from '../util.js';
+import { el, esc, pct, int, fmtDateTime, fmtTime, SCENARIO_LABELS, userCan } from '../util.js';
 import { api, post, getRoles } from '../api.js';
 import { store, selectMachine } from '../state.js';
 import { openInspector } from './inspector.js';
-import { kpi, card, emptyBox, errorBox } from '../shared.js';
+import { kpi, card, emptyBox, toast } from '../shared.js';
 
 let root = null;
 let scens = [];
@@ -65,13 +65,17 @@ function render() {
   root.appendChild(scenarioList());
 }
 
+function run(action) {
+  return post(action).then(() => refresh()).catch(e => toast((e && e.message) ? e.message : 'Simulator command failed.', 'err'));
+}
+
 function globalCard() {
   const paused = !!(simCfg && simCfg.paused);
   const body = el('div', {});
   const btnRow = el('div', { class: 'btn-row' },
-    el('button', { class: 'btn', disabled: paused || !canEdit() ? 'disabled' : null, title: userCan(getRoles(), 'ENGINEER') ? (paused ? 'Already paused' : '') : 'Requires ENGINEER', onClick: () => post('/api/v1/simulation/pause').then(() => refresh()) }, 'Pause feed'),
-    el('button', { class: 'btn', disabled: !paused || !canEdit() ? 'disabled' : null, title: userCan(getRoles(), 'ENGINEER') ? (!paused ? 'Feed is running' : '') : 'Requires ENGINEER', onClick: () => post('/api/v1/simulation/resume').then(() => refresh()) }, 'Resume feed'),
-    el('button', { class: 'btn btn-danger', disabled: !canEdit() ? 'disabled' : null, title: userCan(getRoles(), 'ENGINEER') ? '' : 'Requires ENGINEER', onClick: async () => { await post('/api/v1/simulation/reset'); refresh(); } }, 'Reset feed'),
+    el('button', { class: 'btn', disabled: paused || !canEdit() ? 'disabled' : null, title: userCan(getRoles(), 'ENGINEER') ? (paused ? 'Already paused' : '') : 'Requires ENGINEER', onClick: () => run('/api/v1/simulation/pause') }, 'Pause feed'),
+    el('button', { class: 'btn', disabled: !paused || !canEdit() ? 'disabled' : null, title: userCan(getRoles(), 'ENGINEER') ? (!paused ? 'Feed is running' : '') : 'Requires ENGINEER', onClick: () => run('/api/v1/simulation/resume') }, 'Resume feed'),
+    el('button', { class: 'btn btn-danger', disabled: !canEdit() ? 'disabled' : null, title: userCan(getRoles(), 'ENGINEER') ? '' : 'Requires ENGINEER', onClick: () => run('/api/v1/simulation/reset') }, 'Reset feed'),
     el('span', { class: 'muted small' }, paused ? 'feed is paused — telemetry is not flowing' : 'feed is running — conditions normal unless a scenario is active'));
   body.appendChild(btnRow);
   body.appendChild(el('div', { class: 'muted small', style: { marginTop: '8px' } }, 'Controls the simulator process that feeds the pipeline. All telemetry is synthetic.'));
@@ -86,7 +90,7 @@ function controlCard() {
       el('thead', {}, el('tr', {}, el('th', {}, 'Machine'), el('th', {}, 'Scenario'), el('th', {}, 'Severity'), el('th', {}, 'Active'), el('th', {}, 'Started'))),
       el('tbody', {}, ctrl.map(c => {
         const m = store.machineMap.get(c.machineId);
-        return el('tr', { onClick: () => { selectMachine(c.machineId); openInspector(c.machineId); }, style: { cursor: 'pointer' } },
+        return el('tr', { tabindex: '0', role: 'button', onClick: () => { selectMachine(c.machineId); openInspector(c.machineId); }, onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMachine(c.machineId); openInspector(c.machineId); } }, style: { cursor: 'pointer' } },
           el('td', {}, c.machineId, el('div', { class: 'muted small' }, m ? esc(m.name) : '')),
           el('td', {}, SCENARIO_LABELS[c.scenario] || esc(c.scenario || 'NONE')),
           el('td', {}, c.severity != null ? pct(c.severity, 0) : '—'),
@@ -164,7 +168,7 @@ function scenarioList() {
         el('th', {}, 'Run'), el('th', {}, 'Machine'), el('th', {}, 'Scenario'), el('th', {}, 'Sev'), el('th', {}, 'Affected'), el('th', {}, 'Expected downtime'), el('th', {}, 'Production loss'), el('th', {}, 'Status'), el('th', {}, 'Created'))),
       el('tbody', {}, scens.slice().reverse().map(s => {
         const m = store.machineMap.get(s.machineId);
-        return el('tr', { onClick: () => { selectMachine(s.machineId); openInspector(s.machineId); }, style: { cursor: 'pointer' } },
+        return el('tr', { tabindex: '0', role: 'button', onClick: () => { selectMachine(s.machineId); openInspector(s.machineId); }, onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMachine(s.machineId); openInspector(s.machineId); } }, style: { cursor: 'pointer' } },
           el('td', { class: 'mono muted small' }, esc(String(s.id || '').slice(-8))),
           el('td', {}, s.machineId, el('div', { class: 'muted small' }, m ? esc(m.name) : esc(s.machineName || ''))),
           el('td', {}, SCENARIO_LABELS[s.scenarioType] || esc(s.scenarioType || '')),
