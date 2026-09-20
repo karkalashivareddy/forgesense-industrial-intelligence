@@ -35,7 +35,7 @@
 | # | Finding | Classification |
 |---|---------|----------------|
 | B1 | Backend enforces an explicit JWT secret via `FORGESENSE_SECURITY_JWT_SECRET`; in demo mode `JwtService` generates a random key; outside demo the app refuses to boot without a configured secret. Sound baseline. | INFO (RESOLVED) |
-| B2 | CI hygiene job (`ci.yml`) greps tracked files for known credential defaults (`forgesense_dev_pw`, `forgesense-demo-jwt-signing-key`, `forgeSence-DemoPW`, `default forgesense-dev`) and fails on a tracked `.env`. Verified present. | INFO (PASS) |
+| B2 | CI hygiene job (`ci.yml`) greps tracked files for known development credential-default literals (development device password, development JWT signing-key, development demo password, and a development-environment password phrase) and fails on a tracked `.env`. Verified present. | INFO (PASS) |
 | B3 | Local `.env` (gitignored) contains a fixed demo JWT secret and `FORGESENSE_DEV_PASSWORD`. Acceptable for local dev; must never be tracked. The tracked `.env.example` must remain placeholder-only. | LOW |
 | B4 | No committed API key/database password found in the inspected configuration. | INFO (PASS) |
 | B5 | Frontend keeps the JWT in a module variable (`api.js:3-4`), not `localStorage`/cookies → XSS surface reduced. | INFO (PASS) |
