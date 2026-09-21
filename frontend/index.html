@@ -33,9 +33,8 @@
     <span id="factoryState" class="fc-state st-muted">—</span>
   </div>
   <div class="topbar-status">
-    <span class="pill" id="sysStatus" role="status" title="Data transport + freshness"><i class="ph ph-wifi-high" id="sysIcon"></i><span id="sysStatusText">connecting…</span></span>
-    <span class="pill thr-pill" id="thrPill" title="Telemetry events ingested in the last 60 seconds"><i class="ph ph-arrows-out-simple"></i><b id="thrRate">—</b>/min</span>
-    <span class="pill ml-pill" title="Machine learning service"><i class="ph ph-brain" id="mlIcon"></i>ML <span id="mlModel">—</span></span>
+    <span class="pill sys" id="sysStatus" role="status" title="Data transport + freshness"><i class="ph ph-broadcast" id="sysIcon" aria-hidden="true"></i><span id="sysStatusText">connecting…</span></span>
+    <span class="pill ml-pill" title="Machine learning service"><i class="ph ph-brain" id="mlIcon" aria-hidden="true"></i>ML <span id="mlModel">—</span></span>
     <span class="sep"></span>
     <span id="clock" class="clock">--:--:--</span>
     <span class="sep"></span>
@@ -47,18 +46,30 @@
 
 <div class="shell">
   <nav id="primaryNav" class="rail" aria-label="Control room sections">
-    <button class="rail-btn" data-route="factory" data-label="Factory"><i class="ph ph-cube"></i><span class="label">Factory</span></button>
-    <button class="rail-btn" data-route="command" data-label="Command"><i class="ph ph-gauge"></i><span class="label">Command</span></button>
-    <button class="rail-btn" data-route="fleet" data-label="Fleet"><i class="ph ph-database"></i><span class="label">Fleet</span></button>
-    <button class="rail-btn" data-route="telemetry" data-label="Telemetry"><i class="ph ph-activity"></i><span class="label">Telemetry</span></button>
-    <button class="rail-btn" data-route="anomalies" data-label="Anomalies"><i class="ph ph-radar"></i><span class="label">Anomalies</span></button>
-    <button class="rail-btn" data-route="alerts" data-label="Alerts"><i class="ph ph-warning-octagon"></i><span class="label">Alerts</span></button>
-    <button class="rail-btn" data-route="events" data-label="Events"><i class="ph ph-list-dashes"></i><span class="label">Events</span></button>
-    <button class="rail-btn" data-route="predictions" data-label="Predictions"><i class="ph ph-chart-line-up"></i><span class="label">Predictions</span></button>
-    <button class="rail-btn" data-route="simulation" data-label="Simulation"><i class="ph ph-flask"></i><span class="label">Simulation</span></button>
-    <button class="rail-btn" data-route="maintenance" data-label="Maintenance"><i class="ph ph-wrench"></i><span class="label">Maintenance</span></button>
-    <button class="rail-btn" data-route="analytics" data-label="Analytics"><i class="ph ph-chart-bar"></i><span class="label">Analytics</span></button>
-    <button class="rail-btn" data-route="system" data-label="System"><i class="ph ph-gear"></i><span class="label">System</span></button>
+    <div class="rail-group">
+      <span class="rail-group-label">Monitor</span>
+      <button class="rail-btn" data-route="command" data-label="Command"><span class="idx">1</span><i class="ph ph-gauge"></i><span class="label">Command</span></button>
+      <button class="rail-btn" data-route="factory" data-label="Factory"><span class="idx">2</span><i class="ph ph-cube"></i><span class="label">Factory</span></button>
+      <button class="rail-btn" data-route="fleet" data-label="Fleet"><span class="idx">3</span><i class="ph ph-database"></i><span class="label">Fleet</span></button>
+    </div>
+    <div class="rail-group">
+      <span class="rail-group-label">Intelligence</span>
+      <button class="rail-btn" data-route="telemetry" data-label="Telemetry"><span class="idx">4</span><i class="ph ph-activity"></i><span class="label">Telemetry</span></button>
+      <button class="rail-btn" data-route="predictions" data-label="Predictions"><span class="idx">6</span><i class="ph ph-chart-line-up"></i><span class="label">Predictions</span></button>
+      <button class="rail-btn" data-route="analytics" data-label="Analytics"><span class="idx">8</span><i class="ph ph-chart-bar"></i><span class="label">Analytics</span></button>
+      <button class="rail-btn" data-route="anomalies" data-label="Anomalies"><span class="idx">·</span><i class="ph ph-radar"></i><span class="label">Anomalies</span></button>
+    </div>
+    <div class="rail-group">
+      <span class="rail-group-label">Operations</span>
+      <button class="rail-btn" data-route="alerts" data-label="Alerts"><span class="idx">5</span><i class="ph ph-warning-octagon"></i><span class="label">Alerts</span></button>
+      <button class="rail-btn" data-route="maintenance" data-label="Maintenance"><span class="idx">7</span><i class="ph ph-wrench"></i><span class="label">Maintenance</span></button>
+      <button class="rail-btn" data-route="events" data-label="Events"><span class="idx">·</span><i class="ph ph-list-dashes"></i><span class="label">Events</span></button>
+      <button class="rail-btn" data-route="simulation" data-label="Simulation"><span class="idx">·</span><i class="ph ph-flask"></i><span class="label">Simulation</span></button>
+    </div>
+    <div class="rail-group">
+      <span class="rail-group-label">Admin</span>
+      <button class="rail-btn" data-route="system" data-label="System"><span class="idx">9</span><i class="ph ph-gear"></i><span class="label">System</span></button>
+    </div>
     <div class="rail-foot">
       <button class="rail-link" data-action="shortcuts" title="Keyboard shortcuts"><i class="ph ph-keyboard"></i><span>Shortcuts</span></button>
       <button class="rail-link" data-action="logout" title="Sign out and return to the sign-in screen"><i class="ph ph-sign-out"></i><span>Sign out</span></button>
@@ -120,16 +131,29 @@
 </div>
 
 <footer id="statusbar" class="statusbar" role="contentinfo">
-  <div id="svcLine" class="svc"><i class="ph ph-database status-icon status-running" aria-hidden="true"></i> Backend <span id="svcBackend">…</span></div>
-  <div class="svc"><i class="ph ph-brain status-icon status-running" aria-hidden="true"></i> ML <span id="svcMl">…</span></div>
-  <div class="svc"><i class="ph ph-share-network status-icon status-running" aria-hidden="true"></i> Transport <span id="svcKafka">…</span></div>
-  <div class="svc"><i class="ph ph-cylinder status-icon status-running" aria-hidden="true"></i> PostgreSQL <span id="svcPg">…</span></div>
-  <div class="svc"><i class="ph ph-database status-icon status-running" aria-hidden="true"></i> Redis <span id="svcRedis">…</span></div>
-  <div class="svc"><i class="ph ph-activity status-icon" aria-hidden="true"></i> Events <span id="svcEvents">—</span></div>
-  <div class="svc"><i class="ph ph-clock status-icon" aria-hidden="true"></i> Last telemetry <span id="svcLastTel">—</span></div>
-  <div class="svc"><i class="ph ph-info status-icon" aria-hidden="true"></i> Basis <span id="svcBasis">—</span></div>
+  <button id="sysBtn" class="sys-btn" title="Open system diagnostics" aria-haspopup="dialog" aria-expanded="false"><span class="state-dot" id="sysDot"></span><span id="sysBtnText">SYSTEM HEALTH</span></button>
+  <div class="svc"><i class="ph ph-share-network status-icon" aria-hidden="true"></i>Transport <span id="svcKafka">…</span></div>
+  <div class="svc"><i class="ph ph-info status-icon" aria-hidden="true"></i>Basis <span id="svcBasis">—</span></div>
+  <div class="svc"><i class="ph ph-clock status-icon" aria-hidden="true"></i>Last telemetry <span id="svcLastTel">—</span></div>
   <div class="statusbar-right">ForgeSense is a control-room & simulation environment over synthetic telemetry; it does not control real machines.</div>
 </footer>
+
+<div id="diag" class="diag hidden" role="dialog" aria-modal="true" aria-label="System diagnostics">
+  <div class="diag-head">
+    <span class="diag-title">System diagnostics</span>
+    <button id="diagClose" class="icon-btn" aria-label="Close diagnostic pane"><i class="ph ph-x"></i></button>
+  </div>
+  <div class="diag-list">
+    <div class="diag-row"><b><i class="ph ph-database" aria-hidden="true"></i> Backend</b><span class="v" id="svcBackend">…</span></div>
+    <div class="diag-row"><b><i class="ph ph-brain" aria-hidden="true"></i> ML service</b><span class="v" id="svcMl">…</span></div>
+    <div class="diag-row"><b><i class="ph ph-cylinder" aria-hidden="true"></i> PostgreSQL</b><span class="v" id="svcPg">…</span></div>
+    <div class="diag-row"><b><i class="ph ph-database" aria-hidden="true"></i> Redis</b><span class="v" id="svcRedis">…</span></div>
+    <div class="diag-row"><b><i class="ph ph-activity" aria-hidden="true"></i> Events in window</b><span class="v" id="svcEvents">—</span></div>
+    <div class="diag-row"><b><i class="ph ph-clock" aria-hidden="true"></i> Last telemetry</b><span class="v" id="diagLastTel">—</span></div>
+    <div class="diag-row"><b><i class="ph ph-share-network" aria-hidden="true"></i> Transport</b><span class="v" id="diagKafka">—</span></div>
+    <div class="diag-row"><b><i class="ph ph-info" aria-hidden="true"></i> Data basis</b><span class="v" id="diagBasis">—</span></div>
+  </div>
+</div>
 
 <div id="palette" class="panel-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="paletteTitle">
   <div class="palette">

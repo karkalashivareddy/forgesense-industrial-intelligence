@@ -172,16 +172,45 @@ function renderTab() {
   if (!id) { host.innerHTML = '<div class="empty">Select a machine to inspect it.</div>'; return; }
   const m = machine();
   if (!m) { host.innerHTML = '<div class="empty">Machine no longer present.</div>'; return; }
-  switch (tab) {
-    case 'overview': return overview(host, m);
-    case 'telemetry': return telemetryTab(host, m);
-    case 'prediction': return predictionTab(host, m);
-    case 'explanation': return explanationTab(host, m);
-    case 'dependencies': return dependenciesTab(host, m);
-    case 'events': return eventsTab(host, m);
-    case 'impact': return impactTab(host, m);
-    case 'maintenance': return maintenanceTab(host, m);
+  const run = () => {
+    switch (tab) {
+      case 'overview': return overview(host, m);
+      case 'telemetry': return telemetryTab(host, m);
+      case 'prediction': return predictionTab(host, m);
+      case 'explanation': return explanationTab(host, m);
+      case 'dependencies': return dependenciesTab(host, m);
+      case 'events': return eventsTab(host, m);
+      case 'impact': return impactTab(host, m);
+      case 'maintenance': return maintenanceTab(host, m);
+      default: return null;
+    }
+  };
+  try {
+    const r = run();
+    if (r && typeof r.then === 'function') {
+      r.catch(() => {
+        if (!document.body.contains(host)) return;
+        host.innerHTML = '';
+        host.appendChild(el('div', { class: 'empty' }, gracefulUnavailable(tab)));
+      });
+    }
+  } catch {
+    host.innerHTML = '';
+    host.appendChild(el('div', { class: 'empty' }, gracefulUnavailable(tab)));
   }
+}
+
+function gracefulUnavailable(tab) {
+  const copy = {
+    explanation: 'No explanation available for this prediction — the ML pipeline has not produced an attribution in this run.',
+    prediction: 'No prediction available for this machine yet.',
+    telemetry: 'No telemetry available for this machine in the current window.',
+    impact: 'No production-impact estimate available for this machine yet.',
+    events: 'No events recorded for this machine yet.',
+    maintenance: 'No maintenance record for this machine yet.',
+    dependencies: 'No dependency edges recorded for this machine.',
+  };
+  return copy[tab] || 'This detail is unavailable right now — check the backend connection.';
 }
 
 function meterBox(frac, tone) {
@@ -211,7 +240,7 @@ async function overview(host, m) {
   const hTone = healthInfo(m.healthScore);
   host.appendChild(el('div', { class: 'insp-head-line' },
     el('div', { class: 'name' }, m.name,
-      el('span', { class: 'pill-status st-' + (s.state === 'STALE' ? 'stale' : s.tone), title: s.hint }, s.label.toUpperCase()),
+      el('span', { class: 'pill-status st-' + (s.state === 'STALE' ? 'stale' : s.tone), title: s.hint }, s.label),
       el('span', { class: 'tag tag-' + (a.tone === 'good' ? 'info' : a.tone) }, 'Anomaly ' + a.band)),
     el('div', { class: 'meta' }, `${m.zone || '—'} / ${m.line || '—'} · ${esc(m.typeLabel || m.type || '')} · criticality ${esc(m.criticality || 'standard')}`)));
   if (s.state !== 'NORMAL' && s.state !== 'UNKNOWN' && s.guidance) {
@@ -358,7 +387,7 @@ async function explanationTab(host, m) {
   host.lastChild && host.lastChild.remove();
   const factors = (ex && Array.isArray(ex.factors)) ? ex.factors : [];
   if (!factors.length) {
-    host.appendChild(emptyLine('No attribution yet — the model has not run for ' + esc(id) + '. (GET /api/v1/machines/' + esc(id) + '/explanation)' + (ex && ex.message ? ' · ' + esc(ex.message) : '')));
+    host.appendChild(emptyLine('No explanation available for this prediction — the ML pipeline has not produced an attribution for ' + esc(id) + ' yet.'));
     return;
   }
   host.appendChild(el('div', { class: 'insp-head-line' },

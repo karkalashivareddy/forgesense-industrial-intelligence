@@ -51,7 +51,7 @@ function showLogin(done) {
   const input = el('input', {
     id: 'loginPassword', type: 'password', required: true,
     autocomplete: 'current-password', spellcheck: 'false',
-    placeholder: 'configured operator password',
+    placeholder: 'Enter your password',
     oninput: () => err.classList.remove('visible'),
   });
   const btn = el('button', { class: 'btn btn-primary', type: 'button', style: { width: '100%' } }, 'Connect');
@@ -92,7 +92,7 @@ function showLogin(done) {
     el('div', { class: 'login-field' }, el('label', { for: 'loginPassword' }, 'Password'), input),
     err,
     btn,
-    el('p', { class: 'login-hint' }, 'Demo users: operator · engineer · admin. Passwords come from FORGESENSE_DEV_PASSWORD.'));
+    el('p', { class: 'login-hint' }, 'Control-room access is protected. Use an operator, engineer, or admin profile and the password provisioned for your environment.'));
   const overlay = el('div', { class: 'login-overlay' }, form);
   document.body.appendChild(overlay);
   input.focus();
@@ -119,29 +119,24 @@ function topbar(s) {
   const txt = $id('sysStatusText');
   const live = s.liveTransport || {};
   const liveOpen = live.state === 'open';
+  sys.classList.remove('stale', 'ok', 'degraded', 'down');
   if (liveOpen) {
-    txt.textContent = 'LIVE · STOMP' + (s.liveEventCount ? ` · ${int(s.liveEventCount)} events` : '');
-    sys.classList.remove('stale');
+    txt.textContent = 'LIVE · STOMP' + (s.liveEventCount ? ` · ${int(s.liveEventCount)}` : '');
+    sys.classList.add('ok');
     if (icon) icon.className = 'ph ph-broadcast';
   } else if (!f.ok) {
     txt.textContent = 'DEGRADED · REST retry ' + f.failures;
-    sys.classList.add('stale');
+    sys.classList.add('down');
     if (icon) icon.className = 'ph ph-warning';
   } else if (age == null) {
     txt.textContent = 'SYNCING · REST snapshot';
-    sys.classList.remove('stale');
+    sys.classList.add('degraded');
     if (icon) icon.className = 'ph ph-arrows-clockwise';
   } else {
     txt.textContent = 'REST FALLBACK · age ' + age + 's';
-    sys.classList.toggle('stale', age >= 12);
+    sys.classList.add(age >= 12 ? 'down' : 'degraded');
     if (icon) icon.className = 'ph ph-arrows-clockwise';
   }
-  const tel = s.telemetryStatus || {};
-  const thr = $id('thrRate');
-  const thrPill = $id('thrPill');
-  const v = tel.telemetryPerMinute;
-  if (thr) thr.textContent = v != null ? int(v) : '—';
-  if (thrPill) thrPill.classList.toggle('stale', !f.ok);
 
   const ml = s.status || {};
   const mlIcon = $id('mlIcon');
@@ -167,31 +162,57 @@ function topbar(s) {
 }
 
 function osLabel(fs) {
-  if (fs.offline || fs.critical) return { label: 'OUTAGE', tone: 'critical' };
-  if (fs.attn) return { label: 'ATTENTION', tone: 'warn' };
-  return { label: 'OPERATIONAL', tone: 'good' };
+  if (fs.offline || fs.critical) return { label: 'Outage', tone: 'critical' };
+  if (fs.attn) return { label: 'Attention', tone: 'warn' };
+  return { label: 'Operational', tone: 'good' };
 }
 
 /* ---------- status bar ---------- */
 function statusbar(s) {
   const f = s.freshness || { ok: false, failures: 0 };
-  $id('svcBackend').textContent = f.ok ? 'OK' : 'DOWN ×' + f.failures;
   const ml = s.status || {};
-  $id('svcMl').textContent = ml.mlServiceAvailable ? 'v' + (ml.mlModelVersion || '?') + ' up' : 'down';
-  $id('svcKafka').textContent = s.liveTransport?.state === 'open'
-    ? 'STOMP live' : (s.telemetryStatus && s.telemetryStatus.transport ? s.telemetryStatus.transport : 'REST fallback');
   const st = s.status || {};
-  $id('svcPg').textContent = st.database == null ? '—' : (typeof st.database === 'string' ? esc(st.database) : 'connected');
-  $id('svcRedis').textContent = health && health.status === 'UP' && health.components && health.components.redis ? (health.components.redis.status === 'UP' ? 'up' : 'down') : '—';
+  const liveOpen = s.liveTransport?.state === 'open';
+  const set = (id, txt) => { const n = $id(id); if (n) n.textContent = txt; };
+
+  /* detailed rows */
+  set('svcBackend', f.ok ? 'healthy' : 'DOWN ×' + f.failures);
+  set('svcMl', ml.mlServiceAvailable ? 'v' + (ml.mlModelVersion || '?') + ' up' : 'down');
+  set('svcPg', st.database == null ? '—' : (typeof st.database === 'string' ? esc(st.database) : 'connected'));
+  set('svcRedis', health && health.status === 'UP' && health.components && health.components.redis ? (health.components.redis.status === 'UP' ? 'up' : 'down') : '—');
   const ev = s.events || {};
-  $id('svcEvents').textContent = ev.count != null ? int(ev.count) : (ev.items || []).length;
+  set('svcEvents', ev.count != null ? int(ev.count) : (ev.items || []).length);
   let newest = null;
   for (const m of s.machines || []) {
     if (m.lastTelemetryAt && (!newest || m.lastTelemetryAt > newest)) newest = m.lastTelemetryAt;
   }
-  $id('svcLastTel').textContent = newest ? timeAgo(newest) : '—';
+  const ageTxt = newest ? timeAgo(newest) : '—';
+  set('svcLastTel', ageTxt);
+  set('diagLastTel', ageTxt);
   const basis = st.demoMode ? 'SIMULATED' : '';
-  $id('svcBasis').textContent = (st.dataBasis || [basis || 'SIMULATED']).join('/') + (s.liveTransport?.state === 'open' ? ' · STOMP live' : ' · REST fallback 3s');
+  const basisTxt = (st.dataBasis || [basis || 'SIMULATED']).join('/');
+  set('svcBasis', basisTxt + (liveOpen ? ' · stomp live' : ' · rest fallback 3s'));
+  set('diagBasis', basisTxt);
+  set('diagKafka', liveOpen ? 'STOMP live' : (s.telemetryStatus && s.telemetryStatus.transport ? s.telemetryStatus.transport : 'REST fallback 3s'));
+  set('svcKafka', liveOpen ? 'stomp live' : (s.telemetryStatus && s.telemetryStatus.transport ? s.telemetryStatus.transport : 'rest fallback'));
+
+  /* aggregate state button */
+  const btn = $id('sysBtn');
+  const dot = $id('sysDot');
+  const bt = $id('sysBtnText');
+  if (btn && bt) {
+    btn.classList.remove('state-warn', 'state-down');
+    if (!f.ok) {
+      btn.classList.add('state-down');
+      bt.textContent = 'Transport degraded';
+    } else if (liveOpen) {
+      bt.textContent = 'Operational · STOMP live';
+    } else {
+      btn.classList.add('state-warn');
+      bt.textContent = 'Operational · REST fallback';
+    }
+  }
+  if (dot) dot.className = 'state-dot';
 }
 
 let liveConnected = false;
@@ -373,6 +394,16 @@ function clock() {
   setInterval(tick2, 1000);
 }
 
+/* ---------- diagnostics drawer ---------- */
+function toggleDiag(force) {
+  const d = $id('diag');
+  const b = $id('sysBtn');
+  if (!d) return;
+  const open = force != null ? force : d.classList.contains('hidden');
+  d.classList.toggle('hidden', !open);
+  if (b) b.setAttribute('aria-expanded', String(open));
+}
+
 function main() {
   bootLogin().then(() => {
     registerViews();
@@ -410,6 +441,10 @@ function main() {
     globalEvents();
     guardSession();
     document.addEventListener('keydown', onKey, true);
+    const sysBtn = $id('sysBtn');
+    if (sysBtn) sysBtn.addEventListener('click', () => toggleDiag());
+    const diagClose = $id('diagClose');
+    if (diagClose) diagClose.addEventListener('click', () => toggleDiag(false));
     clock();
     bootRouter('command', Object.keys(routeViews));
     startPolling();

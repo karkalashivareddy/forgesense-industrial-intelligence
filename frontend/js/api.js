@@ -61,11 +61,17 @@ async function parseBody(res) {
 }
 
 export async function login(user, pass) {
-  const res = await raw('/api/v1/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ username: user, password: pass }),
-  });
-  if (!res.ok) throw new Error('Login failed — check credentials');
+  let res;
+  try {
+    res = await fetch(API_BASE + '/api/v1/auth/login', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass }),
+    });
+  } catch {
+    throw new Error('Sign-in service unreachable — is the backend up?');
+  }
+  if (!res.ok) throw new Error('Login failed — check credentials.');
   const data = await parseBody(res);
   token = data.accessToken;
   username = data.username || user;

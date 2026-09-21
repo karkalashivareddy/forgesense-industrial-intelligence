@@ -17,7 +17,7 @@ function render() {
     return !q || `${e.eventType || ''} ${e.machineId || ''} ${e.source || ''} ${e.description || ''}`.toLowerCase().includes(q);
   });
   root.innerHTML = '';
-  root.appendChild(el('div', { class: 'page-title' }, 'Events', el('span', { class: 'sub' }, 'Unified operational timeline')));
+  root.appendChild(el('div', { class: 'page-title' }, 'Events', el('span', { class: 'sub' }, 'Unified operational timeline · synthetic simulator feed')));
   root.appendChild(el('div', { class: 'toolbar' },
     el('input', { className: 'search', placeholder: 'Search event type, asset or source…', 'aria-label': 'Search events', value: query, oninput: e => { query = e.target.value; render(); } }),
     el('span', { class: 'muted small' }, `${rows.length} of ${(store.events?.items || []).length} retained events`)));
@@ -30,6 +30,6 @@ function render() {
       if (x.key === 'Enter' || x.key === ' ') { x.preventDefault(); machineClick(store.machineMap.get(e.machineId) || { machineId: e.machineId }); }
     },
   },
-    el('time', {}, fmtDateTime(e.timestamp || e.createdAt || e.eventTime)), el('span', { class: 'ec' }, esc(e.eventType || 'EVENT')), el('span', { class: 'em' }, esc(e.description || e.message || e.headline || 'Operational event')), el('span', { class: 'muted small' }, esc(e.machineId || e.source || 'system')))) : [emptyBox('No events are available for the current snapshot.')];
+    el('time', {}, fmtDateTime(e.timestamp || e.createdAt || e.eventTime)), el('span', { class: 'ec' }, esc(e.eventType || 'EVENT')), el('span', { class: 'em' }, esc(e.description || e.message || e.headline || 'Operational event')), el('span', { class: 'muted small' }, esc(e.machineId || e.source || 'system')))) : [emptyBox('No events in the current window — the feed carries synthetic telemetry; run a Simulation scenario to drive activity.')];
   root.appendChild(card('Event stream', 'Newest accepted events first', el('div', { class: 'feed' }, list)));
 }

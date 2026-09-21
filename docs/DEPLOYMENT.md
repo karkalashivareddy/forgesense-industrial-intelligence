@@ -33,7 +33,8 @@ Prometheus + Grafana.
 ## IAM notes
 
 - Dev users (seeded on boot): `admin`, `operator`, `engineer`. Passwords come from
-`FORGESENSE_DEV_PASSWORD` (default `forgesense-dev`). The JWT signing key is a
+`FORGESENSE_DEV_PASSWORD` (a development-only seed credential; never reuse it for any
+  real deployment — override it in `.env`). The JWT signing key is a
   documented demo placeholder (`forgesense-demo-...`) — replace it for any real
   deployment.
 - WebSocket/STOMP endpoints are not anonymous control-plane entry points; the

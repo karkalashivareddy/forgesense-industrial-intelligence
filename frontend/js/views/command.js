@@ -43,9 +43,9 @@ function ranked() {
 }
 
 function opState(fs) {
-  if (fs.offline || fs.critical) return { label: 'OUTAGE', tone: 'critical' };
-  if (fs.attn) return { label: 'ATTENTION', tone: 'warn' };
-  return { label: 'OPERATIONAL', tone: 'good' };
+  if (fs.offline || fs.critical) return { label: 'Outage', tone: 'critical' };
+  if (fs.attn) return { label: 'Attention', tone: 'warn' };
+  return { label: 'Operational', tone: 'good' };
 }
 
 function render() {
@@ -97,7 +97,7 @@ function situationsCard(critList) {
     },
       el('div', { class: 'alert-main' },
         el('div', { class: 'alert-title' }, statusDot(m), ' ', m.machineId, ' · ', esc(m.name || ''), ' ',
-          el('span', { class: 'pill-status st-' + (s.state === 'STALE' ? 'stale' : s.tone), style: { marginLeft: '4px' } }, s.label.toUpperCase())),
+          el('span', { class: 'pill-status st-' + (s.state === 'STALE' ? 'stale' : s.tone), style: { marginLeft: '4px' } }, s.label)),
         el('div', { class: 'alert-meta' },
           el('span', { class: 'badge2' }, esc(m.zone || '')),
           el('span', {}, 'risk ' + pct(m.failureRisk)),
@@ -150,7 +150,7 @@ function sideColumn(fs) {
     body.appendChild(el('div', { class: 'kv' }, el('b', {}, 'Top risk'), el('span', {}, el('a', { class: 'link', href: '#/factory', onclick: e => { e.preventDefault(); selectMachine(top.machineId); openInspector(top.machineId, 'prediction'); } }, top.machineId + ' · ' + pct(top.failureRisk)))));
   }
   body.appendChild(el('div', { class: 'kv' }, el('b', {}, 'Production efficiency'), el('span', {},
-    store.analytics && store.analytics.productionEfficiency ? pct(store.analytics.productionEfficiency.value, 0) : '—')));
+    store.analytics && store.analytics.productionEfficiency && store.analytics.productionEfficiency.value != null ? num(store.analytics.productionEfficiency.value, 0) + '%' : '—')));
   body.appendChild(el('div', { class: 'kv' }, el('b', {}, 'Downtime risk horizon'), el('span', {},
     store.analytics && store.analytics.estimatedDowntimeRiskMinutes != null ? int(store.analytics.estimatedDowntimeRiskMinutes) + ' min' : '—')));
   body.appendChild(el('div', { id: 'impactHost' }));

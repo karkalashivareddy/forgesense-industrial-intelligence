@@ -1,346 +1,155 @@
 # Visual Identity — ForgeSense Industrial Intelligence
 
-**Date:** 2026-09-18
-**Phase:** Design Research → Visual Identity
-**Input:** `docs/design/DESIGN_RESEARCH.md`
-**Output:** Binding visual language for all frontend implementation
+**Date:** 2026-09-21 (Phase 21 revision)
+**Phase:** Visual Re-architecture
+**Status:** Implemented — binding visual language for the frontend
+**Supersedes:** 2026-09-18 "Precision in the Dark" (copper/dark-SCADA)
 
 ---
 
-## 1. Core Concept: "Precision in the Dark"
+## 1. Core Concept: "Industrial Precision / Calm Intelligence"
 
-Industrial environments operate in low light. Machines glow with status. Data cuts through noise. ForgeSense visual language embodies **clarity in darkness** — not a dashboard, but a control surface.
+A control room is not an arcade. The previous copper-on-black design was visually loud —
+auto-playing colour-cycling arcs on every asset, zone ramps in five hues, giant selection rings —
+and it read as *noise*, not *signal*. The re-architecture inverts that: **the plant stays quiet
+graphite and steel; only meaning emits colour.**
 
-**Keywords:** Graphite, Copper, Precision, Depth, Signal
+**Keywords:** Cool steel, Calm, Precision, Spectral restraint, Quiet competence
+
+**The 70/20/10 rule:** ~70% of the screen is neutral graphite/steel, ~20% is the brand family
+(still mostly neutral steel-blue), and ≤10% is semantic colour reserved strictly for state.
+
+**Sentence case everywhere** (uppercase is reserved for machine IDs, codes, and raw signal names).
 
 ---
 
-## 2. Color Palette
+## 2. Colour Palette
 
-### 2.1 Core Palette (Semantic Tokens)
+### 2.1 Neutral Surface Ramp — the "70"
 
-| Token | Hex | Usage | Contrast (on bg) |
-|-------|-----|-------|------------------|
-| `--color-bg` | `#0a0e14` | Page background | — |
-| `--color-surface` | `#111820` | Cards, panels, drawers | 14.2:1 |
-| `--color-surface-elevated` | `#181f2a` | Modals, popovers | 12.8:1 |
-| `--color-border` | `#233044` | Dividers, input borders | 4.1:1 |
-| `--color-border-strong` | `#3a4a5f` | Focus rings, active states | 5.2:1 |
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `--bg-0` | `#070d15` | App background |
+| `--bg-1` | `#0a121b` | Page region / text area |
+| `--surface-1` | `#0e1a26` | Cards, panels, drawers |
+| `--surface-2` | `#132330` | Elevated cards, hover |
+| `--surface-3` | `#1a2c3a` | Modals, popovers |
 
-### 2.2 Brand Accents (The ForgeSense Fingerprint)
+Borders step quietly: `rgba(150,182,208,0.07) → 0.12 → 0.22` (hairline → subtle → strong).
 
-| Token | Hex | Name | Usage | Contrast (on bg) |
-|-------|-----|------|-------|------------------|
-| `--color-copper` | `#c9762e` | **Primary brand** | Primary buttons, active rail, key CTAs, focus ring | 5.8:1 |
-| `--color-copper-hover` | `#d48a3e` | Primary hover | Button hover, rail active hover | 6.4:1 |
-| `--color-copper-muted` | `#8b5a22` | Primary disabled | Disabled buttons, subtle accents | 3.2:1 |
-| `--color-amber` | `#f59e0b` | **Warning / Attention** | WARNING state, pending, attention | 6.8:1 |
-| `--color-emerald` | `#10b981` | **Running / Success** | RUNNING state, confirmed, online | 5.8:1 |
-| `--color-crimson` | `#ef4444` | **Critical / Error** | ERROR state, critical alerts, destructive | 5.2:1 |
-| `--color-cyan` | `#06b6d4` | **Info / ML / Simulation** | ML predictions, simulation, info | 4.9:1 |
+### 2.2 Brand Family — the "20"
 
-### 2.3 Semantic Status Mapping (Color + Icon + Text — Never Color Only)
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `--brand` | `#4fa7ff` | Primary actions, active rail, focus, selection ring |
+| `--brand-2` | `#6bb9ff` | Hover / active accent |
+| `--teal` | `#19c9a6` | Positive flow / OK in the twin |
+| `--violet-ai` | `#8f8af8` | ML / predictions accent (sparingly) |
 
-| State | Primary Token | Icon | Text Label | WCAG 1.4.1 |
-|-------|---------------|------|------------|------------|
-| RUNNING | `--color-emerald` | `⏵` (play) | "Running" | ✅ |
-| WARNING | `--color-amber` | `⚠` (triangle) | "Warning" | ✅ |
-| ERROR / CRITICAL | `--color-crimson` | `✕` (x-circle) | "Error" / "Critical" | ✅ |
-| OFFLINE | `--color-border` | `⏹` (square) | "Offline" | ✅ |
-| MAINTENANCE | `--color-cyan` | `🔧` (wrench) | "Maintenance" | ✅ |
-| SIMULATION | `--color-cyan` | `🧪` (flask) | "Simulation" | ✅ |
-| UNKNOWN | `--color-border` | `?` (help-circle) | "Unknown" | ✅ |
+### 2.3 Semantic Status — the "10"
 
-### 2.4 Data Visualization Palette (Categorical, Color-Blind Safe)
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `--good` / `--color-emerald` | `#35c98f` | Normal / operational |
+| `--warn` / `--color-amber` | `#e7a83b` | Warning / degraded |
+| `--critical` / `--color-crimson` | `#f06a74` | Critical / error |
+| `--maint` / `--color-cyan` | `#45c7e8` | Maintenance / recovery |
+| `--info` / `--brand` | `#63b3ff` | Information |
+| `--down` | `#5a6b7e` | Offline / unknown |
 
-| Index | Token | Hex | Use For |
-|-------|-------|-----|---------|
-| 1 | `--viz-1` | `#c9762e` (copper) | Primary series, Machine A |
-| 2 | `--viz-2` | `#06b6d4` (cyan) | Secondary series, Machine B |
-| 3 | `--viz-3` | `#10b981` (emerald) | Machine C |
-| 4 | `--viz-4` | `#f59e0b` (amber) | Machine D |
-| 5 | `--viz-5` | `#ef4444` (crimson) | Machine E |
-| 6 | `--viz-6` | `#8b5cf6` (violet) | Machine F |
-| 7 | `--viz-7` | `#ec4899` (pink) | Machine G |
-| 8 | `--viz-8` | `#22d3ee` (light cyan) | Machine H |
+Text triad: `--text-1 #e7eef6` (primary), `--text-2 #a6b8ca` (secondary), `--text-3 #6e8094` (faint/metadata).
 
-**Tested:** All 8 pass Coblis protanopia/deuteranopia/tritanopia simulation.
+**Rule:** amber, red and emerald appear *only* for real state changes — never decoratively.
+
+### 2.4 Data Visualisation Palette (8 exhausted, colour-usable)
+
+| Token | Hex | Name |
+|-------|-----|------|
+| `--viz-1` | `#4fa7ff` | blue |
+| `--viz-2` | `#19c9a6` | teal |
+| `--viz-3` | `#e7a83b` | amber-gold |
+| `--viz-4` | `#7c8bee` | periwinkle |
+| `--viz-5` | `#f06a74` | coral |
+| `--viz-6` | `#4fc4e6` | ice |
+| `--viz-7` | `#9db1c6` | slate |
+| `--viz-8` | `#2e9e8f` | deep teal |
+
+### 2.5 Dimensional Colour
+
+No `color-mix()` anywhere — subtractive/averaging effects are encoded as **static rgba**
+pre-computed from surface + accent (e.g. `--color-accent-dim: rgba(79,167,255,0.13)`,
+`--shadow-focus: 0 0 0 2px rgba(79,167,255,0.55)`). This keeps rendering deterministic and
+avoids Safari/engine variance.
 
 ---
 
 ## 3. Typography
 
-### 3.1 Font Stack
+| Role | Font |
+|------|------|
+| UI / body | Inter (400, 500, 600, 700) |
+| Data / mono | JetBrains Mono (400, 500, 600) |
 
-| Role | Font | Source | Weights |
-|------|------|--------|---------|
-| **UI / Body** | **Inter** | Google Fonts (self-hosted in prod) | 400, 500, 600, 700 |
-| **Data / Mono** | **JetBrains Mono** | Google Fonts (self-hosted) | 400, 500, 600 |
-| **Display / Headlines** | **Inter Tight** | Google Fonts (self-hosted) | 600, 700 |
-
-**Self-hosting required** for offline/PWA — bundle via `@fontsource` or local `fonts/`.
-
-### 3.2 Type Scale (Fluid, `clamp()`)
-
-| Token | Desktop | Tablet | Mobile | Usage |
-|-------|---------|--------|--------|-------|
-| `--text-display` | `clamp(2.5rem, 4vw, 3.5rem)` | — | — | Page hero (rare) |
-| `--text-h1` | `clamp(1.75rem, 3vw, 2.25rem)` | — | — | View titles |
-| `--text-h2` | `clamp(1.375rem, 2.5vw, 1.75rem)` | — | — | Section headers |
-| `--text-h3` | `1.125rem` | — | — | Card titles, drawer headers |
-| `--text-body-lg` | `1.0625rem` | — | — | Important body |
-| `--text-body` | `0.9375rem` | — | — | Default body |
-| `--text-body-sm` | `0.8125rem` | — | — | Secondary, metadata |
-| `--text-caption` | `0.75rem` | — | — | Timestamps, chips |
-| `--text-mono` | `0.8125rem` | — | — | Code, IDs, metrics |
-| `--text-mono-lg` | `0.9375rem` | — | — | KPI values, telemetry |
-
-**Line Heights:** `--leading-tight: 1.1`, `--leading-normal: 1.5`, `--leading-relaxed: 1.625`
-
-### 3.3 Font Features
-
-```css
-font-feature-settings: "cv11" 1, "ss01" 1, "cv02" 1, "cv03" 1, "cv04" 1, "zero" 1;
-/* Inter: slashed zero, alt 'l', tabular nums for data */
-font-variant-numeric: tabular-nums;
-/* JetBrains Mono: tabular nums, slashed zero */
-```
-
----
+- `font-feature-settings: "cv11" 1, "ss01" 1, "cv02" 1, "cv03" 1, "cv04" 1, "zero" 1`
+- `font-variant-numeric: tabular-nums`
+- Fluid-capped type scale via `--text-10 … --text-16` plus semantic aliases; rail labels fixed at 13px.
 
 ## 4. Iconography
 
-### 4.1 System: **Phosphor Icons (Duotone)** — Self-hosted
-
-- **Why:** 7,000+ icons, duotone supports semantic color (primary + muted), consistent weight, MIT license
-- **Set:** `@phosphor-icons/web` → bundle as SVG sprite
-- **Sizes:** `--icon-xs: 12px`, `--icon-sm: 16px`, `--icon-md: 20px`, `--icon-lg: 24px`, `--icon-xl: 32px`
-
-### 4.2 Industrial Symbol Set: **ISA-5.1 / ISA-5.2** (Custom SVG)
-
-| Symbol | Meaning | SVG ID |
-|--------|---------|--------|
-| `pump` | Centrifugal pump | `isa-pump` |
-| `compressor` | Compressor | `isa-compressor` |
-| `turbine` | Turbine | `isa-turbine` |
-| `heat-exchanger` | Heat exchanger | `isa-hex` |
-| `vessel` | Tank/vessel | `isa-vessel` |
-| `valve-gate` | Gate valve | `isa-valve-gate` |
-| `valve-ball` | Ball valve | `isa-valve-ball` |
-| `sensor-temp` | Temperature sensor | `isa-temp` |
-| `sensor-pressure` | Pressure sensor | `isa-pressure` |
-| `sensor-vibration` | Vibration sensor | `isa-vibration` |
-| `sensor-flow` | Flow sensor | `isa-flow` |
-| `motor` | Electric motor | `isa-motor` |
-| `fan` | Fan/blower | `isa-fan` |
-
-**Usage:** Twin machine glyphs, P&ID overlays, fleet type badges.
-
----
+Phosphor Icons (regular), 16–20px, default `--text-2`; semantic states get the state colour.
+Icons are labels-first: an icon never carries meaning on its own.
 
 ## 5. Spacing & Layout
 
-### 5.1 Base Unit: **4px** (consistent with 8pt grid)
+4px base unit (`--space-1..12`); rail 224px desktop (compact 172px ≤900px, off-canvas drawer ≤700px);
+inspector 400px right drawer (collapses to bottom sheet ≤700px); topbar 56px; HUD overlays the twin.
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-0` | `0` | Reset |
-| `--space-1` | `4px` | Micro gap |
-| `--space-2` | `8px` | Base unit |
-| `--space-3` | `12px` | Compact gap |
-| `--space-4` | `16px` | Standard gap |
-| `--space-5` | `20px` | Relaxed |
-| `--space-6` | `24px` | Section gap |
-| `--space-8` | `32px` | Major section |
-| `--space-10` | `40px` | Page margin |
-| `--space-12` | `48px` | Hero section |
+## 6. Radius, Shadows, Motion
 
-### 5.2 Layout Grid
+`--radius-sm/md/lg/full` (4/8/12/9999px); shadows step `--shadow-1..4` (black @0.30/0.35/0.4/0.45).
+Durations `120/240/400/800ms`, easings standard/decelerate/accelerate/spring.
+`@media (prefers-reduced-motion: reduce)` disables all non-essential animation — the 3D twin
+camera fades instead of flying.
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--layout-max` | `1440px` | Max content width |
-| `--layout-gutter` | `24px` | Page gutter (desktop) |
-| `--layout-gutter-mobile` | `16px` | Page gutter (mobile) |
-| `--rail-width` | `72px` | Navigation rail (collapsed) |
-| `--rail-width-expanded` | `240px` | Navigation rail (expanded) |
-| `--inspector-width` | `384px` | Inspector drawer |
-| `--inspector-width-mobile` | `100vw` | Bottom sheet (mobile) |
-| `--header-height` | `56px` | Top header |
-| `--twin-aspect` | `16/9` | Twin canvas aspect |
+## 7. Z-Index
 
----
+`--z-rail 100`, `--z-header 200`, `--z-dropdown 300`, `--z-inspector 400`, `--z-modal 500`,
+`--z-toast 600`, `--z-tooltip 700`, `--z-splash 800`.
 
-## 6. Border Radius & Shadows
+## 8. Component Specs (Key)
 
-### 6.1 Radius Scale
+| Component | Rule |
+|-----------|------|
+| Card | `--surface-1`, hairline border, `--radius-md`, `--shadow-1` |
+| KPI | label `--text-2` small, value `--text-1` mono/semibold, tone accent via 3px bottom bar (`.tone-*`) |
+| Primary button | `--brand`/`--surface-3` text, hover `--brand-2`, focus ring `--shadow-focus` |
+| Status pill | `.pill-status.st-*` — coloured dot + sentence-case label (never colour-only) |
+| Toast | `--surface-3`, `--shadow-3`, `.ok`/`.err` accents |
+| Login overlay | glass (`--material-glass-bg`), no dev credentials on screen |
+| Twin selection | thin brand ring + label; no rotating double rings, no ARGB rainbow |
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--radius-none` | `0` | Tables, full-bleed |
-| `--radius-sm` | `4px` | Inputs, chips, badges |
-| `--radius-md` | `8px` | Buttons, cards, modals |
-| `--radius-lg` | `12px` | Drawers, popovers |
-| `--radius-xl` | `16px` | Hero cards |
-| `--radius-full` | `9999px` | Pills, avatars |
+## 9. Accessibility Baseline
 
-### 6.2 Shadow Scale (Depth = Elevation)
+- Focus visible on all interactive elements via `--shadow-focus` (≥3:1).
+- Every status = colour + text label (`.pill-status`, `.twin-asset-dot`, `.status-dot`).
+- Body text ≥4.5:1 against `--surface-1`; reduced-motion respected end-to-end.
+- Rail/mobile navigation is keyboard-operable; machine pick via arrow keys + Enter in the twin.
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--shadow-1` | `0 1px 2px rgba(0,0,0,0.3)` | Cards, default |
-| `--shadow-2` | `0 4px 8px rgba(0,0,0,0.35)` | Elevated cards |
-| `--shadow-3` | `0 8px 24px rgba(0,0,0,0.4)` | Modals, drawers |
-| `--shadow-4` | `0 16px 48px rgba(0,0,0,0.45)` | Toasts, popovers |
-| `--shadow-focus` | `0 0 0 2px var(--color-copper)` | Focus ring |
+## 10. 3D Twin Language
 
----
+Physical factory: graphite bodies, steel-blue spindles/flanges, muted panel lights.
+Zones are single neutral graphite slabs with hairline edges and a flowing direction strip —
+no per-zone colour coding. Machine "status" is a small bar light, not an aura.
+Dependency arcs are opt-in layers (DEFAULT = hidden; FLOW/SELECTED/RISK/DEPENDENCIES modes opt in).
+Selection = calm brand ring + readable label; camera framing targets ~70–80% viewport coverage.
 
-## 7. Motion Tokens
+## 11. Implementation Checklist (Phase 21 status)
 
-| Token | Duration | Easing | Usage |
-|-------|----------|--------|-------|
-| `--duration-instant` | `0ms` | — | Toggles, checkboxes |
-| `--duration-fast` | `120ms` | `ease-standard` | Hover, focus, chips |
-| `--duration-normal` | `240ms` | `ease-standard` | Modals, drawers, toasts |
-| `--duration-slow` | `400ms` | `ease-decelerate` | Page transitions, camera fly-to |
-| `--duration-cinematic` | `800ms` | `ease-spring` | Twin preset views, onboarding |
-
-**Easing Curves:**
-```css
---ease-standard: cubic-bezier(0.2, 0, 0, 1);
---ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
---ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
---ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-```
-
-**Reduced Motion:** All non-essential motion disabled via `@media (prefers-reduced-motion: reduce)`.
-
----
-
-## 8. Z-Index Scale
-
-| Token | Value | Layer |
-|-------|-------|-------|
-| `--z-base` | `0` | Content |
-| `--z-rail` | `100` | Navigation rail |
-| `--z-header` | `200` | Top header |
-| `--z-dropdown` | `300` | Dropdowns, popovers |
-| `--z-drawer` | `400` | Side drawers (inspector) |
-| `--z-modal` | `500` | Modals |
-| `--z-toast` | `600` | Toasts |
-| `--z-tooltip` | `700` | Tooltips |
-| `--z-loading` | `800` | Full-screen loading |
-
----
-
-## 9. Component Visual Specs (Key)
-
-### 9.1 Button
-
-| Variant | Background | Text | Border | Hover | Focus |
-|---------|------------|------|--------|-------|-------|
-| Primary | `--color-copper` | `#0a0e14` | None | `--color-copper-hover` | `--shadow-focus` |
-| Secondary | `--color-surface-elevated` | `--color-text` | `--color-border` | `--color-border-strong` | `--shadow-focus` |
-| Ghost | Transparent | `--color-text` | None | `--color-surface` | `--shadow-focus` |
-| Destructive | `--color-crimson` | `#fff` | None | `--color-crimson` (darker) | `--shadow-focus` |
-
-**Sizes:** `--btn-sm: 32px`, `--btn-md: 40px`, `--btn-lg: 48px`
-
-### 9.2 Status Chip
-
-```css
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-caption);
-  font-weight: 500;
-  /* Color + Icon + Text — never color only */
-}
-```
-
-| State | Background | Icon Color | Text |
-|-------|------------|------------|------|
-| RUNNING | `color-mix(in srgb, var(--color-emerald) 15%, transparent)` | `--color-emerald` | "Running" |
-| WARNING | `color-mix(in srgb, var(--color-amber) 15%, transparent)` | `--color-amber` | "Warning" |
-| ERROR | `color-mix(in srgb, var(--color-crimson) 15%, transparent)` | `--color-crimson` | "Error" |
-| OFFLINE | `color-mix(in srgb, var(--color-border) 15%, transparent)` | `--color-border` | "Offline" |
-
-### 9.3 Card
-
-```css
-.card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
-  padding: var(--space-4);
-}
-```
-
-### 9.4 Input / Select
-
-```css
-.input {
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-  padding: 8px 12px;
-  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
-}
-.input:focus {
-  border-color: var(--color-copper);
-  box-shadow: var(--shadow-focus);
-}
-```
-
----
-
-## 10. Dark Mode Only (No Light Mode)
-
-ForgeSense is **dark-mode only** — industrial control rooms are dark. No light mode tokens.
-
----
-
-## 10. CSS Custom Properties — Complete Token File
-
-See `docs/design/TOKENS.css` (generated alongside this doc) for the complete `:root` block ready to drop into `css/tokens.css`.
-
----
-
-## 11. Accessibility Baseline (Baked Into Tokens)
-
-| Requirement | Token Implementation |
-|-------------|---------------------|
-| Focus ring ≥3:1 | `--shadow-focus: 0 0 0 2px var(--color-copper)` (5.8:1) |
-| Color-independent status | Every status = color + icon + text token |
-| Focus visible | `--shadow-focus` on all interactive |
-| Reduced motion | `@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }` |
-| Text contrast ≥4.5:1 | All text tokens measured ≥4.5:1 |
-| UI contrast ≥3:1 | Focus ring 5.8:1; borders 4.1:1 |
-
----
-
-## 11. Implementation Checklist
-
-- [ ] Replace `css/tokens.css` with generated `TOKENS.css`
-- [ ] Add Phosphor Icons + ISA-5.1 sprite to `index.html`
-- [ ] Self-host Inter / JetBrains Mono / Inter Tight
-- [ ] Update `css/base.css` to use new tokens
-- [ ] Update `css/components.css` with new component specs
-- [ ] Update `css/views.css` for new layout tokens
-- [ ] Add `prefers-reduced-motion` media query
-- [ ] Verify all contrast ratios in browser devtools
-- [ ] Test with color-blind simulator (Coblis)
-
----
-
-## 12. Approval
-
-**Visual Identity Approved:** _______________ **Date:** _______________
-
-**Next:** Generate `TOKENS.css` → Update `css/tokens.css` → Begin Phase 1 Implementation
+- [x] `css/tokens.css` — new ramp + static rgba dims/glows, legacy aliases kept
+- [x] `css/base.css` — shell, topbar, grouped rail, statusbar, diagnostics drawer
+- [x] `css/components.css` — shared components (sentence case, tone bars, status-dot)
+- [x] `css/views.css` — factory HUD/inspector/login glass + responsive (1180/900/700)
+- [x] `index.html` — grouped rail, simplified topbar, statusbar + diagnostics drawer
+- [x] `js/twin3d.js` — physical factory rebuild, deps hidden by default
+- [x] `js/app.js`, `shared.js`, `command.js`, `charts.js`, `inspector.js` — sentence case & new palette
+- [x] 36/36 unit tests, visual QA 5/5 viewports, `unexpectedConsole=0`

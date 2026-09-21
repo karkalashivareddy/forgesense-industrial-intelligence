@@ -42,7 +42,7 @@ export function statusPill(m) {
   const s = machineState(m);
   const cls = s.state === 'STALE' ? 'stale' : s.tone;
   return el('span', { class: 'pill-status st-' + cls, title: s.hint },
-    el('span', { class: 'sq' }), s.label.toUpperCase());
+    el('span', { class: 'sq' }), s.label);
 }
 
 export function kpi(label, value, sub, tone) {
@@ -130,9 +130,8 @@ export function insightCard({ tone = 'info', title, lead, conf, why }) {
 
 export function statusDot(m) {
   const s = machineState(m);
-  return el('span', {
-    style: { background: toneColor(s.tone), width: '7px', height: '7px', borderRadius: '2px', display: 'inline-block' },
-  });
+  const cls = s.state === 'STALE' ? 'stale' : s.tone;
+  return el('span', { class: 'status-dot st-' + cls, 'aria-hidden': 'true' });
 }
 
 export function machineClick(m) {

@@ -18,7 +18,7 @@ Status: **DELIVERED** — implementation + verification complete against the run
 | 8 | Catalog — zones | `GET /api/v1/zones` → **6**: Machining, Assembly, Packaging, Utilities, Material Handling, Inspection |
 | 9 | Catalog — edges | `GET /api/v1/machines/dependencies/edge` → **20**, zero dangling (node check) |
 | 10 | Catalog — types | All machine types within enum (node check vs `config/machine_profiles.json`) |
-| 11 | Login used | `operator` / `forgesense-dev` → JWT `accessToken`, roles `ROLE_OPERATOR`, expiry 86400s; unchanged auth flow |
+| 11 | Login used | `operator` / `<dev-seed-password>` (from `FORGESENSE_DEV_PASSWORD`) → JWT `accessToken`, roles `ROLE_OPERATOR`, expiry 86400s; unchanged auth flow |
 | 12 | Twin — mount | Fresh `#/factory` loads mount the 3D twin on first activation (race fixed in `app.js`); `sceneContainer` canvas present, `webgl: true`, `twin-asset = 18` |
 | 13 | Twin — renderer | `new THREE.WebGLRenderer({ antialias: true })` @ three 0.169.0; canvas sized to container in all viewports (375: 375×732; 1920: 1696×996) |
 | 14 | Twin — data mapping | 18 backend machines placed 1:1 (no frontend-only machines); zone rows per `ZONE_ORDER`, machine counts per zone = 5/3/2/5/2/1 |

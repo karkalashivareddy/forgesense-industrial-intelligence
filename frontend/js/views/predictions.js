@@ -72,8 +72,12 @@ async function render() {
 function topInsight(top) {
   if (!top) return null;
   const g = modelGrade(top.modelMode);
+  const hasPrediction = top.failureRisk != null || top.anomalyScore != null;
   const why = el('div', { class: 'insight-why' },
-    el('div', { class: 'muted small' }, 'Loading signal attribution…'));
+    el('div', { class: 'muted small' },
+      hasPrediction
+        ? 'Loading signal attribution…'
+        : 'No explanation available for this prediction — the ML pipeline has not produced an attribution for ' + esc(top.machineId) + ' in this run.'));
   const ins = insightCard({
     tone: 'warn',
     title: 'Top risk driver · ' + top.machineId,
@@ -84,6 +88,7 @@ function topInsight(top) {
     conf: g,
     why,
   });
+  if (!hasPrediction) return ins;
   const key = top.machineId;
   const p = explanationCache[key] || api(`/api/v1/machines/${key}/explanation`);
   if (!explanationCache[key]) explanationCache[key] = p;
@@ -92,7 +97,7 @@ function topInsight(top) {
     const factors = (ex && Array.isArray(ex.factors)) ? ex.factors.slice(0, 3) : [];
     why.innerHTML = '';
     if (!factors.length) {
-      why.appendChild(el('div', { class: 'muted small' }, 'No attribution on record yet — the model has not produced a prediction for this machine.'));
+      why.appendChild(el('div', { class: 'muted small' }, 'No explanation available for this prediction — the model has not produced an attribution for this machine yet.'));
       return;
     }
     for (const f of factors) {
@@ -105,7 +110,7 @@ function topInsight(top) {
   }, () => {
     if (!why.isConnected) return;
     why.innerHTML = '';
-    why.appendChild(el('div', { class: 'muted small' }, 'Attribution unavailable right now.'));
+    why.appendChild(el('div', { class: 'muted small' }, 'No explanation available for this prediction right now — the ML service has not produced one in this run.'));
   });
   return ins;
 }
@@ -133,9 +138,13 @@ function riskTable(list) {
 }
 
 function attributionPanel(top) {
+  const hasPrediction = !!top && (top.failureRisk != null || top.anomalyScore != null);
+  if (!hasPrediction) {
+    return card('Top attribution', top ? ('why ' + top.machineId + ' is flagged') : 'no machine data yet',
+      emptyBox('No explanation available for this prediction — the model has not produced an attribution for ' + (top ? esc(top.machineId) : 'this machine') + ' yet.'));
+  }
   const body = el('div', { class: 'loading' }, 'Loading attribution…');
-  const host = card('Top attribution', top ? ('why ' + top.machineId + ' is flagged') : 'no machine data yet', body);
-  if (!top) return host;
+  const host = card('Top attribution', 'why ' + top.machineId + ' is flagged', body);
   const key = top.machineId;
   const p = explanationCache[key]
     ? Promise.resolve(explanationCache[key])
@@ -147,7 +156,7 @@ function attributionPanel(top) {
     body.innerHTML = '';
     const factors = (ex && Array.isArray(ex.factors)) ? ex.factors : [];
     if (!factors.length) {
-      body.appendChild(emptyBox('No attribution yet for ' + esc(top.machineId) + ' — the model has not produced a prediction.'));
+      body.appendChild(emptyBox('No explanation available for this prediction — the model has not produced an attribution for ' + esc(top.machineId) + ' yet.'));
       return;
     }
     const max = Math.max(...factors.slice(0, 5).map(f => Number(f.contribution) || 0), 0.01);
@@ -161,7 +170,7 @@ function attributionPanel(top) {
   }, e => {
     if (!host.isConnected) return;
     body.innerHTML = '';
-    body.appendChild(errorBox('Explanation unavailable: ' + esc(String(e))));
+    body.appendChild(errorBox('No explanation available for this prediction right now — the ML service has not produced one in this run.'));
   });
   return host;
 }
