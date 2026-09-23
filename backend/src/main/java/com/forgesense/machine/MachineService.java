@@ -61,13 +61,15 @@ public class MachineService {
         } catch (IllegalStateException e) {
             if (from == MachineState.OFFLINE && target == MachineState.NORMAL) {
                 next = com.forgesense.machine.state.MachineStateMachine.apply(from, MachineState.RECOVERING);
-                twinService.emitStateChanged(twin, twin.getStatus(), next);
+                twin.setStatus(next);
+                twinService.emitStateChanged(twin, from, next);
                 twinService.persistBudgets(twin);
-                throw ApiException.badRequest("Offline machines must recover before returning to NORMAL.");
+                return next;
             }
             throw ApiException.badRequest("Illegal transition " + from + " -> " + target);
         }
-        twinService.emitStateChanged(twin, twin.getStatus(), next);
+        twin.setStatus(next);
+        twinService.emitStateChanged(twin, from, next);
         twinService.persistBudgets(twin);
         return next;
     }

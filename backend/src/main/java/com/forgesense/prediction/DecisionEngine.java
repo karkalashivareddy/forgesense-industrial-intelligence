@@ -54,16 +54,22 @@ public class DecisionEngine {
 
     public void evaluate(MachineTwin twin, TelemetrySample sample, Assessment a) {
         MachineState current = twin.getStatus();
-        MachineState target = intent(twin);
-        if (current != target) {
-            try {
-                MachineState from = current;
-                MachineState to = MachineStateMachine.walk(current, target);
-                twin.setStatus(to);
-                twinService.emitStateChanged(twin, from, to);
-                log.info("{} state {} -> {}", twin.getMachineId(), from, to);
-            } catch (IllegalStateException ex) {
-                log.debug("State transition rejected for {}: {}", twin.getMachineId(), ex.getMessage());
+
+        // Machines under maintenance stay in MAINTENANCE until the work order is
+        // completed. The automated risk loop would otherwise snap a healthy
+        // machine straight back to NORMAL the moment maintenance starts.
+        if (current != MachineState.MAINTENANCE) {
+            MachineState target = intent(twin);
+            if (current != target) {
+                try {
+                    MachineState from = current;
+                    MachineState to = MachineStateMachine.walk(current, target);
+                    twin.setStatus(to);
+                    twinService.emitStateChanged(twin, from, to);
+                    log.info("{} state {} -> {}", twin.getMachineId(), from, to);
+                } catch (IllegalStateException ex) {
+                    log.debug("State transition rejected for {}: {}", twin.getMachineId(), ex.getMessage());
+                }
             }
         }
 

@@ -254,7 +254,49 @@ async function overview(host, m) {
     statBox('Model', (m.modelMode || '—') + ' · v' + (m.modelVersion || '—'), 'mode · version'),
     statBox('Last telemetry', m.lastTelemetryAt ? timeAgo(m.lastTelemetryAt) : '—', 'sample received')));
 
-  const detail = await fetcher('detail', () => api(`/api/v1/machines/${id}`));
+  host.appendChild(controlCard(m, s));
+
+  function controlCard(m, s) {
+  const canControl = userCan(getRoles(), 'ENGINEER');
+  const targets = [
+    ['NORMAL', 'good', 'Resume'],
+    ['DEGRADED', 'warn', 'Degrade'],
+    ['MAINTENANCE', 'maint', 'Maintenance'],
+    ['RECOVERING', 'maint', 'Recover'],
+  ];
+  const btnRow = el('div', { class: 'btn-row', style: { flexWrap: 'wrap', gap: '6px', marginTop: '8px' } });
+  const exec = async target => {
+    try {
+      await post(`/api/v1/machines/${m.machineId}/state`, { target });
+      const box = document.getElementById('toast');
+      box.innerHTML = '';
+      box.classList.remove('hidden');
+      box.classList.remove('err');
+      box.appendChild(el('span', {}, `${m.machineId} moved to ${target}`));
+      box.appendChild(el('button', { class: 'btn btn-sm', onClick: () => box.classList.add('hidden') }, 'OK'));
+      window.setTimeout(() => box.classList.add('hidden'), 4000);
+    } catch (e) { flashError(e); }
+  };
+  for (const [t, , label] of targets) {
+    const active = s.state === t;
+    const dis = !canControl || active;
+    btnRow.appendChild(el('button', {
+      class: 'btn btn-sm' + (active ? ' btn-primary' : ''),
+      disabled: dis ? 'disabled' : null,
+      title: !canControl ? 'Requires ENGINEER role' : (active ? 'Current state' : 'Move machine to ' + t),
+      onClick: () => exec(t),
+    }, label));
+  }
+  return el('div', { class: 'card', style: { marginTop: '10px' } },
+    el('div', { class: 'card-head' },
+      el('h3', { class: 'card-title' }, 'Machine control'),
+      el('span', { class: 'muted small' }, 'status ' + esc(s.label))),
+    el('div', { class: 'muted small' },
+      'Engineers can move this machine through the validated backend state machine. Transitions follow state-machine rules from the current status.'),
+    btnRow);
+}
+
+const detail = await fetcher('detail', () => api(`/api/v1/machines/${id}`));
   const d = (detail && typeof detail === 'object') ? detail : null;
   host.appendChild(el('div', { class: 'card', style: { marginTop: '10px' } },
     el('div', { class: 'card-head' }, el('h3', { class: 'card-title' }, 'Machine facts')),

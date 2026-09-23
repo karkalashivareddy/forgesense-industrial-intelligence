@@ -88,7 +88,7 @@ function reconcileCard(fs, o, st) {
     row('Machines total', fs.total, (o.machinesTotal ?? st.definedMachines)),
     row('Online', derivedOnline, o.machinesOnline),
     row('At risk (risk ≥ 0.5)', fs.atRisk, o.machinesAtRisk),
-    kv('Average health (derived)', o.averageFleetHealth != null ? pct(o.averageFleetHealth, 0) : '—'),
+    kv('Average health (derived)', o.averageFleetHealth != null ? num(o.averageFleetHealth, 0) + '%' : '—'),
     kv('Attention count (derived)', attn),
     el('div', { class: 'muted small', style: { marginTop: '6px' } },
       'Local values are recomputed on every poll from the same REST feed the views use, so they always match what you see in the UI.'));

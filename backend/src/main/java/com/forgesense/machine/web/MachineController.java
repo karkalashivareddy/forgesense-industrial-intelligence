@@ -7,16 +7,22 @@ import com.forgesense.impact.domain.ProductionImpact;
 import com.forgesense.machine.MachineService;
 import com.forgesense.machine.domain.Machine;
 import com.forgesense.machine.domain.MachineDependency;
+import com.forgesense.machine.domain.MachineState;
 import com.forgesense.machine.twin.MachineTwin;
 import com.forgesense.prediction.PredictionRepository;
 import com.forgesense.prediction.domain.Prediction;
 import com.forgesense.telemetry.TelemetryRepository;
 import com.forgesense.telemetry.domain.TelemetryRecord;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -67,6 +73,47 @@ public class MachineController {
         out.put("description", m.getDescription());
         out.put("position", Map.of("x", m.getPosX(), "y", m.getPosY(), "z", m.getPosZ()));
         return out;
+    }
+
+    /**
+     * Engineer/Admin operator command: move a machine through the validated
+     * state machine. The twin (and persisted machine) actually change state
+     * and the move is broadcast over {@code machine.state.changed}; the
+     * telemetry/ML loop then reconciles the machine against live signals.
+     */
+    @PostMapping("/{machineId}/state")
+    @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
+    public Map<String, Object> changeState(@PathVariable String machineId,
+                                           @RequestBody Map<String, Object> body) {
+        Object targetValue = body.get("target") != null ? body.get("target") : body.get("state");
+        if (targetValue == null || String.valueOf(targetValue).isBlank()) {
+            throw ApiException.badRequest("target state is required");
+        }
+        MachineState target = parseState(String.valueOf(targetValue));
+        MachineTwin twin = machineService.twin(machineId);
+        MachineState from = twin.getStatus();
+        MachineState next = machineService.transition(machineId, target);
+
+        Map<String, Object> out = new java.util.HashMap<>();
+        out.put("machineId", machineId);
+        out.put("from", from.name());
+        out.put("to", next.name());
+        out.put("status", next.name());
+        out.put("healthScore", twin.getHealthScore());
+        out.put("failureRisk", twin.getFailureRisk());
+        out.put("anomalyScore", twin.getAnomalyScore());
+        out.put("anomalyLabel", twin.getAnomalyLabel());
+        out.put("changedAt", java.time.Instant.now().toString());
+        return out;
+    }
+
+    private static MachineState parseState(String value) throws ApiException {
+        try {
+            return MachineState.valueOf(value.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw ApiException.badRequest("Invalid target state: " + value);
+        }
     }
 
     @GetMapping("/{machineId}/telemetry")

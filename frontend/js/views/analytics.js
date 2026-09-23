@@ -35,7 +35,7 @@ function render() {
   root.appendChild(el('div', { class: 'grid cols-4' },
     kpi('Machines online', o.machinesOnline != null ? int(o.machinesOnline) + '/' + int(o.machinesTotal ?? '')?.split(',')[0] : '—', 'backend overview', 'good'),
     kpi('At risk', o.machinesAtRisk != null ? int(o.machinesAtRisk) : '—', o.criticalAlerts != null ? o.criticalAlerts + ' critical alerts' : '', (o.machinesAtRisk || 0) > 0 ? 'warn' : 'good'),
-    kpi('Avg fleet health', o.averageFleetHealth != null ? num(o.averageFleetHealth * 100, 0) + '%' : '—', 'weighted health score', 'info'),
+    kpi('Avg fleet health', o.averageFleetHealth != null ? num(o.averageFleetHealth, 0) + '%' : '—', 'weighted health score', 'info'),
     kpi('Production efficiency', o.productionEfficiency ? (o.productionEfficiency.value != null ? num(o.productionEfficiency.value, 0) + '%' : '—') : '—', o.productionEfficiency && o.productionEfficiency.label ? esc(o.productionEfficiency.label) : '', 'good')));
 
   root.appendChild(el('div', { class: 'grid cols-4' },

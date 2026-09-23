@@ -170,17 +170,22 @@ public class MaintenanceService {
         return r;
     }
 
-    private void transitionTo(MachineTwin twin, MachineState target, Machine m) {
+private void transitionTo(MachineTwin twin, MachineState target, Machine m) {
         MachineState from = twin.getStatus();
         try {
-            twinService.emitStateChanged(twin, from, MachineStateMachine.apply(from, target));
+            MachineState next = MachineStateMachine.apply(from, target);
+            twin.setStatus(next);
+            twinService.emitStateChanged(twin, from, next);
         } catch (IllegalStateException e) {
             // state machine may reject weird combos (e.g. OFFLINE -> MAINTENANCE);
             // fall back to a recovery path if maintenance applies from OFFLINE
             if (from == MachineState.OFFLINE) {
                 MachineState via = MachineStateMachine.apply(from, MachineState.RECOVERING);
+                twin.setStatus(via);
                 twinService.emitStateChanged(twin, from, via);
-                twinService.emitStateChanged(twin, via, MachineStateMachine.apply(via, target));
+                MachineState next = MachineStateMachine.apply(via, target);
+                twin.setStatus(next);
+                twinService.emitStateChanged(twin, via, next);
             }
         }
     }
