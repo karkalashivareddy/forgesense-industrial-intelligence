@@ -9,7 +9,7 @@
  *   QA_BROWSER        chrome/edge executable (default auto-detect)
  *   BASE_URL          app url                         default http://localhost:5173
  *   QA_OUTPUT_DIR     artifacts dir                   default <repo>/_qa/release_verify
- *   QA_PASS           login password                  default forgesense-dev
+ *   QA_PASS           login password                  REQUIRED (dev seed credential)
  */
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -28,7 +28,7 @@ const OUT = process.env.QA_OUTPUT_DIR || join(ROOT, '_qa', 'release_verify');
 const APP = process.env.BASE_URL || 'http://localhost:5173';
 const PORT = Number(process.env.QA_CDP_PORT || 9352);
 const MIRROR_PORT = Number(process.env.QA_MIRROR_PORT || 9457);
-const PASSWD = process.env.QA_PASS || 'forgesense-dev';
+const PASSWD = process.env.QA_PASS || '';
 const DRIVER_LOG = join(OUT, 'driver.log');
 const MIRROR = join(ROOT, '_qa', '.mirror');
 const PROFILE = join(tmpdir(), 'forgesense-rel-' + Date.now());
