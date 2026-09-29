@@ -130,7 +130,10 @@ jobs:
       - name: Boot backend and ML service for the browser run
         run: |
           set -euo pipefail
-          ../.ci/boot-stack.sh
+          # Invoke through bash explicitly: the executable bit on a shell script
+          # is not reliably preserved when the repo is cloned on Windows, and a
+          # 100644 script makes this step fail with exit 126 (Permission denied).
+          bash ../.ci/boot-stack.sh
       - name: Run E2E
         run: npm run e2e
       - name: Upload Playwright report
