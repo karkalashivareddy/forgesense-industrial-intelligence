@@ -10,6 +10,7 @@ import { useState, type FormEvent } from 'react';
 import { Activity, KeyRound, ShieldAlert } from 'lucide-react';
 import { useAuth, toErrorMessage } from './AuthProvider';
 import { Button } from '../design-system';
+import { config } from '../config/env';
 
 const ROLE_HINTS: Record<string, string> = {
   operator: 'Acknowledge alerts, review the fleet.',
@@ -54,7 +55,7 @@ export function SignInGate() {
             <Activity size={22} aria-hidden />
             <h1 className="gate__title">ForgeSense</h1>
           </div>
-          <p className="gate__subtitle">Industrial Operations Center · Factory Alpha</p>
+          <p className="gate__subtitle">Industrial Operations Center · {config.plantName}</p>
         </div>
 
         <div className="gate__field">

@@ -24,38 +24,56 @@ import { useFocusTrapRef } from '../hooks/useFocusTrap';
 
 /* ================================================================== *
  * Tone mapping
+ *
+ * Tones are the semantic colours of the token system. `intelligence` is
+ * violet and reserved for model output; `synthetic` is the quiet warm amber
+ * used for provenance disclosure.
  * ================================================================== */
 
-export type Tone = StateTone | 'neutral';
+export type Tone = StateTone | 'neutral' | 'intelligence' | 'synthetic';
 
+/**
+ * Tone resolution.
+ *
+ * `Tone` describes a *machine or system state*, so it never includes violet:
+ * violet is reserved for model output and is applied explicitly via the
+ * `intelligence` tone or the BasisChip. That separation is what stops a
+ * predicted value from being read as an observed condition.
+ */
 const TONE_TEXT: Record<Tone, string> = {
-  ok: 'var(--ok-text)',
-  warn: 'var(--warn-text)',
-  crit: 'var(--crit-text)',
-  maint: 'var(--maint-text)',
-  idle: 'var(--idle-text)',
-  info: 'var(--info-text)',
-  neutral: 'var(--text-secondary)',
+  ok: 'var(--state-ok-text)',
+  warn: 'var(--state-warning-text)',
+  crit: 'var(--state-critical-text)',
+  maint: 'var(--state-maint-text)',
+  idle: 'var(--state-idle-text)',
+  info: 'var(--state-info-text)',
+  neutral: 'var(--color-text-secondary)',
+  intelligence: 'var(--color-intelligence-text)',
+  synthetic: 'var(--color-synthetic-text)',
 };
 
 const TONE_BORDER: Record<Tone, string> = {
-  ok: 'var(--ok)',
-  warn: 'var(--warn)',
-  crit: 'var(--crit)',
-  maint: 'var(--maint)',
-  idle: 'var(--idle)',
-  info: 'var(--info)',
-  neutral: 'var(--edge-strong)',
+  ok: 'var(--state-ok)',
+  warn: 'var(--state-warning)',
+  crit: 'var(--state-critical)',
+  maint: 'var(--state-maint)',
+  idle: 'var(--state-idle)',
+  info: 'var(--state-info)',
+  neutral: 'var(--color-border-default)',
+  intelligence: 'var(--color-intelligence)',
+  synthetic: 'var(--color-synthetic)',
 };
 
 const TONE_WASH: Record<Tone, string> = {
-  ok: 'var(--ok-wash)',
-  warn: 'var(--warn-wash)',
-  crit: 'var(--crit-wash)',
-  maint: 'var(--maint-wash)',
-  idle: 'var(--idle-wash)',
-  info: 'var(--info-wash)',
-  neutral: 'var(--bg-raised)',
+  ok: 'var(--state-ok-bg)',
+  warn: 'var(--state-warning-bg)',
+  crit: 'var(--state-critical-bg)',
+  maint: 'var(--state-maint-bg)',
+  idle: 'var(--state-idle-bg)',
+  info: 'var(--state-info-bg)',
+  neutral: 'var(--color-bg-panel-elevated)',
+  intelligence: 'var(--color-intelligence-bg)',
+  synthetic: 'var(--color-synthetic-bg)',
 };
 
 /* ================================================================== *
@@ -174,16 +192,36 @@ export interface BasisChipProps {
   compact?: boolean;
 }
 
+/**
+ * Provenance badge.
+ *
+ * The compact form is an initialism, NOT a truncation: "Mod" cut out of
+ * "Model predicted" is meaningless, so each basis declares its own short form.
+ */
+const BASIS_SHORT: Record<DataBasis, string> = {
+  OBSERVED: 'OBS',
+  DERIVED: 'DER',
+  PREDICTED: 'ML',
+  SYNTHETIC: 'SYN',
+  SIMULATED: 'SIM',
+  UNAVAILABLE: 'N/A',
+};
+
 export function BasisChip({ basis, compact = false }: BasisChipProps) {
   const descriptor = describeBasis(basis);
   return (
     <span
       className="basis-chip"
-      style={{ color: descriptor.cssVar, borderColor: `color-mix(in srgb, ${descriptor.cssVar} 45%, transparent)` }}
-      title={descriptor.meaning}
+      data-basis={basis}
+      style={{
+        color: `var(--color-${basis.toLowerCase()}-text)`,
+        borderColor: `var(--color-${basis.toLowerCase()}-border)`,
+        background: `var(--color-${basis.toLowerCase()}-bg)`,
+      }}
+      title={`${descriptor.label} — ${descriptor.meaning}`}
     >
-      <span aria-hidden className="basis-chip__dot" style={{ background: descriptor.cssVar }} />
-      {compact ? descriptor.label.slice(0, 3).toUpperCase() : descriptor.label}
+      <span aria-hidden className="basis-chip__dot" style={{ background: `var(--color-${basis.toLowerCase()})` }} />
+      {compact ? BASIS_SHORT[basis] : descriptor.label}
     </span>
   );
 }
@@ -236,7 +274,11 @@ export function SectionHeader({ title, description, actions }: { title: string; 
 }
 
 /* ================================================================== *
- * Metric
+ * Metric — KPI tile
+ *
+ * Design rule: the semantic colour identifies the meaning of the number
+ * without colouring the whole card. The value is the focus; a thin top
+ * accent bar and the provenance chip carry the semantics.
  * ================================================================== */
 
 export interface MetricProps {
@@ -245,6 +287,7 @@ export interface MetricProps {
   unit?: string;
   hint?: ReactNode;
   basis?: DataBasis;
+  /** Semantic accent. Prefer `intelligence` for model output. */
   tone?: Tone;
   size?: 'sm' | 'md' | 'lg';
   icon?: ReactNode;
@@ -253,6 +296,7 @@ export interface MetricProps {
 export function Metric({ label, value, unit, hint, basis, tone = 'neutral', size = 'md', icon }: MetricProps) {
   return (
     <div className={`metric metric--${size}`} data-tone={tone}>
+      <span className="metric__accent" aria-hidden />
       <div className="metric__label">
         {icon && <span className="metric__icon" aria-hidden>{icon}</span>}
         <span>{label}</span>
@@ -262,10 +306,10 @@ export function Metric({ label, value, unit, hint, basis, tone = 'neutral', size
         {unit && <span className="metric__unit">{unit}</span>}
       </div>
       {(hint || basis) && (
-        <div className="metric__foot">
-          {hint && <span className="metric__hint">{hint}</span>}
-          {basis && <BasisChip basis={basis} compact />}
-        </div>
+      <div className="metric__foot">
+        {hint && <span className="metric__hint">{hint}</span>}
+        {basis && <BasisChip basis={basis} />}
+      </div>
       )}
     </div>
   );

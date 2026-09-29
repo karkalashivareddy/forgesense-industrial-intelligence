@@ -27,6 +27,7 @@ import { DATA_BASIS, describeBasis } from '../domain/basis';
 import { formatInteger, formatNumber, formatProbability } from '../domain/format';
 import { summariseFleet } from '../domain/machineState';
 import { useNow, usePrefersReducedMotion } from '../hooks/useNow';
+import { CHART, token } from '../styles/color';
 import { toErrorMessage } from '../api/client';
 import { EmptyState, ErrorState, LoadingState, Metric, Panel, SectionHeader, StatusBadge } from '../design-system';
 
@@ -40,13 +41,6 @@ echarts.use([
   TitleComponent,
   CanvasRenderer,
 ]);
-
-/** Reading a CSS custom property from the document root. */
-function token(name: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback;
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return value || fallback;
-}
 
 interface ChartProps {
   option: echarts.EChartsCoreOption;
@@ -136,15 +130,15 @@ export default function Analytics() {
       xAxis: {
         type: 'category',
         data: healthHistogram.map((entry) => entry.label),
-        axisLine: { lineStyle: { color: token('--edge-default', '#2a3340') } },
-        axisLabel: { color: token('--text-muted', '#7c8b9c'), fontSize: 10 },
+        axisLine: { lineStyle: { color: CHART.border() } },
+        axisLabel: { color: CHART.muted(), fontSize: 10 },
       },
       yAxis: {
         type: 'value',
         name: 'assets',
-        nameTextStyle: { color: token('--text-faint', '#5b6878'), fontSize: 10 },
-        splitLine: { lineStyle: { color: token('--edge-subtle', '#1e2530') } },
-        axisLabel: { color: token('--text-muted', '#7c8b9c'), fontSize: 10 },
+        nameTextStyle: { color: CHART.muted(), fontSize: 10 },
+        splitLine: { lineStyle: { color: CHART.grid() } },
+        axisLabel: { color: CHART.muted(), fontSize: 10 },
       },
       series: [
         {
@@ -152,7 +146,7 @@ export default function Analytics() {
           data: healthHistogram.map((entry) => ({
             value: entry.count,
             itemStyle: {
-              color: entry.min < 60 ? token('--crit', '#ef4d52') : entry.min < 80 ? token('--warn', '#e8a33d') : token('--ok', '#35c98a'),
+              color: entry.min < 60 ? token('--color-critical') : entry.min < 80 ? token('--color-warning') : token('--color-success'),
             },
           })),
           barMaxWidth: 34,
@@ -179,25 +173,25 @@ export default function Analytics() {
         type: 'value',
         max: 1,
         axisLabel: {
-          color: token('--text-muted', '#7c8b9c'),
+          color: CHART.muted(),
           fontSize: 10,
           formatter: (value: number) => `${Math.round(value * 100)}%`,
         },
-        splitLine: { lineStyle: { color: token('--edge-subtle', '#1e2530') } },
+        splitLine: { lineStyle: { color: CHART.grid() } },
       },
       yAxis: {
         type: 'category',
         data: rows.map((row) => row.machineId).reverse(),
         axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: token('--text-secondary', '#a8b6c6'), fontSize: 10, fontFamily: 'JetBrains Mono, monospace' },
+        axisLabel: { color: CHART.text(), fontSize: 10, fontFamily: 'JetBrains Mono, monospace' },
       },
       series: [
         {
           type: 'bar',
           data: rows.map((row) => row.failureRisk).reverse(),
           barMaxWidth: 10,
-          itemStyle: { borderRadius: [0, 2, 2, 0], color: token('--ml', '#a678f0') },
+          itemStyle: { borderRadius: [0, 2, 2, 0], color: CHART.predicted() },
         },
       ],
     };
@@ -223,17 +217,17 @@ export default function Analytics() {
         type: 'value',
         name: 'failure risk',
         max: maxRisk * 1.1,
-        nameTextStyle: { color: token('--text-faint', '#5b6878'), fontSize: 10 },
-        axisLabel: { color: token('--text-muted', '#7c8b9c'), fontSize: 10, formatter: (v: number) => formatProbability(v) },
-        splitLine: { lineStyle: { color: token('--edge-subtle', '#1e2530') } },
+        nameTextStyle: { color: CHART.muted(), fontSize: 10 },
+        axisLabel: { color: CHART.muted(), fontSize: 10, formatter: (v: number) => formatProbability(v) },
+        splitLine: { lineStyle: { color: CHART.grid() } },
       },
       yAxis: {
         type: 'value',
         name: 'anomaly',
         max: maxAnomaly * 1.1,
-        nameTextStyle: { color: token('--text-faint', '#5b6878'), fontSize: 10 },
-        axisLabel: { color: token('--text-muted', '#7c8b9c'), fontSize: 10, formatter: (v: number) => formatProbability(v) },
-        splitLine: { lineStyle: { color: token('--edge-subtle', '#1e2530') } },
+        nameTextStyle: { color: CHART.muted(), fontSize: 10 },
+        axisLabel: { color: CHART.muted(), fontSize: 10, formatter: (v: number) => formatProbability(v) },
+        splitLine: { lineStyle: { color: CHART.grid() } },
       },
       series: [
         {
@@ -241,9 +235,9 @@ export default function Analytics() {
           data: points,
           symbolSize: 9,
           itemStyle: {
-            color: token('--brand', '#2dd4d4'),
+            color: CHART.observed(),
             opacity: 0.85,
-            borderColor: token('--bg-base', '#0b0e12'),
+            borderColor: CHART.panel(),
             borderWidth: 1,
           },
         },

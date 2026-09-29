@@ -109,6 +109,18 @@ export default function Maintenance() {
 
   const totalEffort = filtered.reduce((sum, order) => sum + (order.estimatedDurationMinutes ?? 0), 0);
 
+  // Only lanes that hold work orders are rendered. A kanban with four empty
+  // columns next to one full column wastes most of the width and pushes the
+  // real backlog into a narrow strip. The metric row above stays the
+  // authoritative view of every lifecycle stage, including the empty ones.
+  const lanes = useMemo(
+    () =>
+      LIFECYCLE.map((status) => ({ status, items: grouped.get(status) ?? [] })).filter(
+        (lane) => lane.items.length > 0,
+      ),
+    [grouped],
+  );
+
   const run = async (id: string, action: 'schedule' | 'start' | 'complete' | 'cancel') => {
     setBusyId(id);
     try {
@@ -324,10 +336,21 @@ export default function Maintenance() {
             maxHeight={600}
           />
         </Panel>
+      ) : lanes.length === 0 ? (
+        <Panel>
+          <EmptyState
+            icon={<Wrench size={20} />}
+            title="No work orders in this view"
+            description={
+              statusFilter === 'ALL'
+                ? 'Every lifecycle stage is currently empty. The counts above show the full backlog.'
+                : `No work orders are currently ${titleCase(statusFilter).toLowerCase()}. Clear the filter to see the full backlog.`
+            }
+          />
+        </Panel>
       ) : (
         <div className="board">
-          {LIFECYCLE.map((status) => {
-            const items = grouped.get(status) ?? [];
+          {lanes.map(({ status, items }) => {
             return (
               <section className="board__column" key={status} aria-label={`${titleCase(status)} work orders`}>
                 <header className="board__head">
@@ -385,6 +408,13 @@ export default function Maintenance() {
             );
           })}
         </div>
+      )}
+
+      {lanes.length < LIFECYCLE.length && (
+        <p className="note">
+          Empty lifecycle stages are collapsed to give the active backlog the full width. Their counts remain visible in
+          the stage metrics above.
+        </p>
       )}
 
       <p className="note">

@@ -30,6 +30,13 @@ export const config = {
   apiBaseUrl: rawApiBase,
 
   /**
+   * Display name of the plant this deployment visualises. Single source of
+   * truth: the header, sign-in gate and workspace subtitles all read it, so a
+   * re-branded or multi-site deployment changes one line.
+   */
+  plantName: readEnv('VITE_PLANT_NAME') ?? 'Factory Alpha',
+
+  /**
    * STOMP-over-WebSocket endpoint. Derived from the API origin unless
    * explicitly configured, so a single env var is enough for local dev.
    */

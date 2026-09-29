@@ -83,6 +83,8 @@ Severity: **P0** breaks the product · **P1** materially degrades · **P2** debt
 | F21 Secrets in the Compose env namespace | P2 | **Documented** | Checklist in `docs/KNOWN_LIMITATIONS.md` §7 |
 | F22 `ml-service/.venv` in the tree | P3 | **Already correct** | Gitignored, 0 files tracked |
 | F23 Apparent mojibake in source | P3 | **False positive** | Byte scan: 0 U+FFFD in any source file; PowerShell console artefact |
+| F25 `normaliseMaintenance` expected a bare JSON array, but `GET /api/v1/maintenance` returns `{total, items}` — so the adapter always produced `[]` | P1 | **Fixed** | The maintenance board, the Command Center backlog panel and the inspector's work-order tab all silently showed "no work orders" while the nav badge showed 18, because the badge reads `/analytics/maintenance` through a different path. Adapter now unwraps either shape; `test/adapters.test.ts` locks the envelope for every collection endpoint. |
+| F26 Command Center hero used the plant name as the page `h1`, so the workspace had no accessible name matching its route | P2 | **Fixed** | `h1` names the workspace ("Command Center"); the plant moved to the subtitle and is now sourced from `config.plantName` rather than 5 hardcoded literals |
 
 ### Findings that did NOT reproduce (investigated, not assumed)
 
@@ -224,16 +226,23 @@ Verified by 6 E2E tests, not by inspection.
 
 | Suite | Count | Result |
 | --- | --- | --- |
-| Vitest unit | 66 | **pass** |
+| Vitest unit | 73 | **pass** (66 + 7 adapter contract tests) |
 | Playwright E2E | 30 | **pass** |
 | Playwright visual/responsive | 13 | **pass** |
 | Backend unit | 7 new (`DecisionEngineFormattingTest`) | **pass** |
 | `tsc --noEmit` (strict, includes tests) | — | **clean** |
 | `vite build` | — | **clean** |
+| Hardcoded-colour scan outside `tokens.css` / `color.ts` | — | **0 hits** |
 
 E2E asserts, on **every** route: zero console errors, zero uncaught
 exceptions, zero failed requests, zero unexpected 4xx/5xx, no horizontal
 overflow.
+
+The E2E suite earned its keep during the colour pass: the Command Center hero
+had been given the plant name as its `h1`, which broke four tests before the
+change ever reached a user. The adapter bug behind F25 was invisible to the
+type checker and to every existing test, because a `[]` returned from a
+mis-shaped response is indistinguishable from a legitimately empty one.
 
 ---
 

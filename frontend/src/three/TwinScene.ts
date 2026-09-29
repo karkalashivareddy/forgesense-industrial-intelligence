@@ -33,33 +33,71 @@ export interface TwinOptions {
   reducedMotion: boolean;
 }
 
-/* ---- material palette (industrial graphite + semantic state) ---- */
+/*
+ * Twin palette.
+ *
+ * Values are resolved from the same CSS custom properties as the DOM, so the
+ * 3D scene and the interface can never drift apart. Three.js needs concrete
+ * numeric colours for materials, which is exactly why this is the one place
+ * that reads tokens at runtime rather than hard-coding hex.
+ *
+ * The environment is deliberately graphite and steel. Cyan is reserved for
+ * SELECTION so that "cyan" always means "this is the thing you picked", never
+ * "the whole factory is glowing".
+ */
+
+function hex(tokenName: string, fallback: number): number {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(tokenName).trim();
+  if (!value.startsWith('#')) return fallback;
+  const body = value.length === 4
+    ? value
+        .slice(1)
+        .split('')
+        .map((char) => char + char)
+        .join('')
+    : value.slice(1);
+  const parsed = Number.parseInt(body, 16);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 const PALETTE = {
-  floor: 0x0a0d11,
-  slab: 0x0e131a,
-  grid: 0x18212b,
-  gridMajor: 0x1f2a36,
-  body: 0x2a3540,
-  bodyDark: 0x1a232c,
-  accent: 0x2c4a63,
-  plate: 0x151c24,
-  steel: 0x39485a,
-  edge: 0x2a3644,
+  floor: hex('--color-bg-app', 0x0a0d11),
+  slab: hex('--color-bg-panel', 0x10141a),
+  grid: hex('--color-border-subtle', 0x1c222a),
+  gridMajor: hex('--color-border-default', 0x273040),
+  body: hex('--color-border-strong', 0x3a4658),
+  bodyDark: hex('--color-border-default', 0x273040),
+  accent: hex('--color-accent-muted', 0x0e7f96),
+  plate: hex('--color-bg-inset', 0x070a0e),
+  steel: hex('--color-border-strong', 0x3a4658),
+  edge: hex('--color-border-default', 0x273040),
 } as const;
 
 const STATE_COLOURS: Record<StateTone, number> = {
-  ok: 0x35c98a,
-  warn: 0xe8a33d,
-  crit: 0xef4d52,
-  maint: 0x9b7bf0,
-  idle: 0x6b7a8b,
-  info: 0x4fa9e8,
+  ok: hex('--color-success', 0x34c07d),
+  warn: hex('--color-warning', 0xe8a93f),
+  crit: hex('--color-critical', 0xef4d55),
+  maint: hex('--color-maintenance', 0x6f8ff0),
+  idle: hex('--color-unavailable', 0x5a6674),
+  info: hex('--color-info', 0x4a9fe0),
 };
 
+/** Selection is cyan and nothing else is. */
+const SELECT_COLOUR = hex('--color-accent', 0x22d3ee);
+
+/** A `#rrggbb` string from a token, for the 2D canvas label textures. */
+function cssColour(tokenName: string, fallback: number): string {
+  return '#' + hex(tokenName, fallback).toString(16).padStart(6, '0');
+}
+
+/** Predicted-risk overlay is violet, matching the Predictions workspace. */
+const PREDICTION_COLOUR = hex('--color-intelligence', 0x9d7bf0);
+
 const RELATION_COLOURS: Record<string, number> = {
-  MATERIAL: 0x2dd4d4,
-  POWER: 0x4fa9e8,
-  COOLING: 0x9b7bf0,
+  MATERIAL: hex('--color-accent', 0x22d3ee),
+  POWER: hex('--color-info', 0x4a9fe0),
+  COOLING: hex('--color-maintenance', 0x6f8ff0),
   SERVICE: 0x7c8b9c,
 };
 
@@ -144,12 +182,24 @@ export class TwinScene {
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(PALETTE.floor);
-    this.scene.fog = new THREE.Fog(PALETTE.floor, 70, 170);
+    this.scene.fog = new THREE.Fog(PALETTE.floor, 95, 240);
 
     this.camera = new THREE.PerspectiveCamera(46, 1, 0.5, 260);
     this.camera.position.set(28, 26, 14);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: 'low-power',
+      // Required so a screenshot or an OS-level capture contains the frame.
+      // Without it the drawing buffer is cleared after compositing and any
+      // capture — including the visual-QA suite — records a black canvas.
+      preserveDrawingBuffer: true,
+    });
+    // Without tone mapping the very dark graphite materials in a dim
+    // industrial scene quantise to near-black on an 8-bit buffer.
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.domElement.style.display = 'block';
     this.renderer.domElement.setAttribute('tabindex', '0');
@@ -163,6 +213,20 @@ export class TwinScene {
     this.buildEnvironment();
     this.attachOrbit();
     this.attachPointer();
+
+    /*
+     * Orient the default camera at the plant.
+     *
+     * THREE.PerspectiveCamera looks down its own -Z axis, so a camera merely
+     * POSITIONED above the floor still points at empty space. The first
+     * `syncMachines` call re-fits to the real bounds; this initial pose makes
+     * the very first frame correct instead of a black canvas.
+     */
+    const initial = this.sceneBounds();
+    this.camera.position.copy(initial.position);
+    this.camera.lookAt(initial.target);
+    if (this.controls) this.controls.target.copy(initial.target);
+
     this.observeResize();
     this.start();
   }
@@ -178,18 +242,23 @@ export class TwinScene {
   }
 
   private buildEnvironment(): void {
-    this.scene.add(new THREE.HemisphereLight(0xcfe0f0, 0x0d1319, 0.85));
+    /*
+     * Industrial lighting. Bright enough that graphite steel reads as steel
+     * rather than as black, but with a cool key and a warmer rim so machine
+     * forms stay legible against the floor.
+     */
+    this.scene.add(new THREE.HemisphereLight(0xd8e6f4, hex('--color-bg-inset', 0x070a0e), 1.5));
 
-    const key = new THREE.DirectionalLight(0xffffff, 1.0);
+    const key = new THREE.DirectionalLight(0xffffff, 2.1);
     key.position.set(18, 28, 12);
     this.scene.add(key);
 
-    const rim = new THREE.DirectionalLight(0x8fa8c4, 0.38);
+    const rim = new THREE.DirectionalLight(0x9fc0e0, 0.95);
     rim.position.set(-16, 14, -16);
     this.scene.add(rim);
 
-    const ambient = new THREE.AmbientLight(0x1e2833, 0.55);
-    this.scene.add(ambient);
+    // Low fill so shadowed faces do not crush to black.
+    this.scene.add(new THREE.AmbientLight(0x2b3a4c, 0.9));
 
     const floorGeo = this.track(new THREE.PlaneGeometry(140, 110), true);
     const floor = new THREE.Mesh(
@@ -569,7 +638,7 @@ export class TwinScene {
     // Selection halo.
     const haloGeo = this.track(new THREE.RingGeometry(1.85, 2.05, 40), true);
     const haloMat = this.track(
-      new THREE.MeshBasicMaterial({ color: 0x2dd4d4, transparent: true, opacity: 0, side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({ color: SELECT_COLOUR, transparent: true, opacity: 0, side: THREE.DoubleSide }),
       true,
     );
     const halo = new THREE.Mesh(haloGeo, haloMat);
@@ -587,6 +656,12 @@ export class TwinScene {
   /** Reconcile the scene with the fleet. Only creates/destroys what changed. */
   syncMachines(machines: Machine[], zones: Zone[]): void {
     if (this.disposed) return;
+
+    // The very first population is when real bounds exist, so frame the plant
+    // once here. After this the operator owns the camera and it is not
+    // overridden by a routine poll.
+    const firstPopulation = this.nodes.size === 0 && machines.length > 0;
+
     this.layout(machines);
     void zones;
 
@@ -658,6 +733,14 @@ export class TwinScene {
 
     this.applyZoneFilter();
     this.applySelectionVisuals();
+
+    if (firstPopulation) {
+      // The camera aspect is only known after the first ResizeObserver
+      // callback, so fit on the next frame when the projection is correct.
+      requestAnimationFrame(() => {
+        if (!this.disposed) this.fit();
+      });
+    }
   }
 
   private removeNode(node: MachineNode): void {
@@ -675,9 +758,23 @@ export class TwinScene {
     const colour = STATE_COLOURS[tone];
     node.indicator.material.color.setHex(colour);
     node.indicator.material.emissive.setHex(colour);
-    // Risk mode dims healthy assets so predicted risk reads at a glance.
-    const emphasis = this.mode === 'risk' ? (machine.failureRisk >= 0.5 ? 2.1 : 0.35) : 1.4;
-    node.indicator.material.emissiveIntensity = emphasis;
+
+    /*
+     * Risk mode is an intelligence overlay, so it is violet — the same colour
+     * the Predictions workspace uses for model output. Assets below the
+     * threshold dim rather than turn green, so violet always reads as
+     * "the model is pointing at this".
+     */
+    if (this.mode === 'risk') {
+      const elevated = machine.failureRisk >= 0.5;
+      const mid = machine.failureRisk >= 0.3;
+      const target = elevated ? PREDICTION_COLOUR : mid ? hex('--color-warning', 0xe8a93f) : PALETTE.body;
+      node.indicator.material.color.setHex(target);
+      node.indicator.material.emissive.setHex(target);
+      node.indicator.material.emissiveIntensity = elevated ? 2.4 : mid ? 1.5 : 0.25;
+    } else {
+      node.indicator.material.emissiveIntensity = 1.6;
+    }
   }
 
   private makeLabel(text: string): THREE.Sprite {
@@ -688,7 +785,7 @@ export class TwinScene {
     if (context) {
       context.clearRect(0, 0, 128, 32);
       context.font = '600 15px "JetBrains Mono", monospace';
-      context.fillStyle = '#9fb3c8';
+      context.fillStyle = cssColour('--color-text-secondary', 0xa7b4c4);
       context.textAlign = 'center';
       context.textBaseline = 'middle';
       context.fillText(text, 64, 17);
@@ -734,7 +831,7 @@ export class TwinScene {
       const isSelected = this.selected.has(id);
       const isHovered = this.hovered === id;
       node.halo.material.opacity = isSelected ? 0.85 : isHovered ? 0.45 : 0;
-      node.halo.material.color.setHex(isSelected ? 0x2dd4d4 : 0x8fb3c7);
+      node.halo.material.color.setHex(isSelected ? SELECT_COLOUR : hex('--color-text-secondary', 0xa7b4c4));
       if (isSelected) {
         node.halo.position.y = 0.05;
       }
@@ -844,17 +941,32 @@ export class TwinScene {
     const box = new THREE.Box3();
     for (const node of this.nodes.values()) {
       box.expandByPoint(node.position.clone().add(new THREE.Vector3(-2, 0, -2)));
-      box.expandByPoint(node.position.clone().add(new THREE.Vector3(2, MACHINE_HEIGHT + 1, 2)));
+      box.expandByPoint(node.position.clone().add(new THREE.Vector3(2, MACHINE_HEIGHT + 1.4, 2)));
     }
     if (box.isEmpty()) {
       const target = new THREE.Vector3(0, 0, -19);
       return { position: new THREE.Vector3(28, 26, 14), target, size: new THREE.Vector3(20, 6, 40) };
     }
+
     const centre = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
-    const radius = Math.max(size.x, size.z, size.y) * 0.62 + 8;
-    const direction = new THREE.Vector3(0.52, 0.68, 0.92).normalize();
-    return { position: centre.clone().add(direction.multiplyScalar(radius)), target: centre, size };
+
+    /*
+     * Fit for the ACTUAL viewport, not a fixed radius. The plant is much
+     * wider than it is deep, so a radius derived from the largest single
+     * dimension crops the ends on a wide screen. Deriving the distance from
+     * the vertical FOV and the projected extents keeps the whole floor in
+     * frame at any aspect ratio.
+     */
+    const fov = (this.camera.fov * Math.PI) / 180;
+    const aspect = Math.max(0.35, this.camera.aspect || 1);
+    const fitHeightDistance = size.y / 2 / Math.tan(fov / 2);
+    const fitWidthDistance = size.x / 2 / Math.tan(fov / 2) / aspect;
+    const fitDepthDistance = size.z / 2;
+    const distance = Math.max(fitHeightDistance, fitWidthDistance, fitDepthDistance) * 1.18 + 6;
+
+    const direction = new THREE.Vector3(0.42, 0.62, 0.66).normalize();
+    return { position: centre.clone().add(direction.multiplyScalar(distance)), target: centre, size };
   }
 
   private animateCamera(position: THREE.Vector3, target: THREE.Vector3): void {

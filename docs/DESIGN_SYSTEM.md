@@ -3,59 +3,106 @@
 Industrial graphite surfaces, restrained colour, one icon family, and a rule
 that colour is never the only carrier of state.
 
-Source of truth: `frontend/src/styles/tokens.css` and
-`frontend/src/design-system/index.tsx`. There are no one-off colours, radii or
-spacing values in feature code.
+Source of truth: `frontend/src/styles/tokens.css`,
+`frontend/src/styles/color.ts` and `frontend/src/design-system/index.tsx`.
+There are no one-off colours, radii or spacing values in feature code. A
+repo-wide scan for `#hex`, `rgb()` and `hsl()` literals outside `tokens.css`
+and `color.ts` returns nothing; `color.ts` holds the only runtime fallbacks,
+because ECharts and the Three.js renderer resolve colours in JavaScript where
+CSS custom properties are not available.
 
 ---
 
 ## 1. Palette
 
+The palette is a strict hierarchy, read top-down. Each colour means exactly
+one thing:
+
+| Role | Meaning |
+| --- | --- |
+| Graphite | environment and surfaces; recedes |
+| White | information; the value itself |
+| Cyan | interaction, live connection, selection |
+| Green | healthy operation |
+| Amber | attention / warning |
+| Red | critical operational condition |
+| Violet | ML intelligence, prediction, model output |
+| Slate | metadata, derived values, secondary information |
+| Warm amber | synthetic / simulation provenance |
+
+Two rules carry most of the weight:
+
+1. **`CRITICAL` and `SYNTHETIC` are different concepts and never look alike.**
+   A critical machine is red; a synthetic feed is warm amber. Conflating a
+   machine state with data provenance is the most misleading thing this
+   console could do.
+2. **Provenance and severity are orthogonal axes.** An alert's severity is a
+   colour; its lifecycle state is expressed by weight and treatment, never by
+   a second competing colour.
+
 ### Surfaces
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--bg-void` | `#07090c` | app backdrop, behind everything |
-| `--bg-base` | `#0b0e12` | workspace background |
-| `--bg-surface` | `#10141a` | panels |
-| `--bg-raised` | `#161b23` | raised panels, table headers, control groups |
-| `--bg-overlay` | `#1b222c` | modals, menus, tooltips, the twin HUD |
-| `--bg-inset` | `#0a0d11` | wells, code, chart backdrops |
-| `--bg-hover` / `--bg-active` | `#1c232d` / `#232c38` | interaction |
+| `--color-bg-app` | `#0a0d11` | app backdrop, behind everything |
+| `--color-bg-panel` | `#10141a` | primary surfaces |
+| `--color-bg-panel-elevated` | `#161b22` | raised panels, table headers |
+| `--color-bg-panel-hover` / `-active` | `#1b212a` / `#212934` | interaction |
+| `--color-bg-inset` | `#070a0e` | wells, code, chart backdrops |
+| `--color-bg-overlay` | `#1a2029` | modals, menus, tooltips, the twin HUD |
+| `--color-bg-scrim` | `rgba(4,6,9,.72)` | dimming layer behind overlays |
 
-Edges: `--edge-subtle` `#1e2530`, `--edge-default` `#2a3340`,
-`--edge-strong` `#3a4756`, `--edge-accent` teal at 42% — the metallic edge
-treatment that separates panels without heavy shadows.
+Edges: `--color-border-subtle` `#1c222a`, `--color-border-default` `#273040`,
+`--color-border-strong` `#3a4658`, and `--color-border-active` at 55% accent.
+Each surface step is a deliberate ~3% lightness increment, so depth reads even
+in a flat render.
 
-### Text (contrast measured against `--bg-base`)
+### Text (contrast measured against `--color-bg-panel`)
 
-| Token | Ratio | Use |
-| --- | --- | --- |
-| `--text-primary` `#e8edf4` | 13.9:1 | body, values |
-| `--text-secondary` `#a8b6c6` | 7.4:1 | supporting text |
-| `--text-muted` `#7c8b9c` | 4.7:1 | metadata — **at the AA floor, not below** |
-| `--text-faint` `#5b6878` | ~3.0:1 | decorative only, never load-bearing |
+| Token | Value | Ratio | Use |
+| --- | --- | --- | --- |
+| `--color-text-primary` | `#e6ecf3` | 14.8:1 | body, values |
+| `--color-text-secondary` | `#a7b4c4` | 7.6:1 | supporting text |
+| `--color-text-muted` | `#7b8899` | 4.6:1 | metadata — **at the AA floor, not below** |
+| `--color-text-disabled` | `#5a6674` | — | decorative only, never load-bearing |
+| `--color-text-on-accent` | `#04212a` | — | for solid cyan fills |
 
 ### Semantic state
 
 | Token | Value | Meaning |
 | --- | --- | --- |
-| `--ok` | `#35c98a` | signal green — normal / healthy |
-| `--warn` | `#e8a33d` | controlled amber — degraded / warning |
-| `--crit` | `#ef4d52` | safety red — critical |
-| `--info` | `#4fa9e8` | cyan — informational |
-| `--maint` | `#9b7bf0` | violet — maintenance / out of service |
-| `--idle` | `#6b7a8b` | muted steel — offline / unknown |
-| `--ml` | `#a678f0` | violet, **reserved exclusively for model-derived values** |
+| `--color-success` | `#34c07d` | healthy operation |
+| `--color-warning` | `#e8a93f` | attention required |
+| `--color-critical` | `#ef4d55` | critical machine condition |
+| `--color-accent` | `#22d3ee` | active, interactive, selected, live |
+| `--color-intelligence` | `#9d7bf0` | model output — **reserved exclusively** |
+| `--color-maintenance` | `#6f8ff0` | work in progress (an operational state, not a model output) |
+| `--color-info` | `#4a9fe0` | neutral informational |
+| `--color-derived` | `#7b8899` | metadata, computed values |
+| `--color-unavailable` | `#5a6674` | visibly inert |
+| `--color-synthetic` | `#c98a52` | provenance disclosure |
 
-Each has a `*-wash` (≈13% alpha) and a `*-text` variant that meets AA on
-graphite. Reserved roles matter: violet always means "the model said this", so
-an operator never has to ask whether a number was measured or inferred.
+Every entry has a `-bg` wash, a `-border` and a `-text` variant that meets AA
+on graphite. `--color-synthetic` is deliberately warm, desaturated and lower
+contrast than the warning amber: it is a disclosure, not an alarm.
 
-### Brand
+The reserved violet role matters most. A prediction is violet even when its
+value is high; the machine *state* is what turns red. An operator should never
+have to ask whether a number was measured or inferred.
 
-`--brand` `#2dd4d4` electric teal, with `--brand-bright`, `--brand-dim`,
-`--brand-wash`, `--brand-wash-strong` and `--brand-text` `#7defec`.
+### State lookup
+
+`--state-*` aliases map semantic state to a colour triple, so a new state can
+never pick up a colour that already means something else:
+
+`critical` · `warning` · `ok` · `maint` · `info` · `idle` · `neutral`
+
+### Chart series
+
+`--color-chart-observed` (cyan), `--color-chart-predicted` (violet),
+`--color-chart-warning-threshold`, `--color-chart-critical-threshold` and
+`--color-chart-baseline` (slate) reuse the UI semantics verbatim, so a legend
+and the surrounding interface always agree.
 
 ---
 

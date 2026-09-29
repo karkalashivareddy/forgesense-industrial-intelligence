@@ -38,8 +38,8 @@ body,
 
 body {
   margin: 0;
-  background: var(--bg-void);
-  color: var(--text-primary);
+  background: var(--color-bg-app);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
@@ -76,7 +76,7 @@ button {
 }
 
 a {
-  color: var(--brand-text);
+  color: var(--color-accent-text);
   text-decoration: none;
 }
 
@@ -99,20 +99,20 @@ table {
 }
 
 :focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: var(--radius-xs);
 }
 
 ::selection {
-  background: var(--brand-wash-strong);
-  color: var(--text-primary);
+  background: var(--color-accent-bg-strong);
+  color: var(--color-text-primary);
 }
 
 /* Scrollbars — thin, industrial, non-intrusive. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--edge-strong) transparent;
+  scrollbar-color: var(--color-border-strong) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -125,14 +125,14 @@ table {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: var(--edge-default);
+  background: var(--color-border-default);
   border-radius: var(--radius-pill);
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--edge-strong);
+  background: var(--color-border-strong);
   background-clip: content-box;
 }
 
@@ -149,11 +149,11 @@ table {
 }
 
 .muted {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .dim {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .tiny {
@@ -188,8 +188,8 @@ table {
   left: var(--space-2);
   z-index: var(--z-toast);
   padding: var(--space-2) var(--space-4);
-  background: var(--bg-overlay);
-  border: 1px solid var(--brand);
+  background: var(--color-bg-overlay);
+  border: 1px solid var(--color-accent);
   border-radius: var(--radius-sm);
   transform: translateY(-200%);
   transition: transform var(--dur-base) var(--ease-out);
@@ -204,7 +204,7 @@ table {
   display: grid;
   grid-template-rows: auto 1fr auto;
   height: 100%;
-  background: var(--bg-void);
+  background: var(--color-bg-app);
 }
 
 .app__body {
@@ -218,7 +218,7 @@ table {
   min-width: 0;
   min-height: 0;
   overflow: hidden auto;
-  background: var(--bg-base);
+  background: var(--color-bg-app);
 }
 
 .workspace {
@@ -237,8 +237,8 @@ table {
   gap: var(--space-4);
   height: var(--topbar-h);
   padding: 0 var(--space-4);
-  background: linear-gradient(180deg, var(--bg-raised), var(--bg-surface));
-  border-bottom: 1px solid var(--edge-default);
+  background: linear-gradient(180deg, var(--color-bg-panel-elevated), var(--color-bg-panel));
+  border-bottom: 1px solid var(--color-border-default);
   position: relative;
   z-index: var(--z-nav);
   /* The bar must never be the source of horizontal overflow: its children are
@@ -258,7 +258,7 @@ table {
 }
 
 .topbar__mark {
-  color: var(--brand);
+  color: var(--color-accent);
   display: flex;
   flex-shrink: 0;
 }
@@ -273,7 +273,7 @@ table {
 
 .topbar__sub {
   font-size: var(--text-2xs);
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.09em;
   white-space: nowrap;
@@ -305,7 +305,7 @@ table {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .topbar__user {
@@ -313,17 +313,17 @@ table {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--edge-default);
+  border: 1px solid var(--color-border-default);
   border-radius: var(--radius-sm);
-  background: var(--bg-surface);
+  background: var(--color-bg-panel);
   font-size: var(--text-xs);
 }
 
 /* ============ navigation rail ============ */
 .nav {
   width: var(--nav-w);
-  background: var(--bg-surface);
-  border-right: 1px solid var(--edge-default);
+  background: var(--color-bg-panel);
+  border-right: 1px solid var(--color-border-default);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -348,7 +348,7 @@ table {
   font-weight: var(--weight-semibold);
   letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--color-text-disabled);
   white-space: nowrap;
 }
 
@@ -366,7 +366,7 @@ table {
   width: 100%;
   padding: var(--space-2) var(--space-2);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-size: var(--text-sm);
   text-align: left;
   position: relative;
@@ -374,13 +374,13 @@ table {
 }
 
 .nav__item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: var(--color-bg-panel-hover);
+  color: var(--color-text-primary);
 }
 
 .nav__item[aria-current='page'] {
-  background: var(--brand-wash);
-  color: var(--text-primary);
+  background: var(--color-accent-bg);
+  color: var(--color-text-primary);
   font-weight: var(--weight-medium);
 }
 
@@ -392,7 +392,7 @@ table {
   bottom: 20%;
   width: 2px;
   border-radius: var(--radius-pill);
-  background: var(--brand);
+  background: var(--color-accent);
 }
 
 .nav__item svg {
@@ -412,16 +412,16 @@ table {
   font-size: var(--text-2xs);
   padding: 1px var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--bg-raised);
-  border: 1px solid var(--edge-default);
-  color: var(--text-secondary);
+  background: var(--color-bg-panel-elevated);
+  border: 1px solid var(--color-border-default);
+  color: var(--color-text-secondary);
   flex-shrink: 0;
 }
 
 .nav__item[aria-current='page'] .nav__count {
-  background: var(--brand-wash-strong);
-  border-color: var(--edge-accent);
-  color: var(--brand-text);
+  background: var(--color-accent-bg-strong);
+  border-color: var(--color-border-active);
+  color: var(--color-accent-text);
 }
 
 .nav[data-collapsed='true'] .nav__label,
@@ -437,7 +437,7 @@ table {
 .nav__foot {
   margin-top: auto;
   padding: var(--space-2);
-  border-top: 1px solid var(--edge-subtle);
+  border-top: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -450,10 +450,10 @@ table {
   gap: var(--space-4);
   height: var(--statusbar-h);
   padding: 0 var(--space-4);
-  background: var(--bg-surface);
-  border-top: 1px solid var(--edge-default);
+  background: var(--color-bg-panel);
+  border-top: 1px solid var(--color-border-default);
   font-size: var(--text-2xs);
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
@@ -470,18 +470,18 @@ table {
 .statusbar__key {
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text-faint);
+  color: var(--color-text-disabled);
 }
 
 .statusbar__val {
   font-family: var(--font-mono);
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
 .statusbar__note {
   margin-left: auto;
-  color: var(--text-faint);
+  color: var(--color-text-disabled);
   font-size: var(--text-2xs);
   padding-left: var(--space-4);
   flex-shrink: 0;
@@ -491,8 +491,8 @@ table {
 .bottomnav {
   display: none;
   grid-template-columns: repeat(5, 1fr);
-  background: var(--bg-surface);
-  border-top: 1px solid var(--edge-default);
+  background: var(--color-bg-panel);
+  border-top: 1px solid var(--color-border-default);
   padding-bottom: env(safe-area-inset-bottom);
   z-index: var(--z-nav);
 }
@@ -504,13 +504,13 @@ table {
   gap: 2px;
   padding: var(--space-2) var(--space-1);
   font-size: 0.5625rem;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   min-height: 52px;
   justify-content: center;
 }
 
 .bottomnav__item[aria-current='page'] {
-  color: var(--brand-text);
+  color: var(--color-accent-text);
 }
 
 /* ============ responsive ============ */
@@ -600,7 +600,7 @@ table {
     display: block;
     position: fixed;
     inset: var(--topbar-h) 0 0 0;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--color-scrim);
     z-index: calc(var(--z-overlay) - 1);
     border: 0;
   }

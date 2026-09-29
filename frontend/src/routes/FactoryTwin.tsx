@@ -18,6 +18,7 @@ import { useUiStore, type TwinMode } from '../store/ui';
 import { deriveOperationalState } from '../domain/machineState';
 import { titleCase } from '../domain/format';
 import { useNow } from '../hooks/useNow';
+import { config } from '../config/env';
 
 const MODES: { id: TwinMode; label: string; icon: typeof Radar; hint: string }[] = [
   { id: 'status', label: 'Status', icon: LayoutGrid, hint: 'Colour each asset by operational state' },
@@ -33,7 +34,6 @@ const LEGEND: { label: string; tone: string }[] = [
   { label: 'Maintenance', tone: 'maint' },
   { label: 'Offline / stale', tone: 'idle' },
 ];
-
 const RELATION_LEGEND = [
   { label: 'Material', colour: 'var(--brand)' },
   { label: 'Power', colour: 'var(--info)' },
@@ -91,7 +91,7 @@ export default function FactoryTwin() {
     <div className="workspace" style={{ flex: '1 1 auto', minHeight: 0 }}>
       <SectionHeader
         title="Factory Twin"
-        description="Spatial view of Factory Alpha. Selection is shared with every other workspace."
+        description={`Spatial view of ${config.plantName}. Selection is shared with every other workspace.`}
         actions={
           <StatusBadge
             tone={connection.label === 'SYNTHETIC' ? 'info' : connection.label === 'LIVE' ? 'ok' : 'warn'}
@@ -223,14 +223,14 @@ export default function FactoryTwin() {
             </div>
           )}
 
-          <div className="twin__legend">
+          <p className="twin__mode-hint">
             {MODES.find((mode) => mode.id === twinMode)?.hint}
-          </div>
+          </p>
 
-          <div className="twin__legend">
+          <div className="twin__legend" role="list" aria-label="Machine status legend">
             {LEGEND.map((entry) => (
-              <span className="twin__legend-item" key={entry.label}>
-                <span className="twin__legend-swatch" style={{ background: `var(--${entry.tone === 'ok' ? 'ok' : entry.tone === 'crit' ? 'crit' : entry.tone === 'maint' ? 'maint' : entry.tone === 'idle' ? 'idle' : 'warn'})` }} aria-hidden />
+              <span className="twin__legend-item" key={entry.label} role="listitem">
+                <span className="twin__legend-swatch" data-tone={entry.tone} aria-hidden />
                 {entry.label}
               </span>
             ))}

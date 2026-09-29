@@ -140,10 +140,14 @@ export default function Alerts() {
       {
         key: 'headline',
         header: 'Condition',
+        // A hard width cap is what keeps the severity, status and action
+        // columns on screen. Without it the description text expands the
+        // table past the viewport and the actions become unreachable.
+        width: '32%',
         cell: (alert) => (
-          <div style={{ minWidth: 0 }}>
-            <div className="small">{alert.headline}</div>
-            <div className="tiny muted truncate" title={alert.description}>
+          <div className="alert-condition">
+            <div className="small alert-condition__headline">{alert.headline}</div>
+            <div className="tiny muted alert-condition__detail" title={alert.description}>
               {alert.description}
             </div>
           </div>
@@ -185,14 +189,12 @@ export default function Alerts() {
       },
       {
         key: 'status',
-        header: 'Status',
-        width: '150px',
+        header: 'Lifecycle',
+        width: '140px',
         cell: (alert) => (
-          <StatusBadge
-            tone={STATUS_TONE[alert.status] ?? 'idle'}
-            icon={<span className="twin__dot" data-tone={STATUS_TONE[alert.status] ?? 'idle'} aria-hidden />}
-            label={titleCase(alert.status)}
-          />
+          <span className="lifecycle-chip" data-lifecycle={alert.status}>
+            {titleCase(alert.status)}
+          </span>
         ),
       },
       {

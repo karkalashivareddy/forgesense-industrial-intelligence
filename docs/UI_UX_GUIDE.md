@@ -149,12 +149,20 @@ timestamp, because an operator reviewing an incident needs the history.
 
 ## 7. Maintenance
 
-Rendered as a five-column board mirroring the backend lifecycle exactly:
+Rendered as a board mirroring the backend lifecycle exactly:
 `RECOMMENDED → SCHEDULED → ACTIVE → COMPLETED`, plus `CANCELLED`.
 
 The UI does **not** show an "Investigating" or "Validating" column, because the
 server cannot store those states. Inventing a stage the backend does not
 support is how a CMMS demo becomes a lie.
+
+**Only stages that hold work orders get a lane.** A fixed five-column board
+next to a single full column wastes most of the width and squeezes the actual
+backlog into a narrow strip, so empty stages collapse and the remaining lanes
+take the full width — with cards flowing into multiple columns when one stage
+dominates. The stage metric row above stays the authoritative count for every
+lifecycle stage, including the empty ones, and a note says so. The board never
+silently hides work.
 
 A table view is available for scanning and sorting.
 

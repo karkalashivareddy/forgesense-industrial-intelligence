@@ -196,7 +196,8 @@ export function normaliseAlertList(raw: unknown): AlertListResponse {
 }
 
 export function normaliseMaintenance(raw: unknown): MaintenanceRecord[] {
-  const items = Array.isArray(raw) ? raw : [];
+  const body = (raw ?? {}) as Record<string, unknown>;
+  const items = Array.isArray(raw) ? raw : toArray<Record<string, unknown>>(body.items);
   return items.map((entry) => {
     const r = (entry ?? {}) as Record<string, unknown>;
     return {
