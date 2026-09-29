@@ -1,0 +1,387 @@
+/*
+ * ForgeSense design tokens — colour system.
+ *
+ * ONE SOURCE OF TRUTH. No component may introduce a literal colour.
+ *
+ * The system is organised as a strict hierarchy, read top-down:
+ *
+ *   GRAPHITE ......... environment and surfaces. Recedes.
+ *   WHITE ............ information. The value itself.
+ *   CYAN ............. interaction, live connection, selection.
+ *   GREEN ............ healthy operation.
+ *   AMBER ............ attention / warning.
+ *   RED .............. critical operational condition.
+ *   VIOLET ........... ML intelligence, prediction, model output.
+ *   SLATE ............ metadata, derived values, secondary information.
+ *   WARM AMBER ....... synthetic / simulation provenance.
+ *
+ * Two rules carry most of the weight:
+ *
+ *  1. A colour means exactly one thing. Cyan never means "healthy", violet
+ *     never means "critical". `CRITICAL` is a machine state and is red;
+ *     `SYNTHETIC` is data provenance and is warm amber. They are different
+ *     concepts and must never look like the same thing.
+ *
+ *  2. Provenance and severity are orthogonal axes. An alert's severity is a
+ *     colour; its lifecycle state is expressed by weight and treatment, not
+ *     by a second competing colour.
+ *
+ * Colour is never the sole carrier of meaning: every semantic colour is
+ * paired with an icon and a text label at the call site.
+ */
+
+:root {
+  /* ================================================================
+   * SURFACES — layered graphite, never pure black.
+   * Each step is a deliberate +~3% lightness increment so depth exists
+   * even in a flat render.
+   * ================================================================ */
+
+  --color-bg-app: #0a0d11;            /* deepest — behind everything */
+  --color-bg-app-grad: #0e1217;       /* top of the app gradient */
+  --color-bg-panel: #10141a;          /* primary surfaces */
+  --color-bg-panel-elevated: #161b22; /* raised panels, table headers */
+  --color-bg-panel-hover: #1b212a;    /* interactive hover */
+  --color-bg-panel-active: #212934;   /* pressed / selected */
+  --color-bg-inset: #070a0e;          /* wells, code, chart backdrops */
+  --color-bg-overlay: #1a2029;        /* modals, menus, tooltips */
+  --color-bg-scrim: rgba(4, 6, 9, 0.72);
+
+  /* Technical grid — extremely low contrast. Industrial engineering
+   * interface, not a science-fiction HUD. */
+  --color-grid-line: rgba(120, 150, 180, 0.045);
+
+  /* ================================================================
+   * BORDERS
+   * ================================================================ */
+
+  --color-border-subtle: #1c222a;
+  --color-border-default: #273040;
+  --color-border-strong: #3a4658;
+  --color-border-active: color-mix(in srgb, var(--color-accent) 55%, transparent);
+
+  /* ================================================================
+   * TEXT
+   * ================================================================ */
+
+  --color-text-primary: #e6ecf3;     /* 14.8:1 on --color-bg-panel */
+  --color-text-secondary: #a7b4c4;   /*  7.6:1 */
+  --color-text-muted: #7b8899;        /*  4.6:1 — at the AA floor */
+  --color-text-disabled: #5a6674;     /* decorative only */
+  --color-text-inverse: #070a0e;
+  --color-text-on-accent: #04212a;    /* for solid cyan fills */
+
+  /* ================================================================
+   * ACCENT — electric cyan.
+   * Means: active, interactive, selected, connected, live.
+   * ================================================================ */
+
+  --color-accent: #22d3ee;
+  --color-accent-hover: #5ce0f4;
+  --color-accent-muted: #0e7f96;
+  --color-accent-bg: rgba(34, 211, 238, 0.11);
+  --color-accent-bg-strong: rgba(34, 211, 238, 0.2);
+  --color-accent-border: rgba(34, 211, 238, 0.42);
+  --color-accent-text: #7ae6f7;       /* for text/icons on dark */
+  --color-accent-glow: rgba(34, 211, 238, 0.28);
+
+  /* ================================================================
+   * SUCCESS — sophisticated industrial green, never fluorescent.
+   * ================================================================ */
+
+  --color-success: #34c07d;
+  --color-success-bg: rgba(52, 192, 125, 0.12);
+  --color-success-border: rgba(52, 192, 125, 0.4);
+  --color-success-text: #6fd99f;
+  --color-success-bar: rgba(52, 192, 125, 0.75);
+
+  /* ================================================================
+   * WARNING — amber. Attention required.
+   * ================================================================ */
+
+  --color-warning: #e8a93f;
+  --color-warning-bg: rgba(232, 169, 63, 0.12);
+  --color-warning-border: rgba(232, 169, 63, 0.4);
+  --color-warning-text: #f5c877;
+  --color-warning-bar: rgba(232, 169, 63, 0.75);
+
+  /* ================================================================
+   * CRITICAL — safety red. Unmistakable, but never floods a surface.
+   * ================================================================ */
+
+  --color-critical: #ef4d55;
+  --color-critical-bg: rgba(239, 77, 85, 0.13);
+  --color-critical-border: rgba(239, 77, 85, 0.45);
+  --color-critical-text: #ff8b91;
+  --color-critical-bar: rgba(239, 77, 85, 0.8);
+
+  /* ================================================================
+   * INTELLIGENCE — violet, reserved exclusively for model output.
+   * A prediction is violet even when its value is high; the machine STATE
+   * is what turns red. Conflating the two is the single most misleading
+   * thing a predictive-maintenance UI can do.
+   * ================================================================ */
+
+  --color-intelligence: #9d7bf0;
+  --color-intelligence-bg: rgba(157, 123, 240, 0.13);
+  --color-intelligence-border: rgba(157, 123, 240, 0.4);
+  --color-intelligence-text: #c0a6f7;
+  --color-intelligence-bar: rgba(157, 123, 240, 0.75);
+
+  /* ================================================================
+   * INFO — cyan-blue, for neutral informational states.
+   * Distinct from accent so a link and a status do not read identically.
+   * ================================================================ */
+
+  --color-info: #4a9fe0;
+  --color-info-bg: rgba(74, 159, 224, 0.12);
+  --color-info-border: rgba(74, 159, 224, 0.4);
+  --color-info-text: #8fcbf3;
+
+  /* ================================================================
+   * SYNTHETIC — warm amber provenance.
+   * Deliberately warm, desaturated and LOWER contrast than the warning
+   * amber: this is a disclosure, not an alarm. It must never be mistaken
+   * for a machine state.
+   * ================================================================ */
+
+  --color-synthetic: #c98a52;
+  --color-synthetic-bg: rgba(201, 138, 82, 0.1);
+  --color-synthetic-border: rgba(201, 138, 82, 0.34);
+  --color-synthetic-text: #dda878;
+
+  /* ================================================================
+   * DERIVED — slate. Metadata and computed values.
+   * ================================================================ */
+
+  --color-derived: #7b8899;
+  --color-derived-bg: rgba(123, 136, 153, 0.1);
+  --color-derived-border: rgba(123, 136, 153, 0.32);
+  --color-derived-text: #97a5b5;
+
+  /* ================================================================
+   * UNAVAILABLE — muted gray, visibly inert.
+   * ================================================================ */
+
+  --color-unavailable: #5a6674;
+  --color-unavailable-bg: rgba(90, 102, 116, 0.09);
+  --color-unavailable-border: rgba(90, 102, 116, 0.3);
+  --color-unavailable-text: #7b8896;
+
+  /* ================================================================
+   * PROVENANCE FAMILY — the six data-basis labels.
+   *
+   * `<BasisChip>` builds its colour from a template literal,
+   * `var(--color-{basis}-{text|border|bg})`, so all six bases need a
+   * complete quadruple. The semantic migration above defined DERIVED,
+   * SYNTHETIC and UNAVAILABLE but omitted OBSERVED, PREDICTED and
+   * SIMULATED, so those three chips silently resolved to nothing: white
+   * inherited text, a transparent background, and an invisible dot.
+   *
+   * An undefined custom property is not an error, which is why this went
+   * unnoticed until it was measured. `test/tokens.test.ts` now asserts that
+   * every `var(--token)` in src/ is defined here, so a missing member of a
+   * family fails the suite instead of a screenshot.
+   *
+   * Colour meanings:
+   *   OBSERVED  — reported by the system of record, so the informational
+   *               blue: a fact, not a judgement
+   *   PREDICTED — model output, so violet, identical to every other
+   *               model-derived value in the console
+   *   SIMULATED — a what-if projection, so slate, but lighter than DERIVED
+   *               because nothing was measured to produce it
+   * ================================================================ */
+
+  --color-observed: #4a9fe0;
+  --color-observed-bg: rgba(74, 159, 224, 0.1);
+  --color-observed-border: rgba(74, 159, 224, 0.34);
+  --color-observed-text: #8fcbf3;
+
+  --color-predicted: #9d7bf0;
+  --color-predicted-bg: rgba(157, 123, 240, 0.11);
+  --color-predicted-border: rgba(157, 123, 240, 0.36);
+  --color-predicted-text: #c0a6f7;
+
+  --color-simulated: #6f7d8d;
+  --color-simulated-bg: rgba(111, 125, 141, 0.09);
+  --color-simulated-border: rgba(111, 125, 141, 0.28);
+  --color-simulated-text: #8b99a9;
+
+
+  /* ================================================================
+   * MAINTENANCE — a distinct cool violet-blue.
+   * Separate from intelligence: work-in-progress is an operational state,
+   * not a model output.
+   * ================================================================ */
+
+  --color-maintenance: #6f8ff0;
+  --color-maintenance-bg: rgba(111, 143, 240, 0.13);
+  --color-maintenance-border: rgba(111, 143, 240, 0.4);
+  --color-maintenance-text: #a3b8f7;
+
+  /* ================================================================
+   * CHART SERIES — the same semantics as the UI, in a legend.
+   * ================================================================ */
+
+  --color-chart-observed: var(--color-accent);
+  --color-chart-predicted: var(--color-intelligence);
+  --color-chart-warning-threshold: var(--color-warning);
+  --color-chart-critical-threshold: var(--color-critical);
+  --color-chart-baseline: var(--color-derived);
+  --color-chart-grid: rgba(120, 150, 180, 0.09);
+  --color-chart-axis: #7b8899;
+
+  /* ================================================================
+   * ELEVATION
+   * ================================================================ */
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 2px var(--color-bg-panel), 0 0 0 4px var(--color-accent);
+
+  /* Dimming layer behind modals and slide-overs. */
+  --color-scrim: rgba(4, 6, 9, 0.72);
+  --color-accent-veil: rgba(34, 211, 238, 0.06);
+
+  /* ================================================================
+   * TYPOGRAPHY
+   * ================================================================ */
+
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.5rem;
+  --text-4xl: 3.25rem;
+
+  --leading-tight: 1.12;
+  --leading-normal: 1.45;
+  --leading-relaxed: 1.62;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ================================================================
+   * SPACING & RADIUS
+   * ================================================================ */
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  /* ================================================================
+   * MOTION
+   * ================================================================ */
+
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 300ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* ================================================================
+   * LAYOUT
+   * ================================================================ */
+
+  --topbar-h: 56px;
+  --statusbar-h: 28px;
+  --nav-w: 236px;
+  --nav-w-collapsed: 60px;
+  /* Desktop slide-over width for the machine inspector, referenced by
+     `width: min(var(--drawer-w), 100vw)`. The mobile breakpoint overrides the
+     drawer to a full-width bottom sheet, so this only applies at >=768px. */
+  --drawer-w: 460px;
+  --content-max: 2200px;
+
+
+  --z-base: 1;
+  --z-sticky: 20;
+  --z-nav: 40;
+  --z-overlay: 60;
+  --z-modal: 70;
+  --z-toast: 80;
+
+  /* ================================================================
+   * STATE COLOUR LOOKUP
+   *
+   * A single map from semantic state to its colour triple. Every status
+   * badge, meter, dot, border and 3D indicator resolves through this, so a
+   * new state can never pick up a colour that means something else.
+   *
+   *   critical  machine state, severe
+   *   warning   machine state, attention
+   *   ok        machine state, healthy
+   *   maint     operational work in progress
+   *   info      informational machine state
+   *   idle      offline / unknown / inert
+   *   neutral   no semantic state
+   * ================================================================ */
+
+  --state-critical: var(--color-critical);
+  --state-critical-bg: var(--color-critical-bg);
+  --state-critical-text: var(--color-critical-text);
+  --state-warning: var(--color-warning);
+  --state-warning-bg: var(--color-warning-bg);
+  --state-warning-text: var(--color-warning-text);
+  --state-ok: var(--color-success);
+  --state-ok-bg: var(--color-success-bg);
+  --state-ok-text: var(--color-success-text);
+  --state-maint: var(--color-maintenance);
+  --state-maint-bg: var(--color-maintenance-bg);
+  --state-maint-text: var(--color-maintenance-text);
+  --state-info: var(--color-info);
+  --state-info-bg: var(--color-info-bg);
+  --state-info-text: var(--color-info-text);
+  --state-idle: var(--color-unavailable);
+  --state-idle-bg: var(--color-unavailable-bg);
+  --state-idle-text: var(--color-unavailable-text);
+  --state-neutral: var(--color-derived);
+  --state-neutral-bg: var(--color-derived-bg);
+  --state-neutral-text: var(--color-derived-text);
+}
+
+/*
+ * Reduced motion: collapse every decorative transition. State remains fully
+ * legible because it is carried by icon, text and colour — never by movement.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

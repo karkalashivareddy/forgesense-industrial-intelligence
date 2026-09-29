@@ -101,9 +101,12 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: nginx:alpine
-    volumes:
-      - ./frontend:/usr/share/nginx/html:ro
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
     ports:
       - "5173:80"
 
