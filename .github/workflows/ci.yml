@@ -141,7 +141,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: frontend/playwright-report
+          # Relative to this job's working-directory (frontend), so the
+          # prefix must not be repeated or the report is never uploaded.
+          path: playwright-report
           retention-days: 7
 
   backend:

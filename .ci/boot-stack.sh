@@ -31,15 +31,30 @@ trap cleanup EXIT
 log "Starting postgres, redis, kafka, ml-service and backend"
 docker compose up -d --wait postgres redis kafka ml-service backend
 
-log "Waiting for the backend to answer"
-for i in $(seq 1 90); do
-  if curl -sf http://localhost:8080/api/v1/factories >/dev/null 2>&1; then
-    log "Backend is ready after ${i}s"
-    exit 0
+log "Waiting for the backend to become ready"
+# Probe /actuator/health, not /api/v1/factories. The browser run needs security
+# ON (the Playwright fixtures sign in), and SecurityConfig permits only
+# /api/v1/auth/**, /actuator/health/**, /ws/** and /error anonymously. Probing
+# an authenticated endpoint anonymously returns 401, so `curl -sf` never
+# succeeded and this script always timed out. /actuator/health is also the
+# genuine readiness signal: it stays 503 until ApplicationReadyEvent completes.
+ready=0
+for i in $(seq 1 120); do
+  if curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1; then
+    ready=1
+    break
   fi
   sleep 1
 done
 
-log "Backend did not become ready in time"
-docker compose logs --tail 60 backend
-exit 1
+if [ "$ready" -ne 1 ]; then
+  log "Backend did not become ready in time"
+  log "last health status: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health 2>/dev/null || echo unreachable)"
+  log "last health body:   $(curl -s http://localhost:8080/actuator/health 2>/dev/null || echo unreachable)"
+  docker compose logs --tail 60 backend
+  exit 1
+fi
+
+log "Backend is ready after ${i}s"
+log "health: $(curl -s http://localhost:8080/actuator/health)"
+exit 0
