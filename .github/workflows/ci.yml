@@ -9,12 +9,15 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # Never commit a real secret. The credential-hygiene job below rejects any
-  # tracked credential default; these exist only so the boot smoke test has a
-  # value to send.
-  SPRING_PROFILES_ACTIVE: dev
-  FORGESENSE_SECURITY_ENABLED: 'false'
+# NOTE: deliberately no workflow-level `env:` block.
+#
+# `FORGESENSE_SECURITY_ENABLED=false` must be scoped to the individual step
+# that needs it (the boot smoke test), never to the whole workflow. Hoisting
+# it disables authentication during `./mvnw package`, so the security tests
+# assert against an open server and fail — and it would also disable auth for
+# the Playwright run, whose fixtures sign in. The E2E job needs no workflow
+# env: `.ci/boot-stack.sh` sets its own credentials and boots the full Compose
+# profile.
 
 jobs:
   hygiene:
@@ -149,6 +152,12 @@ jobs:
       - name: Compile, test, package
         run: ./mvnw -q package
       - name: Boot smoke test
+        # Security is off *here only*: the smoke test curls an authenticated
+        # endpoint without a token. Every other step keeps security enabled so
+        # the security tests are meaningful.
+        env:
+          SPRING_PROFILES_ACTIVE: dev
+          FORGESENSE_SECURITY_ENABLED: 'false'
         run: |
           set -euo pipefail
           java -jar target/forgesense-backend-1.0.0.jar &
@@ -184,7 +193,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the frontend image (npm ci + vite build + nginx)
+        # Compose interpolates the whole file before it builds anything, so
+        # these must be present even though the frontend image does not use
+        # them. Never commit a real secret: these are build-time placeholders
+        # and the hygiene job rejects any tracked credential default.
+        env:
+          POSTGRES_PASSWORD: ci
+          FORGESENSE_SECURITY_JWT_SECRET: ci-secret-for-build-validation
         run: docker compose build frontend
       - name: Verify the compose topology still resolves
-        run: |
-          POSTGRES_PASSWORD=ci FORGESENSE_SECURITY_JWT_SECRET=ci-secret-for-build-validation docker compose config --quiet
+        env:
+          POSTGRES_PASSWORD: ci
+          FORGESENSE_SECURITY_JWT_SECRET: ci-secret-for-build-validation
+        run: docker compose config --quiet
