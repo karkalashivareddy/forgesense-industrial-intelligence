@@ -165,13 +165,30 @@ jobs:
         run: |
           set -euo pipefail
           java -jar target/forgesense-backend-1.0.0.jar &
+          # Wait for the READINESS signal, not merely for the port to answer.
+          # Tomcat serves /api/v1/factories as soon as the context is up, but
+          # the application is not ready until ApplicationReadyEvent completes
+          # (DemoPredictionSeeder runs there and takes a few seconds on a cold
+          # H2 file). Until then readinessState is REFUSING_TRAFFIC and
+          # /actuator/health answers 503 OUT_OF_SERVICE. Polling the API
+          # returned 200 mid-seed, so the following health assertion raced the
+          # seeder and failed with a bare curl exit code 22.
+          ready=0
           for i in $(seq 1 90); do
-            curl -sf http://localhost:8080/api/v1/factories > /dev/null && break
+            if curl -sf http://localhost:8080/actuator/health > /dev/null; then
+              ready=1
+              break
+            fi
             sleep 1
           done
-          # Print the real status and body before asserting. `curl -f` is silent
-          # on an HTTP error, so a bare exit code 22 cannot be diagnosed from
-          # the log; the health contributor that is DOWN has to be visible.
+          if [ "$ready" -ne 1 ]; then
+            echo "::error::backend did not become ready within 90s"
+            echo "health status: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health)"
+            echo "health body:   $(curl -s http://localhost:8080/actuator/health)"
+            exit 1
+          fi
+          # Report the real status and body: `curl -f` is silent on an HTTP
+          # error, so a bare exit code cannot be diagnosed from the log.
           echo "factories status: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1/factories)"
           echo "health status:    $(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/actuator/health)"
           echo "health body:      $(curl -s http://localhost:8080/actuator/health)"
