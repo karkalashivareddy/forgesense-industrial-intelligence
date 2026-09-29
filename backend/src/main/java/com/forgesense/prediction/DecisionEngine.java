@@ -100,20 +100,60 @@ public class DecisionEngine {
         });
     }
 
+    /**
+     * Human-readable alert narrative.
+     *
+     * Two unit traps are avoided here deliberately:
+     *
+     *  1. A factor contribution is a SIGNED delta on model output probability
+     *     (see ml-service/app/explanation.py), not a percentage. Rendering it
+     *     with a "%" suffix, or concatenating a literal "+" in front of it,
+     *     produced text such as "NEUTRAL (+-2%)" for a negative contribution.
+     *     It is now formatted with an explicit sign and no percent sign.
+     *  2. A probability is formatted with enough precision that a small
+     *     non-zero value is never rounded to "0%".
+     */
     private String buildDescription(MachineTwin twin, Assessment a) {
         StringBuilder sb = new StringBuilder();
         sb.append("Machine ").append(twin.getMachineId()).append(" (").append(twin.getMachineType()).append(") ");
-        sb.append("failure risk ").append(Math.round(twin.getFailureRisk() * 100)).append("%, ");
-        sb.append("anomaly score ").append(Math.round(a.anomalyScore() * 100)).append("% (")
-                .append(a.anomalyLabel()).append(").");
-        if (!a.factors().isEmpty()) {
+        sb.append("failure risk ").append(formatProbability(twin.getFailureRisk())).append(", ");
+        sb.append("anomaly score ").append(formatProbability(a.anomalyScore()))
+                .append(" (").append(a.anomalyLabel()).append(").");
+        if (a.factors() != null && !a.factors().isEmpty()) {
             sb.append(" Top contributing factors: ");
-            for (int i = 0; i < Math.min(3, a.factors().size()); i++) {
-                sb.append(a.factors().get(i).label()).append(" (+")
-                        .append(Math.round(a.factors().get(i).contribution() * 100)).append("%), ");
+            int shown = Math.min(3, a.factors().size());
+            for (int i = 0; i < shown; i++) {
+                var factor = a.factors().get(i);
+                if (i > 0) sb.append(", ");
+                sb.append(factor.feature())
+                        .append(" (").append(factor.label())
+                        .append(" ").append(formatSignedDelta(factor.contribution())).append(")");
             }
-            sb.setLength(sb.length() - 2);
+            sb.append(".");
         }
         return sb.toString();
+    }
+
+    /** Probability in [0,1] with enough precision that small values survive. */
+    static String formatProbability(double value) {
+        double percent = value * 100.0;
+        if (percent == 0.0) return "0%";
+        if (Math.abs(percent) < 0.01) return "<0.01%";
+        if (Math.abs(percent) < 1.0) return String.format(java.util.Locale.ROOT, "%.3f%%", percent);
+        return String.format(java.util.Locale.ROOT, "%.1f%%", percent);
+    }
+
+    /**
+     * Signed model-output delta. Deliberately carries no percent sign: it is a
+     * probability change, not a percentage.
+     */
+    static String formatSignedDelta(double contribution) {
+        if (contribution > 0) {
+            return String.format(java.util.Locale.ROOT, "+%.4f", contribution);
+        }
+        if (contribution < 0) {
+            return String.format(java.util.Locale.ROOT, "−%.4f", contribution);
+        }
+        return "0.0000";
     }
 }
