@@ -28,4 +28,4 @@ Live events update only fields present in the backend payload. The next REST sna
 
 ## Extension point
 
-The browser adapter is isolated in `frontend/js/realtime.js`. A future MQTT, OPC-UA, or edge-gateway adapter belongs behind the backend ingestion boundary; it should not be added directly to the UI.
+The browser adapter is isolated in `frontend/src/realtime/stomp.ts`. A future MQTT, OPC-UA, or edge-gateway adapter belongs behind the backend ingestion boundary; it should not be added directly to the UI.

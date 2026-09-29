@@ -1,5 +1,5 @@
 /**
- * System Health — platform observability.
+ * System Health â€” platform observability.
  *
  * The question this page answers is not "is it green" but "what is broken,
  * what still works, and which data can I still trust right now". Every tile
@@ -80,7 +80,7 @@ export default function SystemHealth() {
     return (
       <div className="workspace">
         <SectionHeader title="System" description="Platform health, data provenance and transport integrity" />
-        <LoadingState label="Probing platform health…" rows={4} />
+        <LoadingState label="Probing platform healthâ€¦" rows={4} />
       </div>
     );
   }
@@ -99,7 +99,7 @@ export default function SystemHealth() {
     {
       name: 'Backend API',
       state: statusQuery.isError ? 'unavailable' : 'available',
-      detail: statusQuery.isError ? toErrorMessage(statusQuery.error) : `Spring Boot · ${status?.application ?? 'ForgeSense'}`,
+      detail: statusQuery.isError ? toErrorMessage(statusQuery.error) : `Spring Boot Â· ${status?.application ?? 'ForgeSense'}`,
       icon: <Server size={14} aria-hidden />,
       basis: DATA_BASIS.OBSERVED,
     },
@@ -107,8 +107,8 @@ export default function SystemHealth() {
       name: 'ML service',
       state: status?.mlServiceAvailable ? 'available' : 'unavailable',
       detail: status?.mlServiceAvailable
-        ? `${status.mlModelVersion ?? 'unknown'} · ${status.anomalyModelVersion ?? 'unknown'}`
-        : 'Unreachable — the backend is using heuristic fallbacks',
+        ? `${status.mlModelVersion ?? 'unknown'} Â· ${status.anomalyModelVersion ?? 'unknown'}`
+        : 'Unreachable â€” the backend is using heuristic fallbacks',
       icon: <Brain size={14} aria-hidden />,
       basis: DATA_BASIS.OBSERVED,
     },
@@ -122,7 +122,7 @@ export default function SystemHealth() {
     {
       name: 'Event transport',
       state: telemetry?.transport ? 'available' : 'unknown',
-      detail: telemetry ? `${telemetry.transport} · ${telemetry.source}` : 'Not reported',
+      detail: telemetry ? `${telemetry.transport} Â· ${telemetry.source}` : 'Not reported',
       icon: <Activity size={14} aria-hidden />,
       basis: DATA_BASIS.OBSERVED,
     },
@@ -138,7 +138,7 @@ export default function SystemHealth() {
               : 'unavailable',
       detail:
         transport.state === 'open'
-          ? `STOMP over WebSocket · ${formatInteger(transport.eventsApplied)} deltas applied`
+          ? `STOMP over WebSocket Â· ${formatInteger(transport.eventsApplied)} deltas applied`
           : (transport.detail ?? 'Not connected'),
       icon: <HardDrive size={14} aria-hidden />,
       basis: DATA_BASIS.OBSERVED,
@@ -147,7 +147,7 @@ export default function SystemHealth() {
       name: 'Telemetry simulator',
       state: telemetry?.telemetryPerMinute ? 'available' : 'unknown',
       detail: telemetry
-        ? `${formatInteger(telemetry.telemetryPerMinute)} readings/min · ${status?.simulationPaused ? 'PAUSED' : 'running'}`
+        ? `${formatInteger(telemetry.telemetryPerMinute)} readings/min Â· ${status?.simulationPaused ? 'PAUSED' : 'running'}`
         : 'Not reported',
       icon: <FlaskConical size={14} aria-hidden />,
       basis: DATA_BASIS.SYNTHETIC,
@@ -157,7 +157,7 @@ export default function SystemHealth() {
       state: machinesQuery.isError ? 'unavailable' : machinesQuery.isFetching ? 'degraded' : 'available',
       detail: machinesQuery.isError
         ? toErrorMessage(machinesQuery.error)
-        : `${machinesQuery.data?.length ?? 0} assets · oldest reading ${formatAge(oldestReadingAge)}`,
+        : `${machinesQuery.data?.length ?? 0} assets Â· oldest reading ${formatAge(oldestReadingAge)}`,
       icon: <Boxes size={14} aria-hidden />,
       basis: basis,
     },
@@ -223,12 +223,12 @@ export default function SystemHealth() {
         />
         <Metric
           label="Input transport"
-          value={<span style={{ fontSize: 'var(--text-md)' }}>{status?.inputTransport ?? '—'}</span>}
+          value={<span style={{ fontSize: 'var(--text-md)' }}>{status?.inputTransport ?? 'â€”'}</span>}
           size="sm"
         />
         <Metric
           label="Poll cadence"
-          value={<span style={{ fontSize: 'var(--text-md)' }}>{status?.pollIntervalSeconds ?? '—'}s</span>}
+          value={<span style={{ fontSize: 'var(--text-md)' }}>{status?.pollIntervalSeconds ?? 'â€”'}s</span>}
           size="sm"
           hint="REST snapshot"
         />
@@ -250,7 +250,7 @@ export default function SystemHealth() {
           {services.map((service) => (
             <div className="service-card" key={service.name} data-tone={STATE_TONE[service.state]}>
               <div className="service-card__head">
-                <span style={{ color: 'var(--text-muted)' }}>{service.icon}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{service.icon}</span>
                 <span className="service-card__name">{service.name}</span>
                 <StatusBadge
                   tone={STATE_TONE[service.state]}
@@ -278,7 +278,7 @@ export default function SystemHealth() {
           </div>
           <div className="kv">
             <span className="kv__k">Detail</span>
-            <span className="kv__v">{transport.detail ?? '—'}</span>
+            <span className="kv__v">{transport.detail ?? 'â€”'}</span>
           </div>
           <div className="kv">
             <span className="kv__k">Reconnect attempt</span>
@@ -292,7 +292,7 @@ export default function SystemHealth() {
           </div>
           <div className="kv">
             <span className="kv__k">Last connected</span>
-            <span className="kv__v">{transport.lastConnectAt ? formatTime(new Date(transport.lastConnectAt).toISOString()) : '—'}</span>
+            <span className="kv__v">{transport.lastConnectAt ? formatTime(new Date(transport.lastConnectAt).toISOString()) : 'â€”'}</span>
           </div>
           <div className="kv">
             <span className="kv__k">Deltas applied</span>
@@ -314,7 +314,7 @@ export default function SystemHealth() {
 
         <Panel title="Spring Actuator" subtitle="Backend-reported component health">
           {healthQuery.isLoading ? (
-            <LoadingState label="Reading actuator health…" rows={3} />
+            <LoadingState label="Reading actuator healthâ€¦" rows={3} />
           ) : healthQuery.isError ? (
             <ErrorState
               title="Actuator health unavailable"
@@ -353,19 +353,19 @@ export default function SystemHealth() {
         <div className="stack">
           <div className="kv">
             <span className="kv__k">Backend-declared data basis</span>
-            <span className="kv__v">{(status?.dataBasis ?? []).join(', ') || '—'}</span>
+            <span className="kv__v">{(status?.dataBasis ?? []).join(', ') || 'â€”'}</span>
           </div>
           <div className="kv">
             <span className="kv__k">Demo mode</span>
-            <span className="kv__v">{status?.demoMode ? 'ON — synthetic plant' : 'OFF'}</span>
+            <span className="kv__v">{status?.demoMode ? 'ON â€” synthetic plant' : 'OFF'}</span>
           </div>
           <div className="kv">
             <span className="kv__k">Telemetry source</span>
-            <span className="kv__v mono">{telemetry?.source ?? '—'}</span>
+            <span className="kv__v mono">{telemetry?.source ?? 'â€”'}</span>
           </div>
           <div className="kv">
             <span className="kv__k">Telemetry basis</span>
-            <span className="kv__v">{telemetry?.dataBasis ?? '—'}</span>
+            <span className="kv__v">{telemetry?.dataBasis ?? 'â€”'}</span>
           </div>
           <div className="kv">
             <span className="kv__k">Assets defined in the backend</span>
@@ -377,7 +377,7 @@ export default function SystemHealth() {
           </div>
           <div className="kv">
             <span className="kv__k">Remaining-useful-life unit</span>
-            <span className="kv__v">simulator degradation steps — never hours or days</span>
+            <span className="kv__v">simulator degradation steps â€” never hours or days</span>
           </div>
         </div>
       </Panel>

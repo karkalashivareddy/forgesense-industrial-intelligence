@@ -1,5 +1,5 @@
 /**
- * Event stream — the unified operational timeline.
+ * Event stream â€” the unified operational timeline.
  *
  * Every event the backend records, filterable by type and asset. This is the
  * "what changed" surface for an incident review.
@@ -115,7 +115,7 @@ export default function EventStream() {
     return (
       <div className="workspace">
         <SectionHeader title="Event Stream" description="Unified operational timeline" />
-        <LoadingState label="Loading the timeline…" rows={6} />
+        <LoadingState label="Loading the timelineâ€¦" rows={6} />
       </div>
     );
   }
@@ -143,14 +143,14 @@ export default function EventStream() {
             <Search
               size={13}
               aria-hidden
-              style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }}
+              style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-disabled)' }}
             />
             <input
               className="field__input"
               style={{ paddingLeft: 28, width: 210 }}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search events…"
+              placeholder="Search eventsâ€¦"
               aria-label="Search events"
             />
           </div>
@@ -201,7 +201,7 @@ export default function EventStream() {
           <option value="ALL">All assets</option>
           {(machinesQuery.data ?? []).map((machine) => (
             <option key={machine.machineId} value={machine.machineId}>
-              {machine.machineId} · {machine.name}
+              {machine.machineId} Â· {machine.name}
             </option>
           ))}
         </select>

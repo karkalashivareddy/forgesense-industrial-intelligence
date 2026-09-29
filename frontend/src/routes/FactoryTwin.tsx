@@ -35,10 +35,10 @@ const LEGEND: { label: string; tone: string }[] = [
   { label: 'Offline / stale', tone: 'idle' },
 ];
 const RELATION_LEGEND = [
-  { label: 'Material', colour: 'var(--brand)' },
-  { label: 'Power', colour: 'var(--info)' },
-  { label: 'Cooling', colour: 'var(--maint)' },
-  { label: 'Service', colour: 'var(--text-muted)' },
+  { label: 'Material', colour: 'var(--color-accent)' },
+  { label: 'Power', colour: 'var(--color-info)' },
+  { label: 'Cooling', colour: 'var(--color-maintenance)' },
+  { label: 'Service', colour: 'var(--color-text-muted)' },
 ];
 
 export default function FactoryTwin() {
@@ -106,7 +106,7 @@ export default function FactoryTwin() {
         <div className="banner banner--sim" role="status">
           <FlaskConical size={13} aria-hidden style={{ flexShrink: 0 }} />
           <span>
-            SIMULATION MODE — a what-if scenario is active on{' '}
+            SIMULATION MODE â€” a what-if scenario is active on{' '}
             {activeSimulations.map((control) => control.machineId).join(', ')}. This changes the synthetic feed only;
             no physical machine is controlled.
           </span>
@@ -164,7 +164,7 @@ export default function FactoryTwin() {
                     {zone.name}
                     <span className="tiny muted">
                       {counts.total}
-                      {counts.attention > 0 ? ` · ${counts.attention}!` : ''}
+                      {counts.attention > 0 ? ` Â· ${counts.attention}!` : ''}
                     </span>
                   </Button>
                 );
@@ -244,7 +244,7 @@ export default function FactoryTwin() {
           </div>
 
           <p className="twin__hint">
-            Drag to orbit · scroll to zoom · click a machine to inspect it. Every machine is also reachable from the
+            Drag to orbit Â· scroll to zoom Â· click a machine to inspect it. Every machine is also reachable from the
             asset list and the command palette.
           </p>
         </div>

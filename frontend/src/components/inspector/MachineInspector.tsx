@@ -117,7 +117,7 @@ export function MachineInspector() {
   );
 
   const subtitle = machine.data
-    ? `${machine.data.typeLabel} · ${titleCase(machine.data.zone)} · ${machine.data.line}`
+    ? `${machine.data.typeLabel} Â· ${titleCase(machine.data.zone)} Â· ${machine.data.line}`
     : 'Asset detail';
 
   return (
@@ -153,7 +153,7 @@ export function MachineInspector() {
           description="Choose a machine from the Factory Twin, the Fleet table, an alert, or the command palette (Ctrl+K) to inspect it."
         />
       ) : machine.isLoading ? (
-        <LoadingState label="Loading asset…" />
+        <LoadingState label="Loading assetâ€¦" />
       ) : machine.isError ? (
         <ErrorState
           title="Could not load this asset"
@@ -225,7 +225,7 @@ function OverviewTab({ machineId, onTab }: { machineId: string; onTab(tab: Inspe
   const openAlerts = machineAlerts.filter((a) => a.status !== 'RESOLVED');
   const workOrders = (maintenance.data ?? []).filter((m) => m.machineId === machineId);
 
-  if (!data) return <LoadingState label="Loading asset…" rows={3} />;
+  if (!data) return <LoadingState label="Loading assetâ€¦" rows={3} />;
 
   return (
     <div className="stack" style={{ padding: 'var(--space-4)' }}>
@@ -370,7 +370,7 @@ function OverviewTab({ machineId, onTab }: { machineId: string; onTab(tab: Inspe
           </Button>
         </div>
         {explanation.isLoading ? (
-          <LoadingState label="Loading attribution…" rows={2} />
+          <LoadingState label="Loading attributionâ€¦" rows={2} />
         ) : !explanation.data || explanation.data.factors.length === 0 ? (
           <p className="empty-inline">No attribution available for the latest prediction.</p>
         ) : (
@@ -414,7 +414,7 @@ function TelemetryTab({ machineId }: { machineId: string }) {
     return Array.from(keys).filter((key) => key in SENSOR_UNITS) as SensorKey[];
   }, [machine.data?.sensors, rows, live]);
 
-  if (telemetry.isLoading) return <LoadingState label="Loading telemetry…" />;
+  if (telemetry.isLoading) return <LoadingState label="Loading telemetryâ€¦" />;
   if (telemetry.isError) {
     return (
       <ErrorState
@@ -447,7 +447,7 @@ function TelemetryTab({ machineId }: { machineId: string }) {
 
       <div className="row row--between">
         <span className="note">
-          {rows.length} readings · latest {formatTime(latest?.timestamp)}
+          {rows.length} readings Â· latest {formatTime(latest?.timestamp)}
         </span>
         <Badge tone="info">SYNTHETIC</Badge>
       </div>
@@ -530,7 +530,7 @@ function PredictionTab({ machineId }: { machineId: string }) {
     now,
   );
 
-  if (explanation.isLoading) return <LoadingState label="Loading prediction…" />;
+  if (explanation.isLoading) return <LoadingState label="Loading predictionâ€¦" />;
   if (explanation.isError) {
     return (
       <ErrorState
@@ -658,7 +658,7 @@ function DriverList({ factors }: { factors: Factor[] }) {
         const elevated = factor.label === 'ELEVATED';
         const reduced = factor.label === 'REDUCED';
         const tone = elevated ? 'crit' : reduced ? 'ok' : 'idle';
-        const colour = elevated ? 'var(--crit)' : reduced ? 'var(--ok)' : 'var(--idle)';
+        const colour = elevated ? 'var(--color-critical)' : reduced ? 'var(--color-success)' : 'var(--color-unavailable)';
         return (
           <li key={factor.feature}>
             <div className="row row--between" style={{ gap: 'var(--space-2)' }}>
@@ -699,7 +699,7 @@ function AlertsTab({ machineId, onGoToMaintenance }: { machineId: string; onGoTo
   const rows = (alerts.data?.items ?? []).filter((alert) => alert.machineId === machineId);
   const role = identity?.roles[0];
 
-  if (alerts.isLoading) return <LoadingState label="Loading alerts…" />;
+  if (alerts.isLoading) return <LoadingState label="Loading alertsâ€¦" />;
   if (alerts.isError) {
     return (
       <ErrorState
@@ -727,7 +727,7 @@ function AlertsTab({ machineId, onGoToMaintenance }: { machineId: string; onGoTo
   return (
     <div className="stack" style={{ padding: 'var(--space-4)' }}>
       {rows.map((alert) => (
-        <div key={alert.id} className="panel" style={{ background: 'var(--bg-inset)' }}>
+        <div key={alert.id} className="panel" style={{ background: 'var(--color-bg-inset)' }}>
           <div style={{ padding: 'var(--space-3)' }}>
             <div className="row" style={{ marginBottom: 'var(--space-2)' }}>
               <Badge tone={alert.severity === 'CRITICAL' ? 'crit' : alert.severity === 'WARNING' ? 'warn' : 'info'}>
@@ -745,7 +745,7 @@ function AlertsTab({ machineId, onGoToMaintenance }: { machineId: string; onGoTo
             )}
             <div className="row" style={{ marginTop: 'var(--space-2)', gap: 'var(--space-3)' }}>
               <span className="tiny muted">Opened {formatDateTime(alert.openedAt)}</span>
-              <span className="tiny muted">·</span>
+              <span className="tiny muted">Â·</span>
               <span className="tiny muted">
                 Risk at creation {formatProbability(alert.riskAtCreation ?? null)}
               </span>
@@ -808,7 +808,7 @@ function MaintenanceTab({ machineId, onGoToAlerts }: { machineId: string; onGoTo
   const rows = (maintenance.data ?? []).filter((order) => order.machineId === machineId);
   const canEdit = identity?.roles.some((role) => role === 'ROLE_ENGINEER' || role === 'ROLE_ADMIN') ?? false;
 
-  if (maintenance.isLoading) return <LoadingState label="Loading work orders…" />;
+  if (maintenance.isLoading) return <LoadingState label="Loading work ordersâ€¦" />;
   if (maintenance.isError) {
     return (
       <ErrorState
@@ -842,7 +842,7 @@ function MaintenanceTab({ machineId, onGoToAlerts }: { machineId: string; onGoTo
   return (
     <div className="stack" style={{ padding: 'var(--space-4)' }}>
       {rows.map((order) => (
-        <div key={order.id} className="panel" style={{ background: 'var(--bg-inset)' }}>
+        <div key={order.id} className="panel" style={{ background: 'var(--color-bg-inset)' }}>
           <div style={{ padding: 'var(--space-3)' }}>
             <div className="row" style={{ marginBottom: 'var(--space-2)' }}>
               <Badge
@@ -926,7 +926,7 @@ function EventsTab({ machineId }: { machineId: string }) {
   const events = useMachineEvents(machineId);
   const now = useNow(5000);
 
-  if (events.isLoading) return <LoadingState label="Loading asset history…" />;
+  if (events.isLoading) return <LoadingState label="Loading asset historyâ€¦" />;
   if (events.isError) {
     return (
       <ErrorState

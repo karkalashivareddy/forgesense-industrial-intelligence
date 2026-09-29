@@ -9,7 +9,7 @@ change that touches `frontend/src`, `infra/nginx`, or the backend contracts.
 ## Code
 
 - [x] **TypeScript clean** — `npx tsc --noEmit -p tsconfig.json`, strict, tests included
-- [x] **Unit tests passing** — 83 Vitest
+- [x] **Unit tests passing** — 86 Vitest
 - [x] **E2E passing** — 43 Playwright (30 functional + 13 visual)
 - [x] **Production build** — `vite build` clean
 - [x] **No console errors** — asserted on all 12 workspaces
@@ -71,6 +71,7 @@ change that touches `frontend/src`, `infra/nginx`, or the backend contracts.
 - [x] **Branch verified** — `feat/industrial-operations-ui`
 - [x] **No accidental files** — no scratch scripts, no `package.json` at repo root, no build output
 - [x] **No debug artifacts** — no `console.log`, no `debugger`, no `TODO`/`FIXME`/`HACK`
+- [x] **No stale file references in current docs** — audited for references to files deleted in the re-architecture; `DEPLOYMENT.md` and `REALTIME.md` corrected
 - [x] **No temporary scripts committed** — probe scripts kept outside the repository
 - [x] **History intact** — no reset, no force push, no rebase of published work
 - [x] **`.env` untracked**

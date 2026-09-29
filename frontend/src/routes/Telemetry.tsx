@@ -94,7 +94,7 @@ export default function Telemetry() {
     return (
       <div className="workspace">
         <SectionHeader title="Telemetry" description="Live condition monitoring per asset" />
-        <LoadingState label="Loading the fleet…" rows={4} />
+        <LoadingState label="Loading the fleetâ€¦" rows={4} />
       </div>
     );
   }
@@ -115,7 +115,7 @@ export default function Telemetry() {
             >
               {(machinesQuery.data ?? []).map((machine) => (
                 <option key={machine.machineId} value={machine.machineId}>
-                  {machine.machineId} · {machine.name}
+                  {machine.machineId} Â· {machine.name}
                 </option>
               ))}
             </select>
@@ -159,13 +159,13 @@ export default function Telemetry() {
         />
         <Metric
           label="Live packets"
-          value={live ? formatAge((Date.now() - live.receivedAt) / 1000) : '—'}
+          value={live ? formatAge((Date.now() - live.receivedAt) / 1000) : 'â€”'}
           size="sm"
           hint={live ? 'most recent delta' : 'no delta in this session'}
         />
         <Metric
           label="Feed rate"
-          value={statusQuery.data?.telemetryPerMinute ?? '—'}
+          value={statusQuery.data?.telemetryPerMinute ?? 'â€”'}
           unit="/min"
           basis={basis}
           size="sm"
@@ -180,7 +180,7 @@ export default function Telemetry() {
       )}
 
       {telemetryQuery.isLoading ? (
-        <LoadingState label="Loading telemetry history…" rows={4} />
+        <LoadingState label="Loading telemetry historyâ€¦" rows={4} />
       ) : telemetryQuery.isError ? (
         <ErrorState
           title="Telemetry unavailable"
@@ -204,10 +204,10 @@ export default function Telemetry() {
       ) : (
         <>
           <Panel
-            title={`${machineId} · sensor readings`}
+            title={`${machineId} Â· sensor readings`}
             subtitle={
               machineQuery.data
-                ? `${machineQuery.data.name} · ${machineQuery.data.typeLabel} · ${sensors.length} instrument${sensors.length === 1 ? '' : 's'}`
+                ? `${machineQuery.data.name} Â· ${machineQuery.data.typeLabel} Â· ${sensors.length} instrument${sensors.length === 1 ? '' : 's'}`
                 : `${sensors.length} instrument${sensors.length === 1 ? '' : 's'}`
             }
             actions={
@@ -233,7 +233,7 @@ export default function Telemetry() {
                 return (
                   <div className="metric metric--sm" key={key}>
                     <div className="metric__label">{meta.label}</div>
-                    <div className="metric__value" style={tone !== 'ok' ? { color: 'var(--warn-text)' } : undefined}>
+                    <div className="metric__value" style={tone !== 'ok' ? { color: 'var(--color-warning-text)' } : undefined}>
                       {latest === null ? EM_DASH : formatNumber(latest, precision(key))}
                       <span className="metric__unit">{meta.unit}</span>
                     </div>
@@ -249,7 +249,7 @@ export default function Telemetry() {
                       </div>
                     )}
                     <p className="tiny muted" style={{ marginTop: 4 }}>
-                      first {formatTimeShort(points[0] ? new Date(points[0].t).toISOString() : null)} · last{' '}
+                      first {formatTimeShort(points[0] ? new Date(points[0].t).toISOString() : null)} Â· last{' '}
                       {formatTimeShort(lastPointIso(points))}
                     </p>
                   </div>

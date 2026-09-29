@@ -55,7 +55,7 @@ export function CommandPalette() {
       const derived = deriveOperationalState(machine);
       return {
         id: `machine:${machine.machineId}`,
-        label: `${machine.machineId} · ${machine.name} · ${derived.descriptor.label}`,
+        label: `${machine.machineId} Â· ${machine.name} Â· ${derived.descriptor.label}`,
         group: 'Assets',
         icon: <span className="twin__dot" data-tone={derived.descriptor.tone} aria-hidden />,
         run: () => {
@@ -115,14 +115,14 @@ export function CommandPalette() {
           <Search
             size={15}
             aria-hidden
-            style={{ position: 'absolute', left: 14, color: 'var(--text-faint)', pointerEvents: 'none' }}
+            style={{ position: 'absolute', left: 14, color: 'var(--color-text-disabled)', pointerEvents: 'none' }}
           />
           <input
             className="palette__input"
             style={{ paddingLeft: 38 }}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search workspaces and assets…"
+            placeholder="Search workspaces and assetsâ€¦"
             aria-label="Search workspaces and assets"
             aria-controls="palette-listbox"
             role="combobox"
@@ -135,7 +135,7 @@ export function CommandPalette() {
 
         <ul className="palette__list" id="palette-listbox" role="listbox" aria-label="Results">
           {filtered.length === 0 ? (
-            <li className="empty-inline">No matches for “{query}”.</li>
+            <li className="empty-inline">No matches for â€œ{query}â€.</li>
           ) : (
             filtered.map((command, index) => (
               <li key={command.id} role="presentation">
@@ -162,7 +162,7 @@ export function CommandPalette() {
 
         <footer className="palette__footer">
           <span>
-            <kbd>↑</kbd> <kbd>↓</kbd> navigate
+            <kbd>â†‘</kbd> <kbd>â†“</kbd> navigate
           </span>
           <span>
             <kbd>

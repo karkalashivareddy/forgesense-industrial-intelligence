@@ -1,5 +1,5 @@
 /**
- * Scenario Lab — controlled what-if engineering.
+ * Scenario Lab â€” controlled what-if engineering.
  *
  * The hard boundary of this page: scenarios inject faults into the SYNTHETIC
  * simulator feed. They do not touch, command, or model any physical machine.
@@ -46,12 +46,12 @@ const RUNNABLE: ScenarioType[] = SCENARIO_TYPES.filter((type) => type !== 'NONE'
 
 const SCENARIO_BLURB: Record<string, string> = {
   DEGRADATION: 'Slow loss of performance across the whole operating envelope.',
-  OVERHEATING: 'Thermal runaway — temperature climbs until a critical alert fires.',
+  OVERHEATING: 'Thermal runaway â€” temperature climbs until a critical alert fires.',
   BEARING_FAILURE: 'Progressive bearing degradation with rising vibration.',
   VIBRATION_SPIKE: 'Sudden vibration transient, as from a mechanical imbalance.',
   RPM_INSTABILITY: 'Rotational speed becomes unstable against its commanded setpoint.',
   CURRENT_SPIKE: 'Elevated motor current, indicating mechanical binding or load.',
-  SENSOR_FAILURE: 'A sensor drops out — the model degrades on missing inputs.',
+  SENSOR_FAILURE: 'A sensor drops out â€” the model degrades on missing inputs.',
   MACHINE_OFFLINE: 'The asset stops reporting entirely.',
   LOAD_INCREASE: 'Sustained load rise well beyond the operating baseline.',
   MAINTENANCE: 'Models a maintenance delay rather than an outright failure.',
@@ -198,7 +198,7 @@ export default function SimulationLab() {
       <div className="banner banner--sim" role="status">
         <ShieldAlert size={14} aria-hidden style={{ flexShrink: 0 }} />
         <span>
-          <strong>SIMULATION MODE — NO PHYSICAL MACHINE CONTROL.</strong> A scenario injects a fault into the
+          <strong>SIMULATION MODE â€” NO PHYSICAL MACHINE CONTROL.</strong> A scenario injects a fault into the
           synthetic telemetry generator. Nothing here commands, connects to, or represents a real machine, and the
           figures below are modelled estimates under stated assumptions, not measured outcomes.
         </span>
@@ -255,7 +255,7 @@ export default function SimulationLab() {
                   >
                     {machines.map((machine) => (
                       <option key={machine.machineId} value={machine.machineId}>
-                        {machine.machineId} · {machine.name}
+                        {machine.machineId} Â· {machine.name}
                       </option>
                     ))}
                   </select>
@@ -280,7 +280,7 @@ export default function SimulationLab() {
 
               <div className="field">
                 <label className="field__label" htmlFor="sim-severity">
-                  Severity — {Math.round(severity * 100)}%
+                  Severity â€” {Math.round(severity * 100)}%
                 </label>
                 <input
                   id="sim-severity"
@@ -397,7 +397,7 @@ export default function SimulationLab() {
                   <Zap size={13} aria-hidden style={{ flexShrink: 0 }} />
                   <span>
                     A scenario is live on <span className="mono">{machineId}</span>. Watch the Command Center, the
-                    Factory Twin and the Alert Center — telemetry, prediction, state and alerts all react. Clearing it
+                    Factory Twin and the Alert Center â€” telemetry, prediction, state and alerts all react. Clearing it
                     or resetting the feed restores nominal conditions.
                   </span>
                 </div>
@@ -407,7 +407,7 @@ export default function SimulationLab() {
 
           <Panel title="Scenario history" subtitle={`${runs.length} recorded runs`} flush>
             {runsQuery.isLoading ? (
-              <LoadingState label="Loading scenario history…" rows={4} />
+              <LoadingState label="Loading scenario historyâ€¦" rows={4} />
             ) : runsQuery.isError ? (
               <div style={{ padding: 'var(--space-4)' }}>
                 <ErrorState
@@ -446,7 +446,7 @@ export default function SimulationLab() {
             ) : (
               <ul className="stack" style={{ gap: 'var(--space-2)' }}>
                 {activeControls.map((control) => (
-                  <li key={control.machineId} className="scenario-card" style={{ borderLeftColor: 'var(--maint)' }}>
+                  <li key={control.machineId} className="scenario-card" style={{ borderLeftColor: 'var(--color-maintenance)' }}>
                     <span className="row row--between">
                       <span className="mono" style={{ fontWeight: 600 }}>
                         {control.machineId}
@@ -455,8 +455,8 @@ export default function SimulationLab() {
                     </span>
                     <span className="scenario-card__name">{titleCase(control.scenario)}</span>
                     <span className="scenario-card__desc">
-                      Severity {Math.round(control.severity * 100)}% · started{' '}
-                      {control.startedAt ? formatTime(control.startedAt) : '—'}
+                      Severity {Math.round(control.severity * 100)}% Â· started{' '}
+                      {control.startedAt ? formatTime(control.startedAt) : 'â€”'}
                     </span>
                   </li>
                 ))}
@@ -471,13 +471,13 @@ export default function SimulationLab() {
           <Panel title="What to watch" subtitle="How a scenario propagates through the platform">
             <div className="timeline-strip" role="img" aria-label="Scenario timeline: degradation, anomaly, risk rise, alert, maintenance, recovery">
               {[
-                { label: 'T0', colour: 'var(--bg-raised)' },
-                { label: 'Degrade', colour: 'var(--warn-wash)' },
-                { label: 'Anomaly', colour: 'var(--warn-wash)' },
-                { label: 'Risk', colour: 'var(--crit-wash)' },
-                { label: 'Alert', colour: 'var(--crit-wash)' },
-                { label: 'Maint', colour: 'var(--maint-wash)' },
-                { label: 'Recover', colour: 'var(--ok-wash)' },
+                { label: 'T0', colour: 'var(--color-bg-panel-elevated)' },
+                { label: 'Degrade', colour: 'var(--color-warning-bg)' },
+                { label: 'Anomaly', colour: 'var(--color-warning-bg)' },
+                { label: 'Risk', colour: 'var(--color-critical-bg)' },
+                { label: 'Alert', colour: 'var(--color-critical-bg)' },
+                { label: 'Maint', colour: 'var(--color-maintenance-bg)' },
+                { label: 'Recover', colour: 'var(--color-success-bg)' },
               ].map((stage) => (
                 <div
                   key={stage.label}
@@ -490,13 +490,13 @@ export default function SimulationLab() {
             </div>
             <p className="note" style={{ marginTop: 'var(--space-3)' }}>
               A scenario raises the injected sensor values, which the ML service scores, which the decision engine
-              turns into a machine state, which raises an alert and — past the risk threshold — a maintenance
+              turns into a machine state, which raises an alert and â€” past the risk threshold â€” a maintenance
               recommendation. Watch the Twin and the Command Center to see each stage land.
             </p>
             {selectedMachine && (
               <p className="note">
                 Target asset: <span className="mono">{selectedMachine.machineId}</span> ({selectedMachine.typeLabel},
-                {selectedMachine.zone.toLowerCase()}) — currently {titleCase(selectedMachine.status)} at{' '}
+                {selectedMachine.zone.toLowerCase()}) â€” currently {titleCase(selectedMachine.status)} at{' '}
                 {formatNumber(selectedMachine.healthScore, 1)} health.
               </p>
             )}
@@ -559,7 +559,7 @@ function ImpactPreview({
       {downstream.length > 0 && (
         <div className="row" style={{ gap: 4 }}>
           {downstream.map((id) => (
-            <span key={id} className="mono tiny" style={{ color: 'var(--text-muted)' }}>
+            <span key={id} className="mono tiny" style={{ color: 'var(--color-text-muted)' }}>
               {id}
             </span>
           ))}
@@ -567,7 +567,7 @@ function ImpactPreview({
       )}
       <p className="note note--warn">
         Downtime, throughput loss and production loss are only known after the backend runs the impact engine. They
-        are modelled from per-edge propagation factors and per-machine throughput — assumptions, not measurements.
+        are modelled from per-edge propagation factors and per-machine throughput â€” assumptions, not measurements.
       </p>
     </div>
   );

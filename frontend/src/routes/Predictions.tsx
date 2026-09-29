@@ -1,5 +1,5 @@
 /**
- * Predictions Center — the ML intelligence workspace.
+ * Predictions Center â€” the ML intelligence workspace.
  *
  * Everything on this page is model output. The page is explicit about that:
  * the model version and inference mode are always visible, attribution is
@@ -95,7 +95,7 @@ export default function Predictions() {
         align: 'end',
         sortable: true,
         cell: ({ row }) => (
-          <span className="num" style={{ color: 'var(--ml-text)', fontWeight: 600 }}>
+          <span className="num" style={{ color: 'var(--color-intelligence-text)', fontWeight: 600 }}>
             {formatProbability(row.failureRisk)}
           </span>
         ),
@@ -106,7 +106,7 @@ export default function Predictions() {
         align: 'end',
         hideBelow: 'sm',
         cell: ({ row }) => (
-          <span className="num" style={{ color: anomalyTone(row.anomalyScore) === 'crit' ? 'var(--crit-text)' : 'var(--text-secondary)' }}>
+          <span className="num" style={{ color: anomalyTone(row.anomalyScore) === 'crit' ? 'var(--color-critical-text)' : 'var(--color-text-secondary)' }}>
             {formatProbability(row.anomalyScore)}
           </span>
         ),
@@ -145,7 +145,7 @@ export default function Predictions() {
         align: 'end',
         hideBelow: 'sm',
         cell: ({ machine }) => {
-          if (!machine) return '—';
+          if (!machine) return 'â€”';
           const derived = deriveOperationalState(machine, now);
           return <span className="tiny muted num">{formatAge(derived.ageSec)}</span>;
         },
@@ -158,7 +158,7 @@ export default function Predictions() {
     return (
       <div className="workspace">
         <SectionHeader title="Predictions" description="Model-estimated risk, anomaly and attribution across the fleet" />
-        <LoadingState label="Loading predictions…" rows={6} />
+        <LoadingState label="Loading predictionsâ€¦" rows={6} />
       </div>
     );
   }
@@ -186,7 +186,7 @@ export default function Predictions() {
         description="Model-estimated failure risk, anomaly scoring and attribution across the fleet"
       />
 
-      {/* Model provenance banner — always visible, never buried. */}
+      {/* Model provenance banner â€” always visible, never buried. */}
       <div className="banner" style={{ ...(mlAvailable ? bannerStyle('info') : bannerStyle('warn')) }}>
         <Brain size={13} aria-hidden style={{ flexShrink: 0 }} />
         <span>
@@ -226,7 +226,7 @@ export default function Predictions() {
         <Metric
           label="Above maintenance threshold"
           value={machines.filter((entry) => entry.row.failureRisk >= 0.7).length}
-          hint="risk ≥ 0.70"
+          hint="risk â‰¥ 0.70"
           basis={DATA_BASIS.DERIVED}
           size="sm"
         />
@@ -239,7 +239,7 @@ export default function Predictions() {
         />
         <Metric
           label="Model version"
-          value={<span style={{ fontSize: 'var(--text-sm)' }}>{statusQuery.data?.mlModelVersion ?? '—'}</span>}
+          value={<span style={{ fontSize: 'var(--text-sm)' }}>{statusQuery.data?.mlModelVersion ?? 'â€”'}</span>}
           size="sm"
         />
       </div>
@@ -272,7 +272,7 @@ export default function Predictions() {
           {focus ? (
             <>
               <Panel
-                title={`${focus.row.machineId} · prediction`}
+                title={`${focus.row.machineId} Â· prediction`}
                 subtitle={focus.row.name}
                 actions={
                   <Button size="sm" variant="ghost" onClick={() => openInspector(focus.row.machineId, 'prediction')}>
@@ -310,7 +310,7 @@ export default function Predictions() {
               <Panel title="Attribution" subtitle="Local baseline-perturbation over the selected asset">
                 <p className="note" style={{ marginBottom: 'var(--space-3)' }}>
                   Each sensor is replaced with its training-set average in turn; the change in model output is
-                  attributed to that sensor. This is a first-order local method and is <strong>not</strong> SHAP — no
+                  attributed to that sensor. This is a first-order local method and is <strong>not</strong> SHAP â€” no
                   SHAP library or axiom is involved. Select a driver to open its telemetry.
                 </p>
                 {focus.machine ? (
@@ -339,8 +339,8 @@ export default function Predictions() {
         <ShieldAlert size={13} aria-hidden style={{ flexShrink: 0 }} />
         <span>
           <strong>What these numbers are not.</strong> Failure risk is a model probability, not a measured
-          likelihood of a real failure, and carries no confidence interval. “Estimated remaining” is a count of
-          simulator degradation steps derived from the synthetic feed — it is not hours, days, or a calibrated
+          likelihood of a real failure, and carries no confidence interval. â€œEstimated remainingâ€ is a count of
+          simulator degradation steps derived from the synthetic feed â€” it is not hours, days, or a calibrated
           remaining-useful-life. The models were trained on generated data from this same simulator.
         </span>
       </div>
@@ -349,12 +349,12 @@ export default function Predictions() {
 }
 
 function DriverPanel({ machineId, onOpenTelemetry }: { machineId: string; onOpenTelemetry(): void }) {
-  // One request for the focused asset only — the fleet ranking endpoint does
+  // One request for the focused asset only â€” the fleet ranking endpoint does
   // not carry attribution, and fanning out to every asset would be wasteful.
   const explanation = useMachineExplanation(machineId);
 
   if (explanation.isLoading) {
-    return <LoadingState label="Loading attribution…" rows={2} />;
+    return <LoadingState label="Loading attributionâ€¦" rows={2} />;
   }
 
   if (explanation.isError) {
@@ -383,7 +383,7 @@ function DriverPanel({ machineId, onOpenTelemetry }: { machineId: string; onOpen
     <div className="driver-list">
       {factors.map((factor) => {
         const tone = factor.label === 'ELEVATED' ? 'crit' : factor.label === 'REDUCED' ? 'ok' : 'idle';
-        const colour = tone === 'crit' ? 'var(--crit)' : tone === 'ok' ? 'var(--ok)' : 'var(--idle)';
+        const colour = tone === 'crit' ? 'var(--color-critical)' : tone === 'ok' ? 'var(--color-success)' : 'var(--color-unavailable)';
         return (
           <button
             key={factor.feature}
@@ -391,7 +391,7 @@ function DriverPanel({ machineId, onOpenTelemetry }: { machineId: string; onOpen
             className="driver"
             data-tone={tone}
             onClick={onOpenTelemetry}
-            title={`Open ${machineId} telemetry — ${factor.feature} is the selected attribution driver`}
+            title={`Open ${machineId} telemetry â€” ${factor.feature} is the selected attribution driver`}
           >
             <span className="driver__head">
               <span className="row" style={{ gap: 'var(--space-2)' }}>
@@ -431,13 +431,13 @@ function DriverPanel({ machineId, onOpenTelemetry }: { machineId: string; onOpen
 function bannerStyle(tone: 'info' | 'warn'): React.CSSProperties {
   return tone === 'info'
     ? {
-        background: 'var(--info-wash)',
-        borderColor: 'color-mix(in srgb, var(--info) 35%, transparent)',
-        color: 'var(--info-text)',
+        background: 'var(--color-info-bg)',
+        borderColor: 'color-mix(in srgb, var(--color-info) 35%, transparent)',
+        color: 'var(--color-info-text)',
       }
     : {
-        background: 'var(--warn-wash)',
-        borderColor: 'color-mix(in srgb, var(--warn) 38%, transparent)',
-        color: 'var(--warn-text)',
+        background: 'var(--color-warning-bg)',
+        borderColor: 'color-mix(in srgb, var(--color-warning) 38%, transparent)',
+        color: 'var(--color-warning-text)',
       };
 }

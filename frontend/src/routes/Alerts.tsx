@@ -2,8 +2,8 @@
  * Alert Center.
  *
  * An industrial alarm experience, not a notification list. The lifecycle is
- * the backend's own contract — NEW → ACKNOWLEDGED → INVESTIGATING → RESOLVED
- * — and the UI only offers transitions the signed-in role is allowed to make.
+ * the backend's own contract â€” NEW â†’ ACKNOWLEDGED â†’ INVESTIGATING â†’ RESOLVED
+ * â€” and the UI only offers transitions the signed-in role is allowed to make.
  * The backend re-authorises every call regardless.
  */
 
@@ -184,7 +184,7 @@ export default function Alerts() {
         hideBelow: 'sm',
         cell: (alert) => {
           const ms = now - Date.parse(alert.openedAt);
-          return <span className="tiny num">{Number.isNaN(ms) ? '—' : formatAge(ms / 1000)}</span>;
+          return <span className="tiny num">{Number.isNaN(ms) ? 'â€”' : formatAge(ms / 1000)}</span>;
         },
       },
       {
@@ -263,21 +263,21 @@ export default function Alerts() {
             <Search
               size={13}
               aria-hidden
-              style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }}
+              style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-disabled)' }}
             />
             <input
               className="field__input"
               style={{ paddingLeft: 28, width: 220 }}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search alerts…"
+              placeholder="Search alertsâ€¦"
               aria-label="Search alerts"
             />
           </div>
         }
       />
 
-      {/* Lifecycle strip — the canonical backend states. */}
+      {/* Lifecycle strip â€” the canonical backend states. */}
       <div className="grid grid--metrics">
         <button
           type="button"
@@ -323,7 +323,7 @@ export default function Alerts() {
       </div>
 
       {alertsQuery.isLoading ? (
-        <LoadingState label="Loading alerts…" rows={6} />
+        <LoadingState label="Loading alertsâ€¦" rows={6} />
       ) : alertsQuery.isError ? (
         <ErrorState
           title="Alerts unavailable"
@@ -335,7 +335,7 @@ export default function Alerts() {
         <Panel
           title="Alert register"
           subtitle={`${rows.length} alert${rows.length === 1 ? '' : 's'}${
-            statusFilter !== 'ALL' ? ` · filtered to ${titleCase(statusFilter)}` : ''
+            statusFilter !== 'ALL' ? ` Â· filtered to ${titleCase(statusFilter)}` : ''
           }`}
           flush
         >

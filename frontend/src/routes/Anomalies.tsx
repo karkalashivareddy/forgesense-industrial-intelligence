@@ -82,7 +82,7 @@ export default function Anomalies() {
         header: 'Anomaly score',
         align: 'end',
         cell: (machine) => (
-          <span className="num" style={{ fontWeight: 600, color: anomalyTone(machine.anomalyScore) === 'crit' ? 'var(--crit-text)' : 'var(--warn-text)' }}>
+          <span className="num" style={{ fontWeight: 600, color: anomalyTone(machine.anomalyScore) === 'crit' ? 'var(--color-critical-text)' : 'var(--color-warning-text)' }}>
             {formatProbability(machine.anomalyScore)}
           </span>
         ),
@@ -154,7 +154,7 @@ export default function Anomalies() {
     return (
       <div className="workspace">
         <SectionHeader title="Anomalies" description="Condition signals outside the modelled operating envelope" />
-        <LoadingState label="Scoring the fleet…" rows={5} />
+        <LoadingState label="Scoring the fleetâ€¦" rows={5} />
       </div>
     );
   }
@@ -182,14 +182,14 @@ export default function Anomalies() {
             <Search
               size={13}
               aria-hidden
-              style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }}
+              style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-disabled)' }}
             />
             <input
               className="field__input"
               style={{ paddingLeft: 28, width: 200 }}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search assets…"
+              placeholder="Search assetsâ€¦"
               aria-label="Search assets"
             />
           </div>
@@ -204,7 +204,7 @@ export default function Anomalies() {
           tone={(counts.get('ANOMALY') ?? 0) > 0 ? 'crit' : 'ok'}
           basis={DATA_BASIS.PREDICTED}
           size="sm"
-          hint="score ≥ 0.70"
+          hint="score â‰¥ 0.70"
         />
         <Metric
           label="Elevated"
@@ -212,7 +212,7 @@ export default function Anomalies() {
           tone={(counts.get('ELEVATED') ?? 0) > 0 ? 'warn' : 'ok'}
           basis={DATA_BASIS.PREDICTED}
           size="sm"
-          hint="score 0.45 – 0.70"
+          hint="score 0.45 â€“ 0.70"
         />
         <Metric label="Within bounds" value={counts.get('LOW') ?? 0} tone="ok" size="sm" hint="score < 0.45" />
       </div>
@@ -256,7 +256,7 @@ export default function Anomalies() {
 
       <p className="note">
         An anomaly score comes from an isolation forest trained on the synthetic profile catalog. A high score means
-        the current sensor pattern is unusual <em>for this modelled distribution</em> — it does not confirm a physical
+        the current sensor pattern is unusual <em>for this modelled distribution</em> â€” it does not confirm a physical
         fault, and it carries no false-positive rate guarantee.
       </p>
     </div>

@@ -1,8 +1,28 @@
 # ForgeSense — Project Specification
 
 > **Version:** 1.1
-> **Status:** Revised specification reflecting the implemented system
+> **Status:** Design specification, retained as the original record
 > **Date:** 2026-09-16
+
+> ### ⚠ Scope note (added during release packaging)
+>
+> This document specifies the system **as originally designed**, when the
+> frontend was a dependency-free vanilla JavaScript SPA served by
+> `python serve.py` with Three.js from a CDN. That frontend has since been
+> **replaced**: the console is now React 18 + TypeScript, built by Vite and
+> served from an nginx container, with Three.js and ECharts installed via npm
+> and bundled locally. Statements below about the frontend, charts, the 3D
+> scene, build tooling and the technology table therefore describe the
+> **original design**, not the current implementation.
+>
+> The backend, ML service, simulator, data model, event contracts and algorithm
+> choices in this document remain accurate.
+>
+> For what is actually built, read [`ARCHITECTURE.md`](ARCHITECTURE.md),
+> [`FRONTEND_ARCHITECTURE.md`](FRONTEND_ARCHITECTURE.md) and
+> [`DATA_FLOW.md`](DATA_FLOW.md), which were verified against the running
+> system. The before/after is recorded in
+> [`audit/FINAL_FRONTEND_REDESIGN_REPORT.md`](audit/FINAL_FRONTEND_REDESIGN_REPORT.md).
 
 ---
 

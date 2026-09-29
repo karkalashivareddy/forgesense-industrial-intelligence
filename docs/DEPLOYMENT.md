@@ -9,8 +9,15 @@ integrated environment.
 | ---------- | ------------------------------------- | ---- |
 | Backend    | `cd backend && mvn spring-boot:run`   | 8080 |
 | ML service | `cd ml-service && uvicorn app.main:app --port 8001` | 8001 |
-| Simulator  | `python simulator/telemetry_feed.py`  | —    |
-| Frontend   | `python frontend/serve.py`            | 5173 |
+| Simulator  | `python simulator/telemetry_feed.py`  | — |
+| Frontend   | `cd frontend && npm ci && npm run dev` | 5173 |
+
+The frontend is a Vite dev server. Note the difference from the Docker
+workflow: in Compose, port 5173 is served by the **nginx container** from a
+built bundle, so a source change needs
+`docker compose up -d --build --force-recreate frontend` to appear. Running
+`npm run dev` locally gives hot module replacement instead, but do not leave
+both bound to 5173 at once.
 
 Backend dev mode uses an embedded H2 file database, an in-memory event bus (no Kafka/Redis)
 and defaults security ON with the dev users. Set `FORGESENSE_SECURITY_ENABLED=false` to

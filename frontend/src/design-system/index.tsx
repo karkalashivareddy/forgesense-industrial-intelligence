@@ -218,7 +218,7 @@ export function BasisChip({ basis, compact = false }: BasisChipProps) {
         borderColor: `var(--color-${basis.toLowerCase()}-border)`,
         background: `var(--color-${basis.toLowerCase()}-bg)`,
       }}
-      title={`${descriptor.label} — ${descriptor.meaning}`}
+      title={`${descriptor.label} â€” ${descriptor.meaning}`}
     >
       <span aria-hidden className="basis-chip__dot" style={{ background: `var(--color-${basis.toLowerCase()})` }} />
       {compact ? BASIS_SHORT[basis] : descriptor.label}
@@ -274,7 +274,7 @@ export function SectionHeader({ title, description, actions }: { title: string; 
 }
 
 /* ================================================================== *
- * Metric — KPI tile
+ * Metric â€” KPI tile
  *
  * Design rule: the semantic colour identifies the meaning of the number
  * without colouring the whole card. The value is the focus; a thin top
@@ -327,7 +327,7 @@ export function HealthIndicator({ score, label = 'Health' }: { score: number | n
       <div className="meter__head">
         <span className="meter__label">{label}</span>
         <span className="meter__value num" style={{ color: TONE_TEXT[tone] }}>
-          {value === null ? '—' : value.toFixed(1)}
+          {value === null ? 'â€”' : value.toFixed(1)}
         </span>
       </div>
       <div
@@ -356,7 +356,7 @@ export function RiskIndicator({ risk, label = 'Failure risk' }: { risk: number |
       <div className="meter__head">
         <span className="meter__label">{label}</span>
         <span className="meter__value num" style={{ color: TONE_TEXT[tone] }}>
-          {value === null ? '—' : `${pctValue < 0.01 && pctValue > 0 ? '<0.01' : pctValue.toFixed(pctValue < 1 ? 3 : 1)}%`}
+          {value === null ? 'â€”' : `${pctValue < 0.01 && pctValue > 0 ? '<0.01' : pctValue.toFixed(pctValue < 1 ? 3 : 1)}%`}
         </span>
       </div>
       <div
@@ -374,7 +374,7 @@ export function RiskIndicator({ risk, label = 'Failure risk' }: { risk: number |
 }
 
 /* ================================================================== *
- * Tabs — correct ARIA tab semantics
+ * Tabs â€” correct ARIA tab semantics
  * ================================================================== */
 
 export interface TabDefinition {
@@ -450,7 +450,7 @@ export function TabPanel({ id, active, children, className = '' }: { id: string;
 }
 
 /* ================================================================== *
- * Drawer — focus trap, focus restoration, dialog semantics
+ * Drawer â€” focus trap, focus restoration, dialog semantics
  * ================================================================== */
 
 function useFocusTrap(active: boolean, onClose: () => void) {
@@ -551,7 +551,7 @@ export function Skeleton({ width = '100%', height = 14, radius = 3 }: { width?: 
   return <div className="skeleton" style={{ width, height, borderRadius: radius }} aria-hidden />;
 }
 
-export function LoadingState({ label = 'Loading…', rows = 3 }: { label?: string; rows?: number }) {
+export function LoadingState({ label = 'Loadingâ€¦', rows = 3 }: { label?: string; rows?: number }) {
   return (
     <div className="state state--loading" role="status" aria-live="polite">
       <div className="state__icon" aria-hidden>
@@ -601,7 +601,7 @@ export function ErrorState({
 }) {
   return (
     <div className="state state--error" role="alert">
-      <div className="state__icon" aria-hidden style={{ color: 'var(--crit-text)' }}>
+      <div className="state__icon" aria-hidden style={{ color: 'var(--color-critical-text)' }}>
         <XOctagon size={18} />
       </div>
       <p className="state__title">{title}</p>
@@ -701,7 +701,7 @@ export function DataTable<T>({
                   >
                     {column.header}
                     <span aria-hidden className="dtable__sort-icon">
-                      {sort?.key === column.key ? (sort.direction === 'asc' ? '▲' : '▼') : '↕'}
+                      {sort?.key === column.key ? (sort.direction === 'asc' ? 'â–²' : 'â–¼') : 'â†•'}
                     </span>
                   </button>
                 ) : (
@@ -853,7 +853,7 @@ function ToastItem({
 }
 
 /* ================================================================== *
- * Sparkline — cheap inline SVG, no chart library
+ * Sparkline â€” cheap inline SVG, no chart library
  * ================================================================== */
 
 export function Sparkline({
@@ -911,7 +911,7 @@ export function Sparkline({
           )}
         </>
       )}
-      {!path && <text x={width / 2} y={height / 2 + 3} textAnchor="middle" fontSize="9" fill="var(--text-faint)">no data</text>}
+      {!path && <text x={width / 2} y={height / 2 + 3} textAnchor="middle" fontSize="9" fill="var(--color-text-disabled)">no data</text>}
     </svg>
   );
 }

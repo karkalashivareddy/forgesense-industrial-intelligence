@@ -669,7 +669,7 @@ kbd {
 }
 
 .cc-hero__sep {
-  color: var(--color-text-subtle);
+  color: var(--color-text-disabled);
 }
 
 .cc-hero__status {

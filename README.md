@@ -60,25 +60,34 @@ Everything else follows from that discipline.
 
 ```mermaid
 flowchart LR
-    S[Python telemetry<br/>simulator] -->|Kafka| I[Spring Boot<br/>telemetry ingest]
-    I --> V[Validation +<br/>normalization]
-    V --> M[FastAPI ML service<br/>anomaly · risk · RUL]
-    M --> D[Decision engine<br/>state · alert · work order]
-    D --> DB[(PostgreSQL)]
-    D --> WS[WebSocket / STOMP]
-    WS -->|deltas| C[Operations console<br/>React + TypeScript]
-    DB -->|REST snapshots| C
-    C --> R[Redis cache]
-    O[Micrometer] --> P[Prometheus] --> G[Grafana]
+    S[Python telemetry<br/>simulator] -->|POST /telemetry/ingest| B[Spring Boot<br/>backend :8080]
+    B -->|Kafka| N[Validate +<br/>normalize]
+    N --> T[(Digital twin<br/>authoritative state)]
+    N -.dev profile: in-process bus.-> B
+    T -->|feature vector| M[FastAPI ML :8001<br/>anomaly · risk · RUL]
+    T --> D[Decision engine<br/>state · alert · work order]
+    M --> D
+    D --> P[(PostgreSQL)]
+    D -->|13 /topic/**| W[WebSocket / STOMP]
+    P -->|REST snapshots<br/>the authority| C
+    W -->|realtime deltas<br/>one dispatch per frame| C[Operations console<br/>React 18 + TypeScript<br/>nginx :5173]
+    C -->|operator actions| B
+    B -->|Micrometer| PR[Prometheus] --> G[Grafana]
 ```
+
+**The loop this demonstrates:** an operator injects a scenario → the simulator
+emits different telemetry → the backend normalises and scores it → the ML service
+produces an anomaly and a failure-risk estimate → the decision engine turns that
+into machine state, alerts and maintenance recommendations → the console reflects
+all of it within seconds, over the same WebSocket that carries the raw deltas.
 
 | Layer | Technology |
 | --- | --- |
 | Frontend | React 18 · TypeScript 5.7 · Vite 6 · TanStack Query · Zustand · Three.js · ECharts |
-| Backend | Java 25 · Spring Boot 4 · Spring Security (JWT + RBAC) · WebSocket/STOMP |
-| Data | PostgreSQL · Redis · Kafka · H2 (dev) |
-| ML | Python · FastAPI · scikit-learn · IsolationForest + GradientBoosting |
-| Ops | Docker Compose · Prometheus · Grafana · nginx |
+| Backend | Java 25 · Spring Boot · Spring Security (JWT + RBAC) · WebSocket/STOMP |
+| Data | PostgreSQL · Redis · Kafka (dev profile substitutes an in-process bus) |
+| ML | Python · FastAPI · scikit-learn (IsolationForest + GradientBoosting) |
+| Ops | Docker Compose · nginx · Prometheus · Grafana |
 
 ---
 
@@ -126,7 +135,62 @@ table and `Ctrl+K`, so the 3D view is an enhancement, never a gate.
 **Differentiators** — a data-trust indicator on every view; an explainability
 bridge from a prediction driver to the telemetry it came from; a
 risk → alert → investigation → maintenance flow; selection shared across every
-workspace; and a scenario replay timeline.
+workspace; and a unified operational event timeline (`Event Stream`).
+
+---
+
+## Why this project is technically interesting
+
+The individual pieces are common. The **integration under one honest
+data contract** is the part worth reading.
+
+**Realtime, isolated from render pressure.** An 18-asset feed at 5 s is ~3.6
+events/second. Routing that through shared state would re-render the console
+continuously. Instead the STOMP client coalesces per asset, dispatches **once per
+animation frame**, keeps a **bounded 120-point ring only for assets someone is
+watching**, and is read by exactly **3 components**. Measured: 0.16 s of script
+time per 8 s wall (~2.7 % of one core), **zero** long tasks, 60 fps.
+
+**REST as the authority, WebSocket as the latency.** Every envelope is
+validated, deduplicated and sequence-checked before it reaches application
+state; a gap triggers a REST re-seat rather than silent drift. If the socket
+drops, the console gets *staler*, never *wrong*.
+
+**One WebSocket, provably.** The client is a module singleton keyed by token,
+mounted once above the router. Verified by instrumenting the `WebSocket`
+constructor: **exactly 1** created across 14 route changes, closed on sign-out.
+
+**Error isolation that survives a real failure.** Aborting `/maintenance` left
+all 18 assets rendering with one panel in error. A failure is never rendered as
+"no data" — "the server said there is nothing" and "the server did not answer"
+stay distinguishable.
+
+**A renderer that knows when to stop.** The Factory Twin renders on demand and
+issues **0 WebGL draw calls** in an 8 s idle window. Render requests are gated on
+comparable keys rather than material readbacks, because Three.js colour-manages
+on `set` and a `getHex()` comparison always reports false change.
+
+**Security headers that are actually served.** During hardening the declared
+CSP, `X-Frame-Options` and `nosniff` were found **absent from every response** —
+nginx does not inherit `add_header` into a `location` that declares one. The
+config read as protected while shipping no policy at all. Fixed, and now
+verified on the wire for `/`, deep links, hashed assets and `/healthz`.
+
+**A defect class closed by a test.** Two separate "endpoint returned data the UI
+showed as empty" bugs had the same root cause: a mis-guessed JSON envelope
+silently becomes `[]`, which is indistinguishable from a legitimate empty
+result. All collection reads now go through one shape-tolerant unwrapper, and a
+second test asserts that **every `var(--token)` in `src/` is actually defined** —
+which caught 33 stale colour references the hex-literal audit could not.
+
+**Verification as part of the deliverable.** 86 unit tests, 43 browser tests,
+strict TypeScript, and 60 responsive combinations. The suite has caught real
+defects: a Command Center hero that broke the page-`h1` accessibility contract,
+and an event list that was permanently empty.
+
+This is a demonstration of **architecture and decision-pipeline design**. It is
+not a production industrial deployment, and the limitations section says exactly
+what that means.
 
 ---
 
@@ -172,52 +236,123 @@ It deletes volumes and can destroy the database; recreate the service instead.
 
 ---
 
+## Technology stack
+
+Only technologies actually present in this repository.
+
+**Frontend** — React 18 · TypeScript 5.7 (strict, `noUncheckedIndexedAccess`) ·
+Vite 6 · TanStack Query 5 (server state, one key per resource) · Zustand 5 (UI
+state + a separate high-frequency telemetry store) · Three.js 0.169 (Factory
+Twin) · ECharts 5.5 (Analytics) · Lucide (icons) · hand-rolled design system
+(`frontend/src/design-system`)
+
+**Backend** — Java 25 · Spring Boot (Web, Security, JPA, Data Redis, Kafka,
+Actuator) · Spring Security JWT + three fixed roles · STOMP over WebSocket
+(`/ws`, 13 `/topic/**` destinations) · JPA/Hibernate · Micrometer
+
+**ML service** — Python · FastAPI · scikit-learn (`IsolationForest` for anomaly,
+`GradientBoosting` for failure risk) · baseline-perturbation attribution
+
+**Data & infrastructure** — PostgreSQL · Redis · Kafka (Compose profile; the dev
+profile substitutes an in-process bus behind an identical interface) · Docker
+Compose · nginx (serves the built bundle, SPA fallback, security headers) ·
+Prometheus · Grafana
+
+**Testing** — Vitest 2.1 (86 unit) · Playwright 1.49 (43 browser, functional +
+visual) · `tsc --noEmit` under strict mode, tests included
+
+---
+
 ## Verify it
 
 ```bash
 cd frontend
 npm ci
 npm run typecheck   # strict TypeScript, including tests
-npm test            # 83 unit tests
+npm test            # 86 unit tests
 npm run e2e         # 43 Playwright browser tests
 ```
+
+Latest verified results (re-run, not copied forward):
+
+| Check | Result |
+| --- | --- |
+| `tsc --noEmit` (strict, includes tests) | **clean** |
+| Vitest | **86 passed** (6 files) |
+| Playwright | **43 passed** (30 functional + 13 visual) |
+| `vite build` | **clean** |
+| Docker build (`npm ci`, committed lockfile) | **clean** |
+| Services healthy | **9 / 9** |
+| Console errors | **0** across all 12 workspaces |
+| Uncaught exceptions | **0** |
+| Unexpected failed requests / 4xx / 5xx | **0** |
+| Horizontal overflow | **0** across 60 breakpoint × workspace combinations |
+| Routes verified | **12**, each by direct load, back and forward |
+| Security headers | **5 / 5** on the wire, on every path |
+| WebSocket connections | **exactly 1** across 14 route changes |
+| Three.js idle draw calls | **0** in an 8 s idle window |
 
 Browser tests assert, on every route: zero console errors, zero uncaught
 exceptions, zero failed requests, zero unexpected 404s, and no horizontal
 overflow at 375 / 768 / 1024 / 1440 / 1920. The console walk also fails on any
-Content-Security-Policy violation, because the headers are now genuinely
-enforced rather than declared.
+Content-Security-Policy violation, because the headers are genuinely enforced
+rather than merely declared.
+
+Two guard tests exist specifically to stop silent failures: one asserts every API
+collection endpoint's real JSON envelope, and one asserts every `var(--token)`
+in `src/` is actually defined — an undefined custom property is not an error, so
+it would otherwise render as nothing.
 
 ---
 
 ## Demo walkthrough (3–5 minutes)
 
-Full script with expected values:
-[`docs/DEMO_RUNBOOK.md`](docs/DEMO_RUNBOOK.md). The short version:
+Full script with timings and troubleshooting:
+[`docs/DEMO_RUNBOOK.md`](docs/DEMO_RUNBOOK.md).
+
+```
+Scenario Lab
+    ↓  inject VIBRATION_SPIKE on M-104 (severity 0.9)
+STOMP telemetry  (telemetry.updated over the single WebSocket)
+    ↓
+anomaly / risk change  (anomaly 0.0 → 0.9993, risk 0.0006 → 0.0585)
+    ↓
+NORMAL → CRITICAL      (health 99.9 → 65.9)
+    ↓
+alert + priority incident
+    ↓
+maintenance work order present
+    ↓
+Command Center recomputes the fleet verdict
+```
+
+**M-104 (Conveyor Drive Motor) was deliberately chosen** because it begins in a
+healthy `NORMAL` state, so the before/after is unambiguous and reproducible.
+**M-105 is already `CRITICAL` at rest** with alerts and a work order, so
+injecting into it changes nothing visible. M-104 also **fully recovers** to
+`NORMAL` after `POST /api/v1/simulation/control/M-104/clear`, so the demo can be
+run repeatedly.
+
+> **An honest note on what does *not* change.** Alert and maintenance *counts*
+> stay at 36 and 18, because the decision engine has already raised a standing
+> recommendation for every asset before the demo starts. The demonstrable change
+> is the **state transition, the health drop, the anomaly saturation, the 97×
+> risk increase, and the asset entering Priority incidents** — not a counter
+> going up.
+
+The short version:
 
 1. **Sign in** — `admin` / `forgesense-dev`. Header shows the plant verdict
-   (`DEGRADED`), `SYNTHETIC FEED`, the model version, and the transport state.
-2. **Command Center** — the hero answers "how is the plant" in one word. Fleet
-   health, peak risk, and all 18 assets colour-coded by operational state.
-3. **Open M-104** (Conveyor Drive Motor) — live telemetry with sparklines,
-   prediction in violet with model version, alerts, work orders, event history.
+   (`DEGRADED`), `SYNTHETIC FEED`, `ML failure-risk-v2`, and transport state.
+2. **Command Center** — the hero answers "how is the plant" in one word.
+3. **Open M-104** — live telemetry, prediction in violet with model version,
+   alerts, work orders, event history.
 4. **Scenario Lab** — note that **Run what-if** (analysis only, changes nothing)
-   and **Inject into live feed** (changes what the simulator emits) are separate
-   actions.
-5. **Inject `VIBRATION_SPIKE` on M-104** — the real `ScenarioType` enum value.
-6. **Watch it propagate** — over ~30 s: status `NORMAL → CRITICAL`, health
-   99.9 → 65.9, anomaly 0.0 → 0.9993, failure risk 0.0006 → 0.0585 (97×).
-7. **Return to Command Center** — the asset is red, the verdict recomputes, and
-   M-104 appears in Priority incidents.
-8. **System** — close on the synthetic-data boundary and the known limitations.
-
-> **Use M-104, not M-105.** M-105 is already `CRITICAL` at rest, so injecting
-> into it changes nothing visible. M-104 starts healthy and **fully recovers**
-> after `POST /api/v1/simulation/control/M-104/clear`, so the demo is repeatable.
-
-Story in one line: *synthetic telemetry → digital twin → ML prediction → anomaly
-detection → alert → maintenance recommendation → scenario injection → measured
-effect.*
+   and **Inject into live feed** (changes what the simulator emits) are separate.
+5. **Inject `VIBRATION_SPIKE`** — the real `ScenarioType` enum value.
+6. **Watch it propagate** — over ~30 s, the numbers above.
+7. **Return to Command Center** — the asset is red and the verdict recomputes.
+8. **System** — close on the synthetic-data boundary and the limitations.
 
 ---
 
@@ -298,6 +433,7 @@ competing colour.*
 | [UI/UX guide](docs/UI_UX_GUIDE.md) | Layout reasoning and interaction patterns |
 | [Model & UI provenance](docs/MODEL_UI_PROVENANCE.md) | What each number is, and what it is not |
 | [Demo runbook](docs/DEMO_RUNBOOK.md) | Verified 3–5 minute walkthrough with expected values |
+| [Portfolio description](docs/PORTFOLIO_DESCRIPTION.md) | Short / resume / portfolio blurbs, with the claims deliberately avoided |
 | [Viva guide](docs/VIVA_GUIDE.md) | Architecture, systems, ML, security, performance, limitations |
 | [Release evidence](docs/RELEASE_EVIDENCE.md) | What each screenshot proves, and how to regenerate it |
 | [Release checklist](docs/RELEASE_CHECKLIST.md) | The verification gate, with commands to re-run it |
@@ -318,29 +454,50 @@ and current tests take precedence over them.**
 
 ## Limitations
 
-Stated up front, in full at
-[`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md):
+These are real, and the project is more credible for stating them than for
+hiding them. Full detail at
+[`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md).
 
-- The telemetry is **synthetic**, and the models were trained on it.
-- ForgeSense **does not control physical machinery**. Nothing here actuates a
-  machine, schedules real work, or reports real production output.
-- Failure risk is a **bare probability** with no confidence interval.
-- All 18 assets currently report a failure risk of exactly `0.0006`, which
-  renders as `0.060%`. This is **genuine `failure-risk-v2` output**, not a
-  formatting artefact — the same response carries 7+ distinct anomaly scores
-  and 2 distinct health scores, so the adapter is not collapsing values. The
-  model saturates near zero for nominal assets. The values are preserved
-  as-is; the UI explains the saturation rather than inventing spread.
-- Remaining-useful-life is a **simulator-relative step count**, not a
-  calibrated RUL.
-- Production efficiency and downtime risk are **modelled**, not measured.
+**Scope of the data**
+- The telemetry is **synthetic**, generated by the simulator in this repository.
+  The ML models were trained on that same simulator, so they have **never seen
+  real equipment**.
+- **No physical machine control.** Nothing actuates a machine, executes real
+  maintenance, or reports real production output. There is **no fieldbus client
+  at all** — no OPC-UA, no MQTT, no Modbus. "Inject scenario" means *change a
+  synthetic generator's parameters*.
+- Twin geometry is **representative, not surveyed** plant models.
+
+**Accuracy of the model output**
+- **No accuracy guarantee against real equipment.** Failure risk is a bare
+  probability with **no confidence interval**.
+- All 18 assets currently report a failure risk of exactly `0.0006` (`0.060%`).
+  This is **genuine `failure-risk-v2` output**: the same response carries 8+
+  distinct anomaly scores and 2 distinct health scores, so nothing is being
+  collapsed in transit, and the formatter renders `0.00065` → `0.065%`. The
+  model **saturates near zero** for nominal assets. The values are preserved
+  as-is and the UI explains the saturation — manufacturing spread would mean
+  fabricating a safety-adjacent number.
+- Remaining-useful-life is a **simulator-relative step count**, not a calibrated
+  RUL. Production efficiency and downtime risk are **modelled**, not measured.
+- Attribution is **baseline perturbation, not SHAP** — labelled accurately
+  because no SHAP library is involved.
+
+**Engineering scope**
+- Maintenance is the backend's **five states**, not a full CMMS (no inventory,
+  work-order history or vendor management).
+- **No multi-tenancy and no SSO** — three fixed roles.
+- **Single-node topology.** Kafka partitioning, WebSocket scale-out and
+  time-series storage are documented future work, not implemented.
 - `/analytics/health-trends` returns a **snapshot, not a time series**, despite
-  the name — so the console renders a distribution rather than inventing a
-  trend line.
-- The maintenance lifecycle is the backend's five states, not a full CMMS
-  workflow. The UI does not pretend otherwise.
+  the name — so the console renders a distribution rather than inventing a trend.
+- **Not a safety system.** No SIL/PL rating, interlock, or fail-safe design.
+- CI runs on **software rendering (SwiftShader)**, so real GPU frame rates for
+  the Factory Twin cannot be measured in CI. The GPU-independent property —
+  zero idle draw calls — is what is asserted.
 
 ---
+
 
 ## License
 

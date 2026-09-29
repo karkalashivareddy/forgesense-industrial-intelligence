@@ -1,5 +1,5 @@
 /**
- * Fleet view — the sortable, filterable asset register.
+ * Fleet view â€” the sortable, filterable asset register.
  *
  * This is the tabular counterpart to the twin, and the primary surface for
  * "show me everything that matches this condition".
@@ -136,7 +136,7 @@ export default function Fleet() {
         sortable: true,
         hideBelow: 'sm',
         cell: (machine) => (
-          <span className="num" title="Model-computed health score, 0–100">
+          <span className="num" title="Model-computed health score, 0â€“100">
             {machine.healthScore.toFixed(1)}
           </span>
         ),
@@ -147,7 +147,7 @@ export default function Fleet() {
         align: 'end',
         sortable: true,
         cell: (machine) => (
-          <span className="num" style={{ color: 'var(--ml-text)' }} title="Model-estimated failure probability">
+          <span className="num" style={{ color: 'var(--color-intelligence-text)' }} title="Model-estimated failure probability">
             {formatProbability(machine.failureRisk)}
           </span>
         ),
@@ -214,7 +214,7 @@ export default function Fleet() {
     return (
       <div className="workspace">
         <SectionHeader title="Fleet" description="Every registered asset and its current condition" />
-        <LoadingState label="Loading the fleet…" rows={6} />
+        <LoadingState label="Loading the fleetâ€¦" rows={6} />
       </div>
     );
   }
@@ -237,20 +237,20 @@ export default function Fleet() {
     <div className="workspace">
       <SectionHeader
         title="Fleet"
-        description={`${machinesQuery.data?.length ?? 0} assets · select a row to open the machine inspector`}
+        description={`${machinesQuery.data?.length ?? 0} assets Â· select a row to open the machine inspector`}
         actions={
           <div style={{ position: 'relative' }}>
             <Search
               size={13}
               aria-hidden
-              style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }}
+              style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-disabled)' }}
             />
             <input
               className="field__input"
               style={{ paddingLeft: 28, width: 220 }}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search assets…"
+              placeholder="Search assetsâ€¦"
               aria-label="Search assets by id or name"
             />
           </div>

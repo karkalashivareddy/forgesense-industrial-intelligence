@@ -169,6 +169,46 @@
   --color-unavailable-text: #7b8896;
 
   /* ================================================================
+   * PROVENANCE FAMILY — the six data-basis labels.
+   *
+   * `<BasisChip>` builds its colour from a template literal,
+   * `var(--color-{basis}-{text|border|bg})`, so all six bases need a
+   * complete quadruple. The semantic migration above defined DERIVED,
+   * SYNTHETIC and UNAVAILABLE but omitted OBSERVED, PREDICTED and
+   * SIMULATED, so those three chips silently resolved to nothing: white
+   * inherited text, a transparent background, and an invisible dot.
+   *
+   * An undefined custom property is not an error, which is why this went
+   * unnoticed until it was measured. `test/tokens.test.ts` now asserts that
+   * every `var(--token)` in src/ is defined here, so a missing member of a
+   * family fails the suite instead of a screenshot.
+   *
+   * Colour meanings:
+   *   OBSERVED  — reported by the system of record, so the informational
+   *               blue: a fact, not a judgement
+   *   PREDICTED — model output, so violet, identical to every other
+   *               model-derived value in the console
+   *   SIMULATED — a what-if projection, so slate, but lighter than DERIVED
+   *               because nothing was measured to produce it
+   * ================================================================ */
+
+  --color-observed: #4a9fe0;
+  --color-observed-bg: rgba(74, 159, 224, 0.1);
+  --color-observed-border: rgba(74, 159, 224, 0.34);
+  --color-observed-text: #8fcbf3;
+
+  --color-predicted: #9d7bf0;
+  --color-predicted-bg: rgba(157, 123, 240, 0.11);
+  --color-predicted-border: rgba(157, 123, 240, 0.36);
+  --color-predicted-text: #c0a6f7;
+
+  --color-simulated: #6f7d8d;
+  --color-simulated-bg: rgba(111, 125, 141, 0.09);
+  --color-simulated-border: rgba(111, 125, 141, 0.28);
+  --color-simulated-text: #8b99a9;
+
+
+  /* ================================================================
    * MAINTENANCE — a distinct cool violet-blue.
    * Separate from intelligence: work-in-progress is an operational state,
    * not a model output.
@@ -272,7 +312,12 @@
   --statusbar-h: 28px;
   --nav-w: 236px;
   --nav-w-collapsed: 60px;
+  /* Desktop slide-over width for the machine inspector, referenced by
+     `width: min(var(--drawer-w), 100vw)`. The mobile breakpoint overrides the
+     drawer to a full-width bottom sheet, so this only applies at >=768px. */
+  --drawer-w: 460px;
   --content-max: 2200px;
+
 
   --z-base: 1;
   --z-sticky: 20;
