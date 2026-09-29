@@ -1,181 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ForgeSense · Industrial Intelligence Control Room</title>
-<link rel="icon" href="favicon.svg" type="image/svg+xml" />
-
-<!-- Fonts: Preconnect + Preload for performance -->
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter+Tight:ital,wght@0,600;0,700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter+Tight:ital,wght@0,600;0,700&family=JetBrains+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
-
-<!-- Phosphor Icons — webfont stylesheet -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css" />
-
-<link rel="stylesheet" href="css/tokens.css" />
-<link rel="stylesheet" href="css/base.css" />
-<link rel="stylesheet" href="css/components.css" />
-<link rel="stylesheet" href="css/views.css" />
-</head>
-<body>
-<header class="topbar" role="banner">
-  <button id="mobileNavToggle" class="icon-btn mobile-nav-toggle" title="Open navigation" aria-label="Open navigation" aria-expanded="false" aria-controls="primaryNav"><i class="ph ph-list"></i></button>
-  <div class="brand">
-    <i class="ph ph-gear-six logo" aria-hidden="true"></i>
-    <span class="brand-name">ForgeSense</span>
-    <span class="tag">Industrial Intelligence</span>
-  </div>
-  <div class="factory-chip">
-    <span class="fc-name">FACTORY ALPHA</span>
-    <span id="factoryState" class="fc-state st-muted">—</span>
-  </div>
-  <div class="topbar-status">
-    <span class="pill sys" id="sysStatus" role="status" title="Data transport + freshness"><i class="ph ph-broadcast" id="sysIcon" aria-hidden="true"></i><span id="sysStatusText">connecting…</span></span>
-    <span class="pill ml-pill" title="Machine learning service"><i class="ph ph-brain" id="mlIcon" aria-hidden="true"></i>ML <span id="mlModel">—</span></span>
-    <span class="sep"></span>
-    <span id="clock" class="clock">--:--:--</span>
-    <span class="sep"></span>
-    <span class="user" id="userChip">—</span>
-    <button id="cmdBtn" class="icon-btn" title="Command palette (Ctrl+K)" aria-label="Command palette"><i class="ph ph-command"></i></button>
-    <button id="inspToggle" class="icon-btn" title="Toggle machine inspector" aria-label="Toggle inspector"><i class="ph ph-panel-right"></i></button>
-  </div>
-</header>
-
-<div class="shell">
-  <nav id="primaryNav" class="rail" aria-label="Control room sections">
-    <div class="rail-group">
-      <span class="rail-group-label">Monitor</span>
-      <button class="rail-btn" data-route="command" data-label="Command"><span class="idx">1</span><i class="ph ph-gauge"></i><span class="label">Command</span></button>
-      <button class="rail-btn" data-route="factory" data-label="Factory"><span class="idx">2</span><i class="ph ph-cube"></i><span class="label">Factory</span></button>
-      <button class="rail-btn" data-route="fleet" data-label="Fleet"><span class="idx">3</span><i class="ph ph-database"></i><span class="label">Fleet</span></button>
-    </div>
-    <div class="rail-group">
-      <span class="rail-group-label">Intelligence</span>
-      <button class="rail-btn" data-route="telemetry" data-label="Telemetry"><span class="idx">4</span><i class="ph ph-activity"></i><span class="label">Telemetry</span></button>
-      <button class="rail-btn" data-route="predictions" data-label="Predictions"><span class="idx">6</span><i class="ph ph-chart-line-up"></i><span class="label">Predictions</span></button>
-      <button class="rail-btn" data-route="analytics" data-label="Analytics"><span class="idx">8</span><i class="ph ph-chart-bar"></i><span class="label">Analytics</span></button>
-      <button class="rail-btn" data-route="anomalies" data-label="Anomalies"><span class="idx">·</span><i class="ph ph-radar"></i><span class="label">Anomalies</span></button>
-    </div>
-    <div class="rail-group">
-      <span class="rail-group-label">Operations</span>
-      <button class="rail-btn" data-route="alerts" data-label="Alerts"><span class="idx">5</span><i class="ph ph-warning-octagon"></i><span class="label">Alerts</span></button>
-      <button class="rail-btn" data-route="maintenance" data-label="Maintenance"><span class="idx">7</span><i class="ph ph-wrench"></i><span class="label">Maintenance</span></button>
-      <button class="rail-btn" data-route="events" data-label="Events"><span class="idx">·</span><i class="ph ph-list-dashes"></i><span class="label">Events</span></button>
-      <button class="rail-btn" data-route="simulation" data-label="Simulation"><span class="idx">·</span><i class="ph ph-flask"></i><span class="label">Simulation</span></button>
-    </div>
-    <div class="rail-group">
-      <span class="rail-group-label">Admin</span>
-      <button class="rail-btn" data-route="system" data-label="System"><span class="idx">9</span><i class="ph ph-gear"></i><span class="label">System</span></button>
-    </div>
-    <div class="rail-foot">
-      <button class="rail-link" data-action="shortcuts" title="Keyboard shortcuts"><i class="ph ph-keyboard"></i><span>Shortcuts</span></button>
-      <button class="rail-link" data-action="logout" title="Sign out and return to the sign-in screen"><i class="ph ph-sign-out"></i><span>Sign out</span></button>
-      <span class="rail-ver">·synthetic demo·</span>
-    </div>
-  </nav>
-
-  <main id="workspace">
-    <section id="view-factory" class="view" data-route="factory">
-      <div id="sceneContainer" role="img" aria-label="Interactive 3D digital twin of Factory Alpha"></div>
-      <div id="twinAssetList" class="twin-assets" role="list" aria-label="Keyboard-accessible factory asset selection"></div>
-      <div id="factoryHud">
-        <span id="twinBasis" class="basis-badge" role="status" aria-live="polite">SYNCING…</span>
-        <div id="zoneChips" aria-label="Zone filters"></div>
-        <div class="hud-spacer"></div>
-        <button id="fitBtn" class="hud-btn" title="Reset camera (R)" aria-label="Reset camera to factory view"><i class="ph ph-arrows-out"></i></button>
-        <button id="topBtn" class="hud-btn" title="Top view" aria-label="Switch to top-down view"><i class="ph ph-arrow-down"></i></button>
-        <button id="riskBtn" class="hud-btn mode-btn" title="Highlight predicted risk" aria-pressed="false"><i class="ph ph-target"></i> Risk mode</button>
-      </div>
-      <div id="sceneLegend" aria-label="Machine status legend">
-        <span><i class="ph ph-circle status-icon status-running" aria-hidden="true"></i>Running</span>
-        <span><i class="ph ph-warning status-icon status-warning" aria-hidden="true"></i>Warning</span>
-        <span><i class="ph ph-x-circle status-icon status-error" aria-hidden="true"></i>Critical</span>
-        <span><i class="ph ph-wrench status-icon status-maintenance" aria-hidden="true"></i>Maintenance</span>
-        <span><i class="ph ph-circle status-icon status-offline" aria-hidden="true"></i>Offline</span>
-      </div>
-      <div id="depLegend" aria-label="Dependency legend">
-        <span><i class="ph ph-package status-icon" style="color: var(--viz-1)" aria-hidden="true"></i>Material</span>
-        <span><i class="ph ph-lightning status-icon" style="color: var(--viz-2)" aria-hidden="true"></i>Power</span>
-        <span><i class="ph ph-fan status-icon" style="color: var(--viz-3)" aria-hidden="true"></i>Cooling</span>
-        <span><i class="ph ph-gear status-icon" style="color: var(--viz-4)" aria-hidden="true"></i>Service</span>
-      </div>
-      <div id="simBanner" class="sim-banner hidden" role="status" aria-live="polite">SIMULATION MODE — scenario visualization only, no physical control</div>
-    </section>
-    <section id="view-command" class="view" data-route="command"></section>
-    <section id="view-fleet" class="view" data-route="fleet"></section>
-    <section id="view-telemetry" class="view" data-route="telemetry"></section>
-    <section id="view-anomalies" class="view" data-route="anomalies"></section>
-    <section id="view-alerts" class="view" data-route="alerts"></section>
-    <section id="view-events" class="view" data-route="events"></section>
-    <section id="view-predictions" class="view" data-route="predictions"></section>
-    <section id="view-simulation" class="view" data-route="simulation"></section>
-    <section id="view-maintenance" class="view" data-route="maintenance"></section>
-    <section id="view-analytics" class="view" data-route="analytics"></section>
-    <section id="view-system" class="view" data-route="system"></section>
-  </main>
-
-  <aside id="inspector" class="inspector collapsed" role="dialog" aria-modal="true" aria-labelledby="inspTitle" aria-hidden="true" tabindex="-1">
-    <header class="insp-head">
-      <div class="insp-title-wrap">
-        <span id="inspBreadcrumb" class="insp-breadcrumb muted">Factory Alpha</span>
-        <h2 id="inspTitle" class="insp-title">Machine Inspector</h2>
-      </div>
-      <button id="inspClose" class="icon-btn" aria-label="Close inspector"><i class="ph ph-x"></i></button>
-    </header>
-    <div id="inspTabs" class="tabs" role="tablist" aria-label="Inspector sections"></div>
-    <div id="inspBody" class="insp-body"><div class="empty">Select a machine to inspect it. Use the 3D twin, fleet table, alerts, or Ctrl+K.</div></div>
-  </aside>
-</div>
-
-<footer id="statusbar" class="statusbar" role="contentinfo">
-  <button id="sysBtn" class="sys-btn" title="Open system diagnostics" aria-haspopup="dialog" aria-expanded="false"><span class="state-dot" id="sysDot"></span><span id="sysBtnText">SYSTEM HEALTH</span></button>
-  <div class="svc"><i class="ph ph-share-network status-icon" aria-hidden="true"></i>Transport <span id="svcKafka">…</span></div>
-  <div class="svc"><i class="ph ph-info status-icon" aria-hidden="true"></i>Basis <span id="svcBasis">—</span></div>
-  <div class="svc"><i class="ph ph-clock status-icon" aria-hidden="true"></i>Last telemetry <span id="svcLastTel">—</span></div>
-  <div class="statusbar-right">ForgeSense is a control-room & simulation environment over synthetic telemetry; it does not control real machines.</div>
-</footer>
-
-<div id="diag" class="diag hidden" role="dialog" aria-modal="true" aria-label="System diagnostics">
-  <div class="diag-head">
-    <span class="diag-title">System diagnostics</span>
-    <button id="diagClose" class="icon-btn" aria-label="Close diagnostic pane"><i class="ph ph-x"></i></button>
-  </div>
-  <div class="diag-list">
-    <div class="diag-row"><b><i class="ph ph-database" aria-hidden="true"></i> Backend</b><span class="v" id="svcBackend">…</span></div>
-    <div class="diag-row"><b><i class="ph ph-brain" aria-hidden="true"></i> ML service</b><span class="v" id="svcMl">…</span></div>
-    <div class="diag-row"><b><i class="ph ph-cylinder" aria-hidden="true"></i> PostgreSQL</b><span class="v" id="svcPg">…</span></div>
-    <div class="diag-row"><b><i class="ph ph-database" aria-hidden="true"></i> Redis</b><span class="v" id="svcRedis">…</span></div>
-    <div class="diag-row"><b><i class="ph ph-activity" aria-hidden="true"></i> Events in window</b><span class="v" id="svcEvents">—</span></div>
-    <div class="diag-row"><b><i class="ph ph-clock" aria-hidden="true"></i> Last telemetry</b><span class="v" id="diagLastTel">—</span></div>
-    <div class="diag-row"><b><i class="ph ph-share-network" aria-hidden="true"></i> Transport</b><span class="v" id="diagKafka">—</span></div>
-    <div class="diag-row"><b><i class="ph ph-info" aria-hidden="true"></i> Data basis</b><span class="v" id="diagBasis">—</span></div>
-  </div>
-</div>
-
-<div id="palette" class="panel-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="paletteTitle">
-  <div class="palette">
-    <header class="palette-head">
-      <h2 id="paletteTitle" class="visually-hidden">Command palette</h2>
-      <input id="paletteInput" type="text" placeholder="Search commands, machines, alerts… (Esc to close)" autocomplete="off" spellcheck="false" aria-label="Command palette search" />
-    </header>
-    <ul id="paletteList" role="listbox" aria-label="Commands"></ul>
-    <footer class="palette-foot"><i class="ph ph-arrow-up"></i><i class="ph ph-arrow-down"></i> navigate · Enter run · Esc close</footer>
-  </div>
-</div>
-
-<div id="toast" class="toast hidden" role="alert" aria-live="polite" aria-atomic="true"></div>
-
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
-  }
-}
-</script>
-<script type="module" src="js/app.js"></script>
-</body>
+<!doctype html>
+<html lang="en" data-theme="graphite">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="ForgeSense Industrial Operations Center — real-time asset health, digital twin, predictive maintenance and operational analytics over synthetic telemetry."
+    />
+    <!-- No external origins: fonts and icons are bundled locally. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>ForgeSense · Industrial Operations Center</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      ForgeSense is a real-time operations console and requires JavaScript to run.
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

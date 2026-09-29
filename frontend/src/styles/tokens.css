@@ -1,0 +1,171 @@
+/*
+ * ForgeSense design tokens.
+ *
+ * Industrial graphite base with metallic surfaces, electric teal brand,
+ * controlled amber / safety red / signal green, and violet reserved for
+ * model-derived (ML) values. Colour is never the only state carrier — every
+ * semantic colour is paired with an icon and a text label at the call site.
+ */
+
+:root {
+  /* ---- Typography -------------------------------------------------- */
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+
+  --text-2xs: 0.6875rem; /* 11px — technical metadata */
+  --text-xs: 0.75rem;    /* 12px — labels */
+  --text-sm: 0.8125rem;  /* 13px — dense body */
+  --text-base: 0.875rem; /* 14px — body */
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.625rem;
+  --text-2xl: 2.125rem;
+  --text-3xl: 2.75rem;
+
+  --leading-tight: 1.15;
+  --leading-normal: 1.45;
+  --leading-relaxed: 1.65;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ---- Spacing scale (4px base) ------------------------------------ */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* ---- Radii — restrained, industrial --------------------------- */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  /* ---- Graphite surface ramp ------------------------------------ */
+  --bg-void: #07090c;        /* app backdrop, behind everything */
+  --bg-base: #0b0e12;        /* main workspace background */
+  --bg-surface: #10141a;     /* panels */
+  --bg-raised: #161b23;      /* raised panels, table headers */
+  --bg-overlay: #1b222c;     /* menus, modals, tooltips */
+  --bg-inset: #0a0d11;       /* wells, code, chart backdrops */
+  --bg-hover: #1c232d;
+  --bg-active: #232c38;
+
+  /* Metallic edge treatment for panels. */
+  --edge-subtle: #1e2530;
+  --edge-default: #2a3340;
+  --edge-strong: #3a4756;
+  --edge-accent: rgba(45, 212, 212, 0.42);
+
+  /* ---- Text -------------------------------------------------------- */
+  --text-primary: #e8edf4;   /* 13.9:1 on --bg-base */
+  --text-secondary: #a8b6c6; /* 7.4:1  on --bg-base */
+  --text-muted: #7c8b9c;     /* 4.7:1  on --bg-base */
+  --text-faint: #5b6878;     /* decorative / non-essential only */
+  --text-inverse: #07090c;
+
+  /* ---- Brand: electric teal --------------------------------------- */
+  --brand: #2dd4d4;
+  --brand-bright: #5ee7e7;
+  --brand-dim: #1a9c9c;
+  --brand-wash: rgba(45, 212, 212, 0.12);
+  --brand-wash-strong: rgba(45, 212, 212, 0.22);
+  --brand-text: #7defec;      /* on dark graphite */
+
+  /* ---- Semantic state --------------------------------------------- */
+  --ok: #35c98a;              /* signal green — normal / healthy */
+  --ok-wash: rgba(53, 201, 138, 0.13);
+  --ok-text: #6ee0b0;
+
+  --warn: #e8a33d;            /* controlled amber */
+  --warn-wash: rgba(232, 163, 61, 0.13);
+  --warn-text: #f3bf72;
+
+  --crit: #ef4d52;            /* safety red */
+  --crit-wash: rgba(239, 77, 82, 0.14);
+  --crit-text: #ff8a8d;
+
+  --info: #4fa9e8;            /* cyan — informational */
+  --info-wash: rgba(79, 169, 232, 0.13);
+  --info-text: #8ecdf5;
+
+  --maint: #9b7bf0;           /* violet — maintenance / out of service */
+  --maint-wash: rgba(155, 123, 240, 0.14);
+  --maint-text: #bda6f7;
+
+  --ml: #a678f0;              /* violet reserved for model-derived values */
+  --ml-wash: rgba(166, 120, 240, 0.14);
+  --ml-text: #c7a6f7;
+
+  --idle: #6b7a8b;            /* offline / unknown */
+  --idle-wash: rgba(107, 122, 139, 0.14);
+  --idle-text: #94a3b3;
+
+  /* ---- Data basis (honesty tokens) --------------------------------- */
+  --basis-observed: #35c98a;
+  --basis-derived: #4fa9e8;
+  --basis-predicted: #a678f0;
+  --basis-synthetic: #e8a33d;
+  --basis-simulated: #9b7bf0;
+  --basis-unavailable: #6b7a8b;
+
+  /* ---- Elevation --------------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --shadow-focus: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--brand);
+
+  /* ---- Motion ------------------------------------------------------ */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 300ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* ---- Layout ------------------------------------------------------ */
+  --topbar-h: 52px;
+  --statusbar-h: 30px;
+  --nav-w: 232px;
+  --nav-w-collapsed: 60px;
+  --inspector-w: 400px;
+  --content-max: 2200px;
+
+  --z-base: 1;
+  --z-sticky: 20;
+  --z-nav: 40;
+  --z-overlay: 60;
+  --z-modal: 70;
+  --z-toast: 80;
+}
+
+/*
+ * Reduced motion: collapse every decorative transition. The application still
+ * communicates state — through icon, text and colour — without movement.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
