@@ -2,7 +2,11 @@ name: ForgeSense CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - 'release/**'
+    tags:
+      - 'v*'
   pull_request:
 
 concurrency:

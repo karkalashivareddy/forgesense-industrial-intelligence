@@ -23,6 +23,9 @@ forgesense:
       enabled: false
   cache:
     adapter: memory
+  ml:
+    health-indicator:
+      required: false
 
 management:
   health:
