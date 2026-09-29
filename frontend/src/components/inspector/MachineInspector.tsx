@@ -64,7 +64,8 @@ import {
 } from '../../api/queries';
 import { useLiveReading, useTelemetryStore } from '../../realtime/store';
 import { deriveOperationalState, anomalyTone } from '../../domain/machineState';
-import { SENSOR_UNITS, type Factor, type SensorKey } from '../../api/types';
+import { SENSOR_UNITS, type Factor, type SensorKey, type TelemetryReading } from '../../api/types';
+
 import { DATA_BASIS } from '../../domain/basis';
 import {
   EM_DASH,
@@ -476,11 +477,17 @@ function TelemetryTab({ machineId }: { machineId: string }) {
   );
 }
 
-function findLatest(rows: Record<string, unknown>[], key: string): number | null {
+/**
+ * Latest numeric value for a sensor.
+ *
+ * The lookup is by a runtime sensor key, so it needs one narrow cast: the row
+ * is a TelemetryReading, whose sensor fields are individually optional.
+ */
+function findLatest(rows: TelemetryReading[], key: string): number | null {
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index];
     if (!row) continue;
-    const value = row[key];
+    const value = (row as unknown as Record<string, unknown>)[key];
     if (typeof value === 'number') return value;
   }
   return null;
@@ -492,9 +499,10 @@ function TrendFor({ sensor, machineId }: { sensor: string; machineId: string }) 
   const values = useMemo(() => {
     const rows = telemetry.data?.rows ?? [];
     return rows
-      .map((row) => (row as Record<string, unknown>)[sensor])
+      .map((row) => (row as unknown as Record<string, unknown>)[sensor])
       .filter((value): value is number => typeof value === 'number');
   }, [telemetry.data, sensor]);
+
 
   if (values.length < 2) return null;
   return <Sparkline values={values} label={`${sensor} trend`} tone="info" />;

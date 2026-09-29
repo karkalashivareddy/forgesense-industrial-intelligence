@@ -197,7 +197,12 @@ export interface TelemetryReading {
 export interface TelemetryRangeResponse {
   machineId: string;
   basis: string;
-  rows: Omit<TelemetryReading, 'machineId'>[];
+  /**
+   * Each row carries the requested `machineId`. The adapter stamps it on
+   * explicitly so a row is self-describing even if the backend omits it, and
+   * so a mixed response cannot produce a chart labelled with the wrong asset.
+   */
+  rows: TelemetryReading[];
 }
 
 export interface TelemetryStatus {

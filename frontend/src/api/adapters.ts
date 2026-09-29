@@ -20,6 +20,7 @@
 import type {
   Alert,
   AlertListResponse,
+  EventListResponse,
   Explanation,
   MaintenanceRecord,
   Machine,
@@ -49,6 +50,51 @@ function toNullableStr(value: unknown): string | null {
 
 function toArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
+}
+
+/**
+ * Unwrap a collection response regardless of the envelope the backend used.
+ *
+ * The backend is inconsistent about this, and it is not a guess:
+ *
+ *   bare array      /zones  /factories  /machines  /machines/dependencies/edge
+ *                   /machines/{id}/events  /machines/{id}/predictions
+ *                   /alerts is NOT one of these (see below)
+ *   { items, ... }  /alerts {items,total,statusFilter}  /maintenance {items,total}
+ *                   /events {items,count}
+ *   { rows, ... }   /machines/{id}/telemetry {rows,basis,machineId}
+ *
+ * The maintenance bug (a `{total, items}` endpoint read as a bare array, so
+ * the whole board silently rendered as "no work orders") happened because one
+ * adapter guessed wrong and `[]` is indistinguishable from a legitimately
+ * empty result — the type checker cannot see it and no assertion catches it.
+ *
+ * Every collection endpoint goes through this one function, so it accepts all
+ * three shapes. A new envelope is a one-line change here rather than a silent
+ * blank panel in the UI.
+ */
+function unwrapCollection(raw: unknown, ...keys: string[]): Record<string, unknown>[] {
+  if (Array.isArray(raw)) return raw as Record<string, unknown>[];
+  if (raw && typeof raw === 'object') {
+    const body = raw as Record<string, unknown>;
+    for (const key of keys.length > 0 ? keys : ['items', 'rows', 'data', 'content']) {
+      const candidate = body[key];
+      if (Array.isArray(candidate)) return candidate as Record<string, unknown>[];
+    }
+  }
+  return [];
+}
+
+/** Read a total/count from whichever key the envelope happens to use. */
+function unwrapCount(raw: unknown, items: unknown[]): number {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const body = raw as Record<string, unknown>;
+    for (const key of ['total', 'count', 'totalElements']) {
+      const value = body[key];
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+    }
+  }
+  return items.length;
 }
 
 const ZONE_NAME_TO_CODE: Record<string, string> = {
@@ -187,18 +233,16 @@ export function normaliseAlert(raw: Record<string, unknown>): Alert {
 
 export function normaliseAlertList(raw: unknown): AlertListResponse {
   const body = (raw ?? {}) as Record<string, unknown>;
-  const items = toArray<Record<string, unknown>>(body.items).map(normaliseAlert);
+  const items = unwrapCollection(raw).map(normaliseAlert);
   return {
-    total: typeof body.total === 'number' ? body.total : items.length,
+    total: unwrapCount(raw, items),
     statusFilter: toStr(body.statusFilter, 'ALL'),
     items,
   };
 }
 
 export function normaliseMaintenance(raw: unknown): MaintenanceRecord[] {
-  const body = (raw ?? {}) as Record<string, unknown>;
-  const items = Array.isArray(raw) ? raw : toArray<Record<string, unknown>>(body.items);
-  return items.map((entry) => {
+  return unwrapCollection(raw).map((entry) => {
     const r = (entry ?? {}) as Record<string, unknown>;
     return {
       id: toStr(r.id),
@@ -249,15 +293,31 @@ export function normaliseTelemetryRange(raw: unknown): TelemetryRangeResponse {
   return {
     machineId,
     basis: toStr(body.basis, 'OBSERVED'),
-    rows: toArray<Record<string, unknown>>(body.rows).map((row) => ({
+    rows: unwrapCollection(raw, 'rows', 'items').map((row) => ({
       ...normaliseTelemetry({ ...row, machineId }),
       machineId,
     })),
   };
 }
 
+/**
+ * Event log, from either envelope.
+ *
+ * GET /api/v1/events                -> { items, count }
+ * GET /api/v1/machines/{id}/events  -> bare array
+ *
+ * These two are genuinely different on the wire today. The per-machine
+ * endpoint used to be read as an envelope here, which left the machine
+ * inspector's event list permanently empty while the global Event Stream
+ * worked fine from the same component tree.
+ */
+export function normaliseEventList(raw: unknown): EventListResponse {
+  const items = unwrapCollection(raw) as unknown as EventListResponse['items'];
+  return { count: unwrapCount(raw, items), items };
+}
+
 export function normaliseZones(raw: unknown): Zone[] {
-  return toArray<Record<string, unknown>>(raw).map((z) => ({
+  return unwrapCollection(raw).map((z) => ({
     id: toStr(z.id),
     code: normaliseZoneCode(toStr(z.code)),
     name: toStr(z.name),

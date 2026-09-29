@@ -129,6 +129,18 @@ interface MachineNode {
   position: THREE.Vector3;
   tone: StateTone;
   signature: string;
+  /**
+   * Everything that affects how this node is DRAWN, as one comparable string.
+   *
+   * Render requests are gated on this rather than on comparing material
+   * values: Three.js applies colour-space conversion on set and returns
+   * converted values from getHex(), so a value comparison reports "changed"
+   * on every call and defeats the gate entirely. The last applied key is
+   * stored instead, which is exact and allocation-cheap.
+   */
+  visualKey: string;
+  /** Selection/hover state of the halo, as a comparable key. */
+  selectionKey: string;
   machineId: string;
 }
 
@@ -707,11 +719,15 @@ export class TwinScene {
           halo,
           statusRing: halo,
           label,
-          position,
-          tone: derived.descriptor.tone,
-          signature,
-          machineId: machine.machineId,
-        };
+            position,
+            tone: derived.descriptor.tone,
+            signature,
+            // Force the first applyState/applySelectionVisuals to draw.
+            visualKey: '',
+            selectionKey: '',
+            machineId: machine.machineId,
+          };
+
         this.nodes.set(machine.machineId, node);
         this.applyState(node, derived.state, derived.descriptor.tone, machine);
       } else {
@@ -719,8 +735,9 @@ export class TwinScene {
         node.group.position.copy(position);
         if (node.signature !== signature) {
           node.signature = signature;
-          this.applyState(node, derived.state, derived.descriptor.tone, machine);
-          this.invalidate(SETTLE_MS);
+          if (this.applyState(node, derived.state, derived.descriptor.tone, machine)) {
+            this.invalidate(SETTLE_MS);
+          }
         }
       }
     }
@@ -753,28 +770,34 @@ export class TwinScene {
     this.nodes.delete(node.machineId);
   }
 
-  private applyState(node: MachineNode, _state: OperationalState, tone: StateTone, machine: Machine): void {
-    node.tone = tone;
-    const colour = STATE_COLOURS[tone];
-    node.indicator.material.color.setHex(colour);
-    node.indicator.material.emissive.setHex(colour);
-
+  private applyState(node: MachineNode, _state: OperationalState, tone: StateTone, machine: Machine): boolean {
     /*
-     * Risk mode is an intelligence overlay, so it is violet — the same colour
+     * Risk mode is an intelligence overlay, so it is violet - the same colour
      * the Predictions workspace uses for model output. Assets below the
      * threshold dim rather than turn green, so violet always reads as
      * "the model is pointing at this".
      */
-    if (this.mode === 'risk') {
-      const elevated = machine.failureRisk >= 0.5;
-      const mid = machine.failureRisk >= 0.3;
-      const target = elevated ? PREDICTION_COLOUR : mid ? hex('--color-warning', 0xe8a93f) : PALETTE.body;
-      node.indicator.material.color.setHex(target);
-      node.indicator.material.emissive.setHex(target);
-      node.indicator.material.emissiveIntensity = elevated ? 2.4 : mid ? 1.5 : 0.25;
-    } else {
-      node.indicator.material.emissiveIntensity = 1.6;
-    }
+    const elevated = machine.failureRisk >= 0.5;
+    const mid = machine.failureRisk >= 0.3;
+    const riskEmphasis = this.mode === 'risk' ? (elevated ? 2 : mid ? 1 : 0) : -1;
+    const key = `${tone}|${riskEmphasis}`;
+    if (node.visualKey === key) return false;
+
+    node.visualKey = key;
+    node.tone = tone;
+
+    const colour = this.mode === 'risk'
+      ? riskEmphasis === 2
+        ? PREDICTION_COLOUR
+        : riskEmphasis === 1
+          ? hex('--color-warning', 0xe8a93f)
+          : PALETTE.body
+      : STATE_COLOURS[tone];
+
+    node.indicator.material.color.setHex(colour);
+    node.indicator.material.emissive.setHex(colour);
+    node.indicator.material.emissiveIntensity = riskEmphasis === 2 ? 2.4 : riskEmphasis === 1 ? 1.5 : riskEmphasis === 0 ? 0.25 : 1.6;
+    return true;
   }
 
   private makeLabel(text: string): THREE.Sprite {
@@ -801,6 +824,7 @@ export class TwinScene {
   }
 
   setMode(mode: 'status' | 'risk' | 'dependencies'): void {
+    if (this.mode === mode) return;
     this.mode = mode;
     if (this.edgeGroup) this.edgeGroup.visible = mode === 'dependencies';
     this.invalidate(SETTLE_MS);
@@ -812,13 +836,15 @@ export class TwinScene {
    */
   refreshEmphasis(machines: Machine[]): void {
     const now = Date.now();
+    let changed = false;
     for (const machine of machines) {
       const node = this.nodes.get(machine.machineId);
       if (!node) continue;
       const derived = deriveOperationalState(machine, now);
-      this.applyState(node, derived.state, derived.descriptor.tone, machine);
+      if (this.applyState(node, derived.state, derived.descriptor.tone, machine)) changed = true;
     }
-    this.invalidate(SETTLE_MS);
+    // Only pay for a render settle when an indicator actually moved.
+    if (changed) this.invalidate(SETTLE_MS);
   }
 
   setSelected(ids: string[]): void {
@@ -827,16 +853,23 @@ export class TwinScene {
   }
 
   private applySelectionVisuals(): void {
+    let changed = false;
     for (const [id, node] of this.nodes) {
       const isSelected = this.selected.has(id);
       const isHovered = this.hovered === id;
+      // A comparable key, not a material readback — see MachineNode.visualKey.
+      const key = `${isSelected ? 's' : isHovered ? 'h' : 'n'}`;
+      if (node.selectionKey === key) continue;
+      node.selectionKey = key;
+
       node.halo.material.opacity = isSelected ? 0.85 : isHovered ? 0.45 : 0;
       node.halo.material.color.setHex(isSelected ? SELECT_COLOUR : hex('--color-text-secondary', 0xa7b4c4));
       if (isSelected) {
         node.halo.position.y = 0.05;
       }
+      changed = true;
     }
-    this.invalidate();
+    if (changed) this.invalidate();
   }
 
   private setHovered(machineId: string | null): void {
@@ -853,11 +886,15 @@ export class TwinScene {
   }
 
   private applyZoneFilter(): void {
+    let changed = false;
     for (const node of this.nodes.values()) {
       const visible = !this.zoneFilter || this.zoneOf(node.machineId) === this.zoneFilter;
-      node.group.visible = visible;
+      if (node.group.visible !== visible) {
+        node.group.visible = visible;
+        changed = true;
+      }
     }
-    this.invalidate();
+    if (changed) this.invalidate();
   }
 
   private zoneOf(machineId: string): string | null {

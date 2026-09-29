@@ -24,6 +24,7 @@ RUN apk add --no-cache curl \
 
 COPY --from=build /build/dist /usr/share/nginx/html
 COPY infra/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY infra/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 
 EXPOSE 80
 

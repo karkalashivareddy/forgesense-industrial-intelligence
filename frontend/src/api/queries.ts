@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tan
 import { http } from '../api/client';
 import {
   normaliseAlertList,
+  normaliseEventList,
   normaliseExplanation,
   normaliseMachine,
   normaliseMachineDetail,
@@ -173,14 +174,8 @@ export function useMachineExplanation(machineId: string | null): UseQueryResult<
 export function useMachineEvents(machineId: string | null): UseQueryResult<EventListResponse> {
   return useQuery({
     queryKey: ['machine-events', machineId],
-    queryFn: async ({ signal }) => {
-      const raw = await http.get<Record<string, unknown>>(`/api/v1/machines/${machineId}/events`, { signal });
-      const items = Array.isArray(raw.items) ? (raw.items as Record<string, unknown>[]) : [];
-      return {
-        count: Number(raw.count ?? items.length),
-        items: items as unknown as EventListResponse['items'],
-      };
-    },
+    queryFn: async ({ signal }) =>
+      normaliseEventList(await http.get<unknown>(`/api/v1/machines/${machineId}/events`, { signal })),
     enabled: Boolean(machineId),
     staleTime: 3_000,
     refetchInterval: config.snapshotRefetchMs * 3,
@@ -336,11 +331,8 @@ export function useEvents(machineId?: string | null): UseQueryResult<EventListRe
   const query = machineId ? `?machineId=${machineId}&limit=50` : '?limit=50';
   return useQuery({
     queryKey: ['events', machineId ?? 'all'],
-    queryFn: async ({ signal }) => {
-      const raw = await http.get<Record<string, unknown>>(`/api/v1/events${query}`, { signal });
-      const items = Array.isArray(raw.items) ? (raw.items as EventListResponse['items']) : [];
-      return { count: Number(raw.count ?? items.length), items };
-    },
+    queryFn: async ({ signal }) =>
+      normaliseEventList(await http.get<unknown>(`/api/v1/events${query}`, { signal })),
     refetchInterval: config.snapshotRefetchMs * 2,
     retry: 1,
   });

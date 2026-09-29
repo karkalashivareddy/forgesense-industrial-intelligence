@@ -146,8 +146,28 @@ docker compose up --build -d
 
 Sign in with `admin` / `forgesense-dev`.
 
-Full instructions, including local development and troubleshooting:
-[`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md).
+### Rebuilding the console after a source change
+
+> **`http://localhost:5173` is served by the nginx container, not a Vite dev
+> server.** A change to anything in `frontend/src` is invisible in the browser
+> until the image is rebuilt and the container is recreated.
+
+```bash
+docker compose up -d --build --force-recreate frontend
+```
+
+`--force-recreate` is required. `docker compose build` followed by a plain
+`docker compose up -d` can leave the **old container running against the new
+image tag**, so the browser keeps serving the previous bundle and the change
+looks like it did not work. This is the single most common false negative while
+working on this project.
+
+To develop against a live-reloading dev server instead, run it outside Docker
+and point it at the API (see [`docs/OPERATIONS_RUNBOOK.md`](docs/OPERATIONS_RUNBOOK.md)).
+Do not leave both a dev server and the container serving 5173 at once.
+
+Do **not** use `docker system prune -a` or similar to "fix" a stale container.
+It deletes volumes and can destroy the database; recreate the service instead.
 
 ---
 
@@ -157,13 +177,52 @@ Full instructions, including local development and troubleshooting:
 cd frontend
 npm ci
 npm run typecheck   # strict TypeScript, including tests
-npm test            # 66 unit tests
+npm test            # 83 unit tests
 npm run e2e         # 43 Playwright browser tests
 ```
 
 Browser tests assert, on every route: zero console errors, zero uncaught
 exceptions, zero failed requests, zero unexpected 404s, and no horizontal
-overflow at 375 / 768 / 1024 / 1440 / 1920.
+overflow at 375 / 768 / 1024 / 1440 / 1920. The console walk also fails on any
+Content-Security-Policy violation, because the headers are now genuinely
+enforced rather than declared.
+
+---
+
+## Demo walkthrough (3–4 minutes)
+
+The intended evaluator path. Every step below is verified end-to-end.
+
+1. **Sign in** — `admin` / `forgesense-dev`. Header shows the plant verdict
+   (`DEGRADED`), `SYNTHETIC FEED`, the model version, and the transport state.
+2. **Command Center** — the hero answers "how is the plant" in one word. Fleet
+   health and peak risk on the right; 18 assets colour-coded by operational
+   state below.
+3. **Factory Twin** — the same fleet in space. Switch `Status → Risk →
+   Dependencies`. Use *Fit factory in view*.
+4. **Select M-105** — from the asset list or by clicking a machine. The halo
+   marks the selection, and the inspector opens.
+5. **Telemetry tab** — live sensor values with sparklines. Note the footer:
+   *synthetic simulator telemetry — no physical machine control*.
+6. **Prediction tab** — model output in violet, with model version and
+   freshness. It never claims certainty.
+7. **Alerts** — severity by colour, lifecycle by weight/treatment. Acknowledge
+   one and watch the counters move.
+8. **Maintenance** — 18 recommended work orders. *Schedule* one; the stage
+   metric and the board both update.
+9. **Simulation Lab** — this is the centrepiece. Keep **Run what-if** and
+   **Inject into live feed** clearly separate: the first changes nothing, the
+   second changes what the simulator emits.
+10. **Inject a vibration scenario on M-105** — then watch it propagate.
+11. **Return to Command Center** — M-105 is now `CRITICAL`, the fleet verdict
+    moves, an alert has been raised, and a maintenance work order exists. The
+    whole chain is visible in one pass.
+12. **System** — close on the synthetic-data boundary and the known
+    limitations.
+
+Story in one line: *synthetic telemetry → digital twin → ML prediction →
+anomaly detection → alert → maintenance recommendation → intervention →
+measured effect.*
 
 ---
 
@@ -174,6 +233,7 @@ overflow at 375 / 768 / 1024 / 1440 / 1920.
 | [Architecture](docs/ARCHITECTURE.md) | System topology and layering |
 | [Frontend architecture](docs/FRONTEND_ARCHITECTURE.md) | State split, realtime pipeline, twin performance model, security trade-offs |
 | [API contract](docs/API_FRONTEND_CONTRACT.md) | Every endpoint, with verified units, enums and error semantics |
+| [Contract matrix](docs/audit/API_CONTRACT_MATRIX.md) | Verified response envelope per endpoint, and the rule for adding one |
 | [Realtime contract](docs/REALTIME_FRONTEND_CONTRACT.md) | Topics, envelope, validation, batching, failure matrix |
 | [Design system](docs/DESIGN_SYSTEM.md) | Tokens, components, data-basis vocabulary |
 | [UI/UX guide](docs/UI_UX_GUIDE.md) | Layout reasoning and interaction patterns |
@@ -183,6 +243,7 @@ overflow at 375 / 768 / 1024 / 1440 / 1920.
 | [Known limitations](docs/KNOWN_LIMITATIONS.md) | Stated plainly, including the uncomfortable ones |
 | [Future scope](docs/FUTURE_SCOPE.md) | Extension points — implemented / partial / planned |
 | [Redesign report](docs/audit/FINAL_FRONTEND_REDESIGN_REPORT.md) | The full before/after audit |
+| [Release hardening report](docs/audit/FINAL_RELEASE_HARDENING_REPORT.md) | Final verification pass: contracts, realtime, performance, Docker, security |
 
 Superseded design documents are preserved in
 [`docs/archive/`](docs/archive/README.md) as historical evidence. **Current code
@@ -196,7 +257,15 @@ Stated up front, in full at
 [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md):
 
 - The telemetry is **synthetic**, and the models were trained on it.
+- ForgeSense **does not control physical machinery**. Nothing here actuates a
+  machine, schedules real work, or reports real production output.
 - Failure risk is a **bare probability** with no confidence interval.
+- All 18 assets currently report a failure risk of exactly `0.0006`, which
+  renders as `0.060%`. This is **genuine `failure-risk-v2` output**, not a
+  formatting artefact — the same response carries 7+ distinct anomaly scores
+  and 2 distinct health scores, so the adapter is not collapsing values. The
+  model saturates near zero for nominal assets. The values are preserved
+  as-is; the UI explains the saturation rather than inventing spread.
 - Remaining-useful-life is a **simulator-relative step count**, not a
   calibrated RUL.
 - Production efficiency and downtime risk are **modelled**, not measured.

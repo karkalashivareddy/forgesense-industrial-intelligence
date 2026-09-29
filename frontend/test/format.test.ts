@@ -37,6 +37,34 @@ describe('formatProbability', () => {
     expect(formatProbability(1)).toBe('100.0%');
   });
 
+  it('never collapses distinct risk values into one label', () => {
+    /*
+     * Every asset currently reports failureRisk exactly 0.0006, which renders
+     * as "0.060%" for all 18 of them. That is genuine model output from
+     * failure-risk-v2, not a formatting artefact - but the Command Center
+     * asset board would be lying if the formatter also collapsed values that
+     * genuinely differ. These cases pin the precision so a future "simplify
+     * the number" change cannot quietly start merging distinct risks.
+     */
+    expect(formatProbability(0.0006)).toBe('0.060%');
+    expect(formatProbability(0.00065)).toBe('0.065%');
+    expect(formatProbability(0.0007)).toBe('0.070%');
+
+    // All three must stay distinguishable from one another.
+    const labels = [0.0006, 0.00065, 0.0007].map((v) => formatProbability(v));
+    expect(new Set(labels).size).toBe(3);
+  });
+
+  it('keeps a low but real risk visible rather than rounding it to 0%', () => {
+    // A real low risk must never be presented as certainty of zero. The
+    // "<0.01%" band is strictly below 0.0001; 0.0001 itself prints as
+    // "0.010%", which is still a visible non-zero figure.
+    expect(formatProbability(0.0001)).toBe('0.010%');
+    expect(formatProbability(0.0001)).not.toBe('0%');
+    expect(formatProbability(0.00001)).toBe('<0.01%');
+    expect(formatProbability(0.00001)).not.toBe('0%');
+  });
+
   it('returns an em dash for unusable input', () => {
     expect(formatProbability(null)).toBe('—');
     expect(formatProbability(undefined)).toBe('—');
