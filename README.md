@@ -158,7 +158,7 @@ cd frontend
 npm ci
 npm run typecheck   # strict TypeScript, including tests
 npm test            # 66 unit tests
-npm run e2e         # 40 Playwright browser tests
+npm run e2e         # 43 Playwright browser tests
 ```
 
 Browser tests assert, on every route: zero console errors, zero uncaught

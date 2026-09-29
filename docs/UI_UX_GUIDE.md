@@ -178,12 +178,22 @@ Framed as an engineering laboratory, not a game.
 
 - The boundary is unmissable: **SIMULATION MODE — NO PHYSICAL MACHINE
   CONTROL**, above the controls, not in a tooltip.
-- A fault-model catalogue with a plain-language description of each.
+- A fault-model catalogue with a plain-language description of each, populated
+  from the backend's `ScenarioType` enum rather than invented locally.
+- **Two separate actions**, because their side effects are fundamentally
+  different:
+  - **Run what-if** — computes modelled production impact against the
+    dependency graph. Records a run. Changes nothing else. Safe and repeatable.
+  - **Inject into live feed** — changes what the synthetic generator emits
+    next. Propagates through the ML service and the decision engine into
+    machine state, alerts and work orders. Guarded while already active.
 - A live preview of the dependency fan-out the engine *will* model, read from
   the real graph — while downtime and loss are shown only after a run, because
   that is when they are known.
 - A timeline strip showing the propagation: T0 → degrade → anomaly → risk →
   alert → maintenance → recover.
+- While a scenario is live, the Factory Twin shows its own simulation banner,
+  so the boundary is visible from every surface, not just this one.
 
 ---
 

@@ -380,19 +380,33 @@ one place, so no view has to know about the difference.
 | Endpoint | Returns | Notes |
 | --- | --- | --- |
 | `GET /simulation/scenarios` | `SimulationRun[]` | **history of recorded runs**, newest first. Empty on a fresh stack. Not a catalogue. |
-| `POST /simulation/run` | `SimulationRun` | `ENGINEER`, `ADMIN`. Body: `{ machineId, scenarioType, severity, failureHorizonMinutes, name? }` |
+| `POST /simulation/run` | `SimulationRun` | `ENGINEER`, `ADMIN`. Body: `{ machineId, scenarioType, severity, failureHorizonMinutes, name? }`. **What-if analysis only — changes nothing.** |
+| `POST /simulation/control` | `SimulationControl` | `ENGINEER`, `ADMIN`. Body: `{ machineId, scenario, severity, parameters? }`. **This is the live injection path** — it changes what the simulator emits next. |
 | `GET /simulation/control` | `SimulationControl[]` | active per-machine overrides |
 | `POST /simulation/control/{machineId}/clear` | — | `ENGINEER`, `ADMIN` |
-| `GET /simulator/config` | `{ paused, machines[] }` | global feed state |
-| `POST /simulation/pause` \| `/resume` \| `/reset` | — | `ENGINEER`, `ADMIN` |
+| `GET /simulator/config` | `{ paused, machines[] }` | global feed state; polled by the simulator |
+| `POST /simulation/pause` \| `/resume` \| `/reset` | — | `ENGINEER`, `ADMIN`. `/reset` clears every machine. |
+
+### Two distinct scenario actions
+
+The backend exposes **two** different capabilities and the console presents them
+as **two separate buttons**, because their side effects differ fundamentally:
+
+| | `POST /simulation/run` | `POST /simulation/control` |
+| --- | --- | --- |
+| Purpose | What-if analysis | Live fault injection |
+| Modelled impact | yes | no |
+| Changes the fleet | **no** | **yes** |
+| Side effects | records a run in history | simulator emits faulted telemetry → ML scores it → decision engine raises state, alerts, work orders |
+| Repeatable | yes | guarded — re-applying while active is blocked in the UI |
 
 `scenarioType` values (`simulation/domain/ScenarioType.java`):
 `NONE`, `DEGRADATION`, `OVERHEATING`, `BEARING_FAILURE`, `VIBRATION_SPIKE`,
 `RPM_INSTABILITY`, `CURRENT_SPIKE`, `SENSOR_FAILURE`, `MACHINE_OFFLINE`,
 `LOAD_INCREASE`, `MAINTENANCE`, `RECOVERY`.
 
-**Running a scenario changes the synthetic telemetry generator. It does not
-command, connect to, or represent any physical machine.**
+**Both act only on the synthetic telemetry generator. Neither commands,
+connects to, or represents any physical machine.**
 
 ---
 

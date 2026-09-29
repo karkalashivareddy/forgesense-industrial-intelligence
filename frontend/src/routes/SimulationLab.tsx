@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Boxes, FlaskConical, Pause, Play, RotateCcw, ShieldAlert } from 'lucide-react';
+import { Boxes, FlaskConical, Pause, Play, RotateCcw, ShieldAlert, Zap } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -23,6 +23,7 @@ import {
   type Column,
 } from '../design-system';
 import {
+  useApplyScenarioControl,
   useClearMachineControl,
   useDependencyEdges,
   useMachines,
@@ -77,6 +78,7 @@ export default function SimulationLab() {
     severity,
     failureHorizonMinutes: horizon,
   });
+  const applyControl = useApplyScenarioControl();
   const pause = usePauseSimulator();
   const resume = useResumeSimulator();
   const reset = useResetSimulator();
@@ -89,11 +91,12 @@ export default function SimulationLab() {
 
   const machines = machinesQuery.data ?? [];
   const selectedMachine = machines.find((machine) => machine.machineId === machineId);
+  const thisMachineActive = activeControls.some((control) => control.machineId === machineId);
 
   const errorMessage = useMemo(() => {
-    const failed = [runScenario, pause, resume, reset, clearControl].find((mutation) => mutation.isError);
+    const failed = [runScenario, applyControl, pause, resume, reset, clearControl].find((mutation) => mutation.isError);
     return failed?.error ? toErrorMessage(failed.error) : null;
-  }, [runScenario, pause, resume, reset, clearControl]);
+  }, [runScenario, applyControl, pause, resume, reset, clearControl]);
 
   const columns = useMemo<Column<SimulationRun>[]>(
     () => [
@@ -309,27 +312,73 @@ export default function SimulationLab() {
                 </div>
               </div>
 
+              {/*
+                Two deliberately separate actions.
+
+                "Run what-if" calls /simulation/run: it computes modelled
+                production impact against the dependency graph and changes
+                nothing else. Safe, repeatable, no side effects on the fleet.
+
+                "Inject into live feed" calls /simulation/control: it changes
+                what the synthetic generator emits next, which propagates
+                through the ML service and the decision engine into machine
+                state, alerts and work orders. That is the observable one, and
+                it is the reason the Scenario Lab is a laboratory rather than
+                a calculator.
+              */}
               <div className="row">
                 <Button
                   variant="primary"
                   disabled={!canEdit}
                   loading={runScenario.isPending}
-                  onClick={() => void runScenario.mutateAsync()}
-                  title={canEdit ? 'Run the selected scenario' : 'Requires ENGINEER or ADMIN'}
+                  onClick={() => void runScenario.mutateAsync(undefined)}
+                  title={canEdit ? 'Compute modelled impact. Does not change the feed.' : 'Requires ENGINEER or ADMIN'}
                 >
-                  <FlaskConical size={14} aria-hidden /> Run scenario
+                  <FlaskConical size={14} aria-hidden /> Run what-if
                 </Button>
+                <Button
+                  disabled={!canEdit || thisMachineActive}
+                  loading={applyControl.isPending}
+                  onClick={() =>
+                    void applyControl.mutateAsync({
+                      machineId,
+                      scenario: scenarioType,
+                      severity,
+                    })
+                  }
+                  title={
+                    !canEdit
+                      ? 'Requires ENGINEER or ADMIN'
+                      : thisMachineActive
+                        ? `${machineId} already has an active scenario`
+                        : 'Inject this fault into the synthetic feed'
+                  }
+                >
+                  <Zap size={14} aria-hidden /> Inject into live feed
+                </Button>
+                {thisMachineActive && (
+                  <Button
+                    disabled={!canEdit}
+                    loading={clearControl.isPending}
+                    onClick={() => void clearControl.mutateAsync(undefined)}
+                  >
+                    Clear {machineId}
+                  </Button>
+                )}
+              </div>
+
+              <div className="row">
                 <Button
                   disabled={!canEdit || paused}
                   loading={pause.isPending}
-                  onClick={() => void pause.mutateAsync()}
+                  onClick={() => void pause.mutateAsync(undefined)}
                 >
                   <Pause size={13} aria-hidden /> Pause feed
                 </Button>
                 <Button
                   disabled={!canEdit || !paused}
                   loading={resume.isPending}
-                  onClick={() => void resume.mutateAsync()}
+                  onClick={() => void resume.mutateAsync(undefined)}
                 >
                   <Play size={13} aria-hidden /> Resume feed
                 </Button>
@@ -337,18 +386,22 @@ export default function SimulationLab() {
                   variant="danger"
                   disabled={!canEdit}
                   loading={reset.isPending}
-                  onClick={() => void reset.mutateAsync()}
+                  onClick={() => void reset.mutateAsync(undefined)}
                 >
                   <RotateCcw size={13} aria-hidden /> Reset feed
                 </Button>
-                <Button
-                  disabled={!canEdit || activeControls.length === 0}
-                  loading={clearControl.isPending}
-                  onClick={() => void clearControl.mutateAsync()}
-                >
-                  Clear {machineId}
-                </Button>
               </div>
+
+              {thisMachineActive && (
+                <div className="banner banner--sim" role="status">
+                  <Zap size={13} aria-hidden style={{ flexShrink: 0 }} />
+                  <span>
+                    A scenario is live on <span className="mono">{machineId}</span>. Watch the Command Center, the
+                    Factory Twin and the Alert Center — telemetry, prediction, state and alerts all react. Clearing it
+                    or resetting the feed restores nominal conditions.
+                  </span>
+                </div>
+              )}
             </div>
           </Panel>
 

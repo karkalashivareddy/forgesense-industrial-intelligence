@@ -10,8 +10,8 @@ The browser is the product, so browser tests are not an optional extra here.
 | --- | --- | --- | --- |
 | Unit | Vitest | `frontend/test/` | unit discipline, state derivation, data basis, protocol framing, envelope validation |
 | Type | `tsc --noEmit` | — | contract shape across the whole app, including tests |
-| E2E | Playwright | `frontend/e2e/app.spec.ts` | the product: boot, auth, every route, selection, realtime, failure handling, a11y |
-| Visual/responsive | Playwright | `frontend/e2e/visual.spec.ts` | layout integrity at 5 breakpoints, mobile nav, twin lifecycle, console/network cleanliness |
+| E2E | Playwright | `frontend/e2e/app.spec.ts` | 30 | the product: boot, auth, every route, selection journey, realtime, scenario lab, failure handling, a11y |
+| Visual/responsive | Playwright | `frontend/e2e/visual.spec.ts` | 13 | layout integrity at 5 breakpoints, mobile nav, twin lifecycle, console/network cleanliness |
 
 ---
 
@@ -79,16 +79,17 @@ promises rather than implementation detail:
 
 ---
 
-## 4. E2E tests (27)
+## 4. E2E tests (30)
 
 | Group | Coverage |
 | --- | --- |
 | Boot & auth | gate renders; **password absent from localStorage, sessionStorage and cookies**; bad credentials rejected; sign-out re-opens the gate |
 | Routing | all 12 workspaces on a **direct deep link**; sidebar navigation; unknown path redirects |
 | Machine journey | fleet row → inspector → tab switch → close; RUL never rendered as a time unit |
+| Scenario lab | what-if analysis and live injection are **separate actions**; injection is guarded while a scenario is active; the Factory Twin shows the simulation boundary; the feed is reset afterwards so the suite is idempotent |
 | Realtime | connection label resolves to a truthful value and is **never `LIVE`** for this synthetic deployment; status strip exposes transport, basis and oldest-reading age |
 | Resilience | backend aborted mid-session → intentional error state, **no uncaught exception**; ML-down page states reduced confidence rather than fabricating it |
-| Accessibility | skip link; landmarks; `Ctrl+K` opens and `Escape` closes the palette; keyboard reaches navigation; reduced motion honoured |
+| Accessibility | skip link is the first tab stop and moves focus to the workspace; a route change moves focus into the new workspace; landmarks; `Ctrl+K` opens and `Escape` closes the palette; reduced motion honoured |
 
 The "no horizontal overflow" and "zero console errors" assertions run on **every**
 route test via `expectCleanBrowser()`.

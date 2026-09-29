@@ -408,15 +408,27 @@ export function useSimulatorConfig(): UseQueryResult<SimulatorConfig> {
   });
 }
 
+/**
+ * Simulation/control mutation.
+ *
+ * `override` lets a caller supply the request body at call time (the live
+ * control injection needs `{machineId, scenario, severity}`), while actions
+ * with a fixed body (the what-if run) pass it here. Either may be omitted for
+ * the no-argument endpoints.
+ */
 function useSimulationAction(path: string, body?: Record<string, unknown>) {
   const client = useQueryClient();
-  return useMutation({
-    mutationFn: async () => http.post<Record<string, unknown>>(path, body ?? {}),
+  return useMutation<Record<string, unknown>, unknown, Record<string, unknown> | undefined>({
+    mutationFn: async (override) => http.post<Record<string, unknown>>(path, override ?? body ?? {}),
     onSuccess: () => {
       for (const key of [
         ['simulation'],
         ['machines'],
+        ['alerts'],
+        ['maintenance'],
+        ['impact'],
         ['analytics', 'overview'],
+        ['analytics', 'risk-ranking'],
         ['analytics', 'events'],
         ['events'],
       ]) {
@@ -432,6 +444,19 @@ export const useResumeSimulator = () => useSimulationAction('/api/v1/simulation/
 export const useResetSimulator = () => useSimulationAction('/api/v1/simulation/reset');
 export const useClearMachineControl = (machineId: string) =>
   useSimulationAction(`/api/v1/simulation/control/${machineId}/clear`);
+
+/**
+ * Inject a fault into the SYNTHETIC telemetry feed.
+ *
+ * This is distinct from `/simulation/run`, which is a what-if analysis: the
+ * what-if computes modelled impact and changes nothing, while this changes
+ * what the simulator emits next, which propagates through the ML service and
+ * the decision engine into machine state, alerts and maintenance
+ * recommendations. The UI presents the two as separate actions for exactly
+ * that reason.
+ */
+export const useApplyScenarioControl = () =>
+  useSimulationAction('/api/v1/simulation/control');
 
 /* ------------------------------------------------------------------ *
  * System

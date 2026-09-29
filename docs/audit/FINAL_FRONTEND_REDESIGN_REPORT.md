@@ -25,8 +25,8 @@ Two backend contract bugs and one unit-formatting bug were found during the
 audit and fixed, because the console would otherwise have been forced to
 display falsehoods.
 
-**Result:** 66 unit tests, 27 E2E tests, 13 visual/responsive tests — all
-passing. Typecheck clean, production build clean, zero console errors, zero
+**Result:** 66 unit tests, 43 browser tests (30 E2E + 13 visual/responsive) —
+all passing. Typecheck clean, production build clean, zero console errors, zero
 failed requests, zero unexpected 404s.
 
 ---
@@ -66,7 +66,7 @@ Severity: **P0** breaks the product · **P1** materially degrades · **P2** debt
 | F05 `API_BASE` hardcoded in source | P1 | **Fixed** | `src/config/env.ts`, validated at load; `.env.example` |
 | F06 Single `Promise.all` — one failure blanks the console | P0 | **Fixed** | Per-query-key TanStack Query; E2E "backend unreachable" test asserts one panel errors while the shell survives |
 | F07 Global mutable store — one packet re-renders the app | P0 | **Fixed** | Four stores split by frequency; telemetry store has only narrow subscribers |
-| F08 No browser tests | P0 | **Fixed** | 40 Playwright tests in CI |
+| F08 No browser tests | P0 | **Fixed** | 43 Playwright tests in CI |
 | F09 `/system/status` contradicted `/telemetry/status` (`REST_POLL` vs `KAFKA`) | P0 | **Fixed** | Transport semantics separated; `SystemController.java` |
 | F10 `/system/status` reported `H2_DEV` while on PostgreSQL | P1 | **Fixed** | Resolved from live `DataSource` metadata |
 | F11 Factor rendering produced `NEUTRAL (+-2%)`; 0.06% risk → `"0%"` | P0 | **Fixed** | `DecisionEngine` formatters + `DecisionEngineFormattingTest` (7 tests) |
@@ -78,6 +78,7 @@ Severity: **P0** breaks the product · **P1** materially degrades · **P2** debt
 | F17 38 `innerHTML = ''` re-render clears | P3 | **Fixed** | React reconciliation |
 | F18 `/simulation/scenarios` is run history, not a catalogue | P2 | **Documented + worked around** | Scenario Lab presents the backend's `ScenarioType` enum; the contract is documented |
 | F19 Modelled figures shown beside observed counts | P1 | **Fixed** | `DATA_BASIS` vocabulary; basis chips throughout |
+| F24 `POST /simulation/control` was never called by the UI, so the demo path "run a scenario → watch the fleet change" did not work | P1 | **Fixed** | Scenario Lab now separates **Run what-if** (`/simulation/run`, analysis only) from **Inject into live feed** (`/simulation/control`, which changes the synthetic feed). Verified live: M-105 → CRITICAL, anomaly 1.0, alerts raised. Covered by E2E. |
 | F20 25 stale audit documents | P2 | **Fixed** | Archived to `docs/archive/` with a precedence note |
 | F21 Secrets in the Compose env namespace | P2 | **Documented** | Checklist in `docs/KNOWN_LIMITATIONS.md` §7 |
 | F22 `ml-service/.venv` in the tree | P3 | **Already correct** | Gitignored, 0 files tracked |
@@ -224,7 +225,7 @@ Verified by 6 E2E tests, not by inspection.
 | Suite | Count | Result |
 | --- | --- | --- |
 | Vitest unit | 66 | **pass** |
-| Playwright E2E | 27 | **pass** |
+| Playwright E2E | 30 | **pass** |
 | Playwright visual/responsive | 13 | **pass** |
 | Backend unit | 7 new (`DecisionEngineFormattingTest`) | **pass** |
 | `tsc --noEmit` (strict, includes tests) | — | **clean** |
@@ -288,8 +289,10 @@ everywhere.
    one. Point at the role gate.
 7. **Maintenance** — the board mirrors the backend lifecycle exactly. Schedule
    a work order.
-8. **Simulation Lab** — run *Vibration spike* on M-105 at 80% severity. Watch
-   the twin, telemetry, prediction and alerts react.
+8. **Simulation Lab** — run a *Vibration spike* what-if on M-105 at 80% for
+   modelled impact, then **Inject into live feed**. Switch to the Factory Twin
+   and watch telemetry, prediction, machine state and alerts all react. Return
+   and **Reset feed**.
 9. **System** — service tiles, transport diagnostics (deltas applied,
    duplicates suppressed, frames rejected), and the provenance panel.
 10. **Close on the status strip** — transport, data basis, oldest reading, and

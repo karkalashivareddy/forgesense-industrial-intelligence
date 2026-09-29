@@ -191,6 +191,66 @@ test.describe('resilience', () => {
   });
 });
 
+test.describe('scenario lab', () => {
+  test('separates what-if analysis from live feed injection', async ({ page, collector }) => {
+    await page.goto('/simulation');
+    await signIn(page);
+
+    // Both actions are distinct and both are explained, because they have very
+    // different side effects: one computes impact, the other changes the feed.
+    await expect(page.getByRole('button', { name: /Run what-if/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Inject into live feed/i })).toBeVisible();
+
+    // The boundary is stated where the controls are, not hidden in a tooltip.
+    const body = await page.getByRole('main').innerText();
+    expect(body).toMatch(/NO PHYSICAL MACHINE CONTROL/i);
+
+    // The fault catalogue is populated from the backend's ScenarioType enum.
+    await expect(page.getByRole('button', { name: /Vibration spike/i }).first()).toBeVisible();
+
+    await expectCleanBrowser(collector);
+  });
+
+  test('reflects an injected scenario in the console', async ({ page, collector }) => {
+    await page.goto('/simulation');
+    await signIn(page);
+
+    // Make the test idempotent. "Reset feed" is always enabled and clears every
+    // machine at once, so this does not depend on which asset a previous test
+    // happened to touch.
+    await page.getByRole('button', { name: /Reset feed/i }).click();
+    await expect(page.getByText(/A scenario is live on/i)).toHaveCount(0, { timeout: 20_000 });
+
+    const inject = page.getByRole('button', { name: /Inject into live feed/i });
+    await expect(inject).toBeEnabled();
+    await inject.click();
+
+    // The banner appears once the backend has registered the control state.
+    await expect(page.getByText(/A scenario is live on/i)).toBeVisible({ timeout: 20_000 });
+
+    // While active, the control is guarded: re-injecting is not possible.
+    await expect(page.getByRole('button', { name: /Inject into live feed/i })).toBeDisabled();
+
+    // The twin carries the simulation boundary too. Use the desktop rail: the
+    // bottom navigation is display:none above 860px and is not exposed to
+    // assistive technology at this viewport.
+    const rail = page.getByRole('navigation', { name: 'Operations sections' });
+    await rail.getByRole('link').filter({ hasText: 'Factory Twin' }).first().click();
+    await expect(page.getByRole('heading', { name: 'Factory Twin', level: 1 })).toBeVisible();
+    await expect(page.getByText(/SIMULATION MODE/i).first()).toBeVisible();
+
+    // Leave the feed nominal so later tests see a clean fleet. Navigation is
+    // already covered by the routing suite; this test is about the injection
+    // behaviour, so it uses a direct load rather than a nav click.
+    await page.goto('/simulation');
+    await expect(page.getByRole('heading', { name: 'Scenario Lab', level: 1 })).toBeVisible();
+    await page.getByRole('button', { name: /Reset feed/i }).click();
+    await expect(page.getByText(/A scenario is live on/i)).toHaveCount(0, { timeout: 20_000 });
+
+    await expectCleanBrowser(collector);
+  });
+});
+
 test.describe('accessibility', () => {
   test('exposes a skip link and landmark structure', async ({ page }) => {
     await signIn(page);
