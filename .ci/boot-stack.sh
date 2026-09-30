@@ -18,15 +18,30 @@ cd "$ROOT"
 : "${POSTGRES_PASSWORD:=ci-postgres-password}"
 : "${FORGESENSE_SECURITY_JWT_SECRET:=ci-jwt-signing-secret-for-browser-tests-only}"
 : "${FORGESENSE_DEV_PASSWORD:=forgesense-dev}"
-export POSTGRES_PASSWORD FORGESENSE_SECURITY_JWT_SECRET FORGESENSE_DEV_PASSWORD
+# The Playwright config serves the console with `vite preview` on port 4173, so
+# the browser origin is http://127.0.0.1:4173. The frontend calls the backend
+# cross-origin (VITE_API_BASE_URL defaults to http://localhost:8080), so this
+# origin has to be in the backend allowlist or the browser blocks every API
+# call and sign-in never completes. 5173 is kept for the compose-served console.
+: "${FORGESENSE_ALLOWED_ORIGINS:=http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:4173}"
+export POSTGRES_PASSWORD FORGESENSE_SECURITY_JWT_SECRET FORGESENSE_DEV_PASSWORD FORGESENSE_ALLOWED_ORIGINS
 
 log() { printf '\n[boot-stack] %s\n' "$1"; }
 
-cleanup() {
-  log "Tearing down"
-  docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+# Tear down ONLY when booting failed. On success the stack must outlive this
+# script: it is the backend the Playwright run talks to. A blanket
+# `trap cleanup EXIT` combined with `exit 0` tore the whole stack down the
+# moment the backend became ready, so the browser run got a dead backend and
+# every sign-in timed out. The workflow tears the stack down in an
+# `if: always()` step after the tests instead.
+cleanup_on_failure() {
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    log "Boot failed (exit $status) - tearing down"
+    docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  fi
 }
-trap cleanup EXIT
+trap cleanup_on_failure EXIT
 
 log "Starting postgres, redis, kafka, ml-service and backend"
 docker compose up -d --wait postgres redis kafka ml-service backend

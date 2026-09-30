@@ -136,6 +136,12 @@ jobs:
           bash ../.ci/boot-stack.sh
       - name: Run E2E
         run: npm run e2e
+      - name: Tear down the browser-run stack
+        # Must happen after the browser run, and must always happen. boot-stack.sh
+        # deliberately leaves the stack up on success.
+        if: always()
+        working-directory: .
+        run: docker compose down -v --remove-orphans
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4

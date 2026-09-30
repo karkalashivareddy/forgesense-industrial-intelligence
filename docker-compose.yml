@@ -75,7 +75,7 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       FORGESENSE_SECURITY_ENABLED: "true"
       FORGESENSE_ML_URL: http://ml-service:8001
-      FORGESENSE_ALLOWED_ORIGINS: http://localhost:5173
+      FORGESENSE_ALLOWED_ORIGINS: "${FORGESENSE_ALLOWED_ORIGINS:-http://localhost:5173}"
       POSTGRES_HOST: postgres
       POSTGRES_DB: forgesense
       POSTGRES_USER: forgesense
