@@ -138,9 +138,14 @@ jobs:
         run: npm run e2e
       - name: Tear down the browser-run stack
         # Must happen after the browser run, and must always happen. boot-stack.sh
-        # deliberately leaves the stack up on success.
+        # deliberately leaves the stack up on success. Compose interpolates the
+        # whole file before it runs, so the required placeholders must be present
+        # here too. CI placeholders only, never real secrets.
         if: always()
         working-directory: .
+        env:
+          POSTGRES_PASSWORD: ci
+          FORGESENSE_SECURITY_JWT_SECRET: ci-secret-for-build-validation
         run: docker compose down -v --remove-orphans
       - name: Upload Playwright report
         if: always()
