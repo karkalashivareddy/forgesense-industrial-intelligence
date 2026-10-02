@@ -1,5 +1,11 @@
 # Final UI/UX Release Report — ForgeSense Industrial Intelligence
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 Status: **VERIFIED RELEASE-READY FOR VERIFIED GATES** · Generated from `UI_UX_ENGINEERING_AUDIT.md` + Phase 19 CDP harness artifacts. Q7 (screen-reader runtime) and R5 (browser profiler) remain `BLOCKED` — the required runtime tooling is unavailable, and neither is claimed runtime-verified.
 
 Date: 2026-09-20 · Stack verified: frontend Vite `:5173`, backend Spring Boot `dev` profile `:8080` (H2 reseeded from authoritative `config/machine_profiles.json` — 18 machines / 6 zones / 2 lines / 20 deps), Chrome CDP 153.

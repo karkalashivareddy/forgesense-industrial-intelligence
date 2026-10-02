@@ -1,5 +1,11 @@
 # Realtime Audit — ForgeSense Industrial Intelligence
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 **Date:** 2026-09-18
 **Scope:** End-to-end realtime pipeline from telemetry source → frontend UI
 **Method:** Live observation (100 machines, 30-min run), code inspection, WS frame analysis

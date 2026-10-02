@@ -1,5 +1,12 @@
 # CI Release Verification
 
+<!-- forge:historical -->
+> **Historical audit record.** This document captures a point-in-time review.
+> It is kept as evidence of what was checked and when, and is **not** a
+> description of the current system. For current behaviour see the [docs index](../README.md)
+> index and the source. Several claims here were superseded after the review —
+> notably the frontend re-architecture and the transport/model-truth corrections.
+
 Forensic repair of the ForgeSense release pipeline. Every failure below was
 reproduced locally and the root cause established before any code was changed.
 No test was weakened, no check was converted to a warning, no tag was moved.

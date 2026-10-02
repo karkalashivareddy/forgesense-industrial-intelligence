@@ -1,5 +1,11 @@
 # ForgeSense Visual Upgrade — Final Report
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 Status: **DELIVERED** — implementation + verification complete against the running stack.
 32 fields, numbered 1–32. Every numeric claim below was measured on a live session
 (backend API calls with JWT, or Chrome 153 headless against the running frontend).

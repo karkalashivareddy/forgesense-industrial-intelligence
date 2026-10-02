@@ -44,9 +44,11 @@ Prometheus + Grafana.
   real deployment — override it in `.env`). The JWT signing key is a
   documented demo placeholder (`forgesense-demo-...`) — replace it for any real
   deployment.
-- WebSocket/STOMP endpoints are not anonymous control-plane entry points; the
-  browser currently uses authenticated REST polling. The rest of `/api/v1/**`
-  requires a Bearer token from `POST /api/v1/auth/login`.
+- WebSocket/STOMP is the browser's primary transport and is authenticated: the
+  client presents its JWT when connecting and `SUBSCRIBE`s to `/topic/**`
+  destinations. `/api/v1/**` additionally requires a Bearer token from
+  `POST /api/v1/auth/login`, and the console keeps a REST snapshot poll as a
+  reconciliation path rather than as its main source of updates.
 
 ## Telemetry & ML
 

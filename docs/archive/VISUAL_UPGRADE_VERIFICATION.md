@@ -1,5 +1,11 @@
 # Visual Upgrade — Verification
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 Evidence for the visual/interaction upgrade. This document is updated in place as verification
 progresses; each row records the actual command results, browser check, and screenshot rather
 than intent. **PASS** is only claimed for steps performed against the running stack or a live

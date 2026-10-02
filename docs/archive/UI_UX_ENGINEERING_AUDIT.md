@@ -1,5 +1,11 @@
 # UI/UX Engineering Audit — ForgeSense Industrial Intelligence
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 **Date:** 2026-09-20
 **Scope:** Complete UI/UX and security-engineering audit of the current worktree
 **Method:** Direct repository inspection, targeted static tracing, prior audits (FRONTEND_AUDIT, UI_UX_AUDIT, REALTIME_AUDIT, PERF_BASELINE, POST_REBUILD_VERIFICATION), CDP harness design (`tools/visual-qa/qa_final.mjs`), and unit-test inventory.

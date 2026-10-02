@@ -1,5 +1,12 @@
 # Final Frontend Redesign Report
 
+<!-- forge:historical -->
+> **Historical audit record.** This document captures a point-in-time review.
+> It is kept as evidence of what was checked and when, and is **not** a
+> description of the current system. For current behaviour see the [docs index](../README.md)
+> index and the source. Several claims here were superseded after the review —
+> notably the frontend re-architecture and the transport/model-truth corrections.
+
 **Branch:** `feat/industrial-operations-ui`
 **Baseline:** `9444beb` on `main`
 **Scope:** full audit, re-architecture, redesign, hardening and verification of

@@ -1,25 +1,20 @@
-# ForgeSense — Documentation Index
+# Ownership and authorship
 
-Every engineering area that is documented has an existing document below.
-Business rules are implemented in code; these documents explain **why**, not
-just *what* the code does.
-
-## Getting started
-| Doc | Purpose |
-|---|---|
-| [PROJECT_SPECIFICATION.md](PROJECT_SPECIFICATION.md) | Problem, goals, non-goals, architecture, milestones |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment approaches (local, Docker) and runtime endpoints |
-| [INTERVIEW_GUIDE.md](INTERVIEW_GUIDE.md) | Answers for technical interviews on this system |
-
-## Architecture & design
-| Doc | Purpose |
-|---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | High-level architecture and component diagram |
-| [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) | Deep design across the whole stack |
-| [DATA_FLOW.md](DATA_FLOW.md) | Telemetry → insights → action data flows |
-| [OWNERSHIP.md](OWNERSHIP.md) | This index |
-| [ENGINEERING_DECISIONS.md](ENGINEERING_DECISIONS.md) | Rationale for key technology choices |
+The documentation index lives in [README.md](README.md). This file records who
+owns the work.
 
 ## Author
 
-Karkala Shiva Reddy
+**Karkala Shiva Reddy** — design, implementation, documentation and release
+engineering for ForgeSense Industrial Intelligence.
+
+## Repository-wide conventions
+
+- Documentation states what the code does. Where a document and the source
+  disagree, the source is authoritative and the document is a defect.
+- ForgeSense renders synthetic telemetry from the simulator in this repository.
+  It does not monitor or control physical machinery.
+- Generated model artifacts are derived from `config/machine_profiles.json` and
+  are not hand-edited. See [ML_PROVENANCE.md](ML_PROVENANCE.md).
+- Every release change is verified by the gate in
+  [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).

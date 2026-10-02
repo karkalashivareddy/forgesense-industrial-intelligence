@@ -113,7 +113,7 @@ The backend test reports were inspected directly under `backend/target/surefire-
 
 ## Documentation
 
-- Added [docs/audit/IMPLEMENTATION_PLAN.md](docs/audit/IMPLEMENTATION_PLAN.md).
+- Added [docs/archive/IMPLEMENTATION_PLAN.md](docs/archive/IMPLEMENTATION_PLAN.md).
 - Added [docs/REALTIME.md](docs/REALTIME.md).
 - Updated [README.md](README.md) with live transport behavior.
 

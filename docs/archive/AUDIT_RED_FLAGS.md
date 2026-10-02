@@ -1,5 +1,11 @@
 # ForgeSense Engineering Audit — Phase 0
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 **Audit date:** 2026-09-16 (Asia/Calcutta)
 **Repository:** `karkalashivareddy/forgesense-industrial-intelligence`
 **Auditor:** Codex

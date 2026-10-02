@@ -1,5 +1,12 @@
 # Frontend Re-architecture Audit
 
+<!-- forge:historical -->
+> **Historical audit record.** This document captures a point-in-time review.
+> It is kept as evidence of what was checked and when, and is **not** a
+> description of the current system. For current behaviour see the [docs index](../README.md)
+> index and the source. Several claims here were superseded after the review —
+> notably the frontend re-architecture and the transport/model-truth corrections.
+
 **Baseline:** `9444beb` (branch `feat/industrial-operations-ui`, forked from `main`)
 **Method:** static inspection of every frontend source file, plus a live Chromium
 run against the running Docker Compose stack. Every finding below was verified

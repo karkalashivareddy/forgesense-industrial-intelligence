@@ -1,5 +1,11 @@
 # Redesign Scope — ForgeSense Industrial Intelligence
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 **Date:** 2026-09-18
 **Input:** FRONTEND_AUDIT.md, FRONTEND_BASELINE.md, COMPONENT_BASELINE.md, PERF_BASELINE.md
 **Purpose:** Categorize every frontend element for the redesign program

@@ -1,5 +1,11 @@
 # Visual Identity — ForgeSense Industrial Intelligence
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 **Date:** 2026-09-21 (Phase 21 revision)
 **Phase:** Visual Re-architecture
 **Status:** Implemented — binding visual language for the frontend

@@ -1,5 +1,11 @@
 # Phase 21 — Visual Re-Architecture Audit
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 **Date:** 2026-09-21
 **Scope:** `frontend/` visual system, 3D twin, shell/navigation, login, views
 **Baseline:** 36/36 frontend tests green, QA 5/5 at 375/768/1024/1440/1920, realtime gaps 5/5, node --check clean

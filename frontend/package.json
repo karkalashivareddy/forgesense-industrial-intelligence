@@ -17,7 +17,9 @@
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "visual-qa": "playwright test e2e/visual.spec.ts --project=visual",
-    "lint:artifacts": "node scripts/check-artifacts.mjs"
+    "lint:artifacts": "node scripts/check-artifacts.mjs",
+    "check:docs": "node scripts/check-docs.mjs",
+    "verify": "npm run check:docs && npm run lint:artifacts && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@tanstack/react-query": "5.62.7",

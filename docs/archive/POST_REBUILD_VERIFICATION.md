@@ -1,5 +1,11 @@
 # Post-Rebuild Verification
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 **Date:** 2026-09-18  
 **Scope:** Current working tree after the first rebuild pass  
 **Method:** Direct repository inspection, targeted static tracing, unit/smoke checks, and browser inspection of the static frontend shell.  

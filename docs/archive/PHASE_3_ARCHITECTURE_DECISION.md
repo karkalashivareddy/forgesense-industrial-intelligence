@@ -1,5 +1,11 @@
 # Phase 3 Architecture Decision
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 ## Decision
 
 ForgeSense keeps `frontend/js/state.js` as the single runtime state architecture. The existing store is already the integration point for REST snapshots, STOMP deltas, polling freshness, selection, inspector data, and the 3D twin. The unused experimental modules `signals.js`, `state.v2.js`, and `overlay.js` were retired rather than leaving two competing state systems in the repository.

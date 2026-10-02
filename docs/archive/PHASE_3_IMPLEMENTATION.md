@@ -1,5 +1,11 @@
 # Phase 3 Implementation
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 ## Scope
 
 This phase hardens the existing ForgeSense prototype. It does not replace the established graphite/copper UI or introduce a competing frontend framework.

@@ -1,5 +1,12 @@
 # API contract matrix (frontend ↔ backend)
 
+<!-- forge:historical -->
+> **Historical audit record.** This document captures a point-in-time review.
+> It is kept as evidence of what was checked and when, and is **not** a
+> description of the current system. For current behaviour see the [docs index](../README.md)
+> index and the source. Several claims here were superseded after the review —
+> notably the frontend re-architecture and the transport/model-truth corrections.
+
 Verified against the **running** backend by probing every endpoint with an
 authenticated session, not by reading DTOs. Captured 2026-09-29.
 

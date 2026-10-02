@@ -95,6 +95,8 @@ jobs:
         run: npm run typecheck
       - name: Debug-artifact gate
         run: npm run lint:artifacts
+      - name: Documentation link check
+        run: npm run check:docs
       - name: Unit tests
         run: npm test
       - name: Production build

@@ -1,5 +1,11 @@
 # Design Research — ForgeSense Industrial Intelligence
 
+<!-- forge:historical -->
+> **Archived.** Written against an earlier phase of the project and kept as
+> historical evidence only. Statements here may be **stale by design** and must
+> not be used to understand the current system. See [docs index](../README.md) for current
+> documentation and the source for current behaviour.
+
 **Date:** 2026-09-18
 **Phase:** Post-Audit / Pre-Visual Identity
 **Purpose:** Evidence-based research to inform ForgeSense visual identity and frontend architecture
