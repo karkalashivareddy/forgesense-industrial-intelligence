@@ -255,3 +255,63 @@ describe('normaliseExplanation factor shapes', () => {
     expect(factors[1]?.direction).toBe('flat');
   });
 });
+
+describe('normaliseExplanation with the real ML service response', () => {
+  /*
+   * Captured verbatim from POST http://127.0.0.1:8001/assess against the
+   * trained failure-risk-v2 / anomaly-model-v2 artifacts while they were
+   * actually running, reached through the backend explanation endpoint.
+   *
+   * The trained service labels its factors with DISPLAY names ("Vibration",
+   * "RPM") while the heuristic fallback uses sensor keys ("rpm"). A
+   * case-sensitive lookup resolved the heuristic shape and silently produced
+   * no sensorKey for the ML shape, which broke the driver deep-link on every
+   * deployment where the models are live - the case that matters most.
+   */
+  const ml = {
+    machineId: 'M-101',
+    timestamp: '2026-10-02T00:00:00Z',
+    anomalyScore: 1.0,
+    anomalyLabel: 'ANOMALY',
+    failureRisk: 0.639,
+    healthScore: 25.3,
+    rulEstimate: 34.4,
+    rulUnit: 'steps',
+    modelVersion: 'failure-risk-v2',
+    anomalyModelVersion: 'anomaly-model-v2',
+    factors: [
+      { feature: 'Vibration', contribution: 0.3671, label: 'ELEVATED', direction: 'up' },
+      { feature: 'RPM', contribution: -0.1905, label: 'REDUCED', direction: 'down' },
+      { feature: 'Torque', contribution: 0.2754, label: 'ELEVATED', direction: 'up' },
+    ],
+  };
+
+  it('resolves display-named features to their sensor key', () => {
+    const { factors } = normaliseExplanation(ml);
+    expect(factors.map((f) => f?.sensorKey)).toEqual(['vibration', 'rpm', 'torque']);
+  });
+
+  it('attaches the correct unit for each resolved sensor', () => {
+    const { factors } = normaliseExplanation(ml);
+    expect(factors[0]?.unit).toBe('mm/s');
+    expect(factors[1]?.unit).toBe('rpm');
+    expect(factors[2]?.unit).toBe('Nm');
+  });
+
+  it('preserves the ML direction and label verbatim', () => {
+    const { factors } = normaliseExplanation(ml);
+    expect(factors[1]?.direction).toBe('down');
+    expect(factors[1]?.label).toBe('REDUCED');
+    expect(factors[0]?.label).toBe('ELEVATED');
+  });
+
+  it('keeps the human-readable feature name for display', () => {
+    const { factors } = normaliseExplanation(ml);
+    expect(factors[0]?.feature).toBe('Vibration');
+  });
+
+  it('a signed contribution keeps its sign and does not become a percentage', () => {
+    const { factors } = normaliseExplanation(ml);
+    expect(factors[1]?.contribution).toBeCloseTo(-0.1905, 4);
+  });
+});

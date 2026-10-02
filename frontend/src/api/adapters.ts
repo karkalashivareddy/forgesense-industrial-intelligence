@@ -171,6 +171,29 @@ export function normaliseRiskRanking(raw: Record<string, unknown>[]): RiskRankin
 }
 
 /**
+ * Resolve an attribution feature to the instrument it names.
+ *
+ * Two live shapes reach this, and they differ in casing and vocabulary:
+ *
+ *   heuristic fallback  feature: "rpm"           (the sensor key)
+ *   ML service          feature: "RPM"           (the display label)
+ *
+ * SENSOR_UNITS is keyed by sensor key, so the lookup is case-insensitive.
+ * Matching case-sensitively meant the ML shape produced no `sensorKey` at all,
+ * and the driver deep-link silently degraded to a no-op on exactly the
+ * deployments where the trained models are live.
+ */
+function resolveSensorKey(feature: string, declared?: string): SensorKey | undefined {
+  for (const candidate of [declared, feature]) {
+    if (!candidate) continue;
+    if (candidate in SENSOR_UNITS) return candidate as SensorKey;
+    const lowered = candidate.trim().toLowerCase();
+    if (lowered in SENSOR_UNITS) return lowered as SensorKey;
+  }
+  return undefined;
+}
+
+/**
  * Attribution factors arrive in two shapes, and both are live.
  *
  * The ML service sends a state label plus an up/down direction. The backend's
@@ -205,7 +228,12 @@ function normaliseFactor(raw: unknown): Prediction['factors'][number] {
             ? 'REDUCED'
             : 'NEUTRAL';
 
-  const sensorKey = feature in SENSOR_UNITS ? (feature as SensorKey) : undefined;
+  /*
+   * Prefer the backend's explicit `sensor` declaration when present. The
+   * backend sets it from the SensorType enum; deriving from the display label
+   * is a fallback for shapes that do not declare one.
+   */
+  const sensorKey = resolveSensorKey(feature, toStr(f.sensor));
 
   return {
     feature,
