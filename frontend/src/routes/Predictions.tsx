@@ -9,6 +9,12 @@
 
 import { useMemo, useState } from 'react';
 import { Brain, Info, ShieldAlert } from 'lucide-react';
+import * as echarts from 'echarts/core';
+import { LineChart } from 'echarts/charts';
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
+import { Chart } from '../components/Chart';
+import { CHART, token } from '../styles/color';
 import {
   Badge,
   Button,
@@ -24,13 +30,24 @@ import {
   StatusBadge,
   type Column,
 } from '../design-system';
-import { useMachineExplanation, useMachines, useRiskRanking, useSystemStatus } from '../api/queries';
+import { useMachineExplanation, useMachinePredictions, useMachines, useRiskRanking, useSystemStatus } from '../api/queries';
 import { useUiStore } from '../store/ui';
 import { anomalyTone, deriveOperationalState, riskTone } from '../domain/machineState';
 import { DATA_BASIS } from '../domain/basis';
 import { formatAge, formatContribution, formatProbability, formatRulSteps, formatScore, formatTime } from '../domain/format';
 import { useNow } from '../hooks/useNow';
 import { toErrorMessage } from '../api/client';
+
+echarts.use([LineChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer]);
+
+/** Maintenance threshold, mirrored from the metric tile so the chart and the
+ *  KPI cannot disagree about what counts as "above threshold". */
+const MAINTENANCE_THRESHOLD = 0.7;
+
+/** Chart payloads are rounded to keep the option object small and diffable. */
+function round3(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
 
 export default function Predictions() {
   const machinesQuery = useMachines();
@@ -59,6 +76,83 @@ export default function Predictions() {
   const focus = focusMachineId
     ? machines.find((entry) => entry.row.machineId === focusMachineId)
     : machines[0];
+
+  /*
+   * Prediction history for the focused asset.
+   *
+   * This is the recorded model output the backend already stores, read back
+   * from GET /api/v1/machines/{id}/predictions. It is not interpolated,
+   * smoothed or forward-filled: gaps are gaps. The endpoint returns newest
+   * first, so it is reversed for a left-to-right time axis.
+   */
+  const historyQuery = useMachinePredictions(focus?.row.machineId ?? null);
+  const history = useMemo(
+    () => (historyQuery.data ?? []).slice().sort((a, b) => a.timestamp.localeCompare(b.timestamp)),
+    [historyQuery.data],
+  );
+
+  const historyOption = useMemo<echarts.EChartsCoreOption>(() => {
+    const times = history.map((point) => formatTime(point.timestamp));
+    return {
+      animation: false,
+      grid: { left: 44, right: 16, top: 28, bottom: 28 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: CHART.panel(),
+        borderColor: CHART.border(),
+        textStyle: { color: CHART.text(), fontSize: 11 },
+      },
+      legend: {
+        top: 0,
+        right: 0,
+        textStyle: { color: CHART.muted(), fontSize: 10 },
+        itemWidth: 10,
+        itemHeight: 2,
+      },
+      xAxis: {
+        type: 'category',
+        data: times,
+        axisLine: { lineStyle: { color: CHART.grid() } },
+        axisLabel: { color: CHART.muted(), fontSize: 10, hideOverlap: true },
+        axisTick: { show: false },
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: 1,
+        splitLine: { lineStyle: { color: CHART.grid(), type: 'dashed' } },
+        axisLabel: { color: CHART.muted(), fontSize: 10, formatter: (value: number) => value.toFixed(1) },
+      },
+      series: [
+        {
+          name: 'Failure risk',
+          type: 'line',
+          showSymbol: false,
+          connectNulls: false,
+          lineStyle: { width: 2, color: CHART.predicted() },
+          itemStyle: { color: CHART.predicted() },
+          data: history.map((point) => round3(point.failureRisk)),
+        },
+        {
+          name: 'Anomaly score',
+          type: 'line',
+          showSymbol: false,
+          connectNulls: false,
+          lineStyle: { width: 1.5, color: CHART.observed() },
+          itemStyle: { color: CHART.observed() },
+          data: history.map((point) => round3(point.anomalyScore)),
+        },
+        {
+          name: 'Maintenance threshold',
+          type: 'line',
+          showSymbol: false,
+          silent: true,
+          lineStyle: { width: 1, type: 'dashed', color: CHART.warningThreshold() },
+          data: times.map(() => MAINTENANCE_THRESHOLD),
+        },
+      ],
+    };
+  }, [history]);
 
   const columns: Column<typeof machines[number]>[] = useMemo(
     () => [
@@ -284,6 +378,40 @@ export default function Predictions() {
         <div className="stack">
           {focus ? (
             <>
+              <Panel
+                title={`${focus.row.machineId} · prediction history`}
+                subtitle={`${history.length} recorded model outputs`}
+                flush
+              >
+                {historyQuery.isPending ? (
+                  <LoadingState label="Loading prediction history…" rows={3} />
+                ) : historyQuery.isError ? (
+                  <ErrorState
+                    title="Prediction history unavailable"
+                    description={toErrorMessage(historyQuery.error)}
+                    onRetry={() => void historyQuery.refetch()}
+                  />
+                ) : history.length === 0 ? (
+                  <EmptyState
+                    icon={<Brain size={20} />}
+                    title="No prediction history yet"
+                    description="The backend has not recorded a prediction for this asset. History appears once the inference pipeline has run for it."
+                  />
+                ) : (
+                  <div style={{ padding: 'var(--space-3) var(--space-4) var(--space-4)' }}>
+                    <Chart
+                      option={historyOption}
+                      height={190}
+                      ariaLabel={`Recorded failure risk and anomaly score over time for ${focus.row.machineId}, against the maintenance threshold`}
+                    />
+                    <p style={{ margin: '10px 0 0', color: token('--color-text-muted'), fontSize: 'var(--text-xs)' }}>
+                      Recorded model output, newest {history.length} predictions. Failure risk and anomaly score are model
+                      estimates on a 0–1 scale, not observed measurements, and are not guarantees. RUL is expressed in
+                      simulator steps, never hours.
+                    </p>
+                  </div>
+                )}
+              </Panel>
               <Panel
                 title={`${focus.row.machineId} Â· prediction`}
                 subtitle={focus.row.name}

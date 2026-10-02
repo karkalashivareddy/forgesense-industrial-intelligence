@@ -10,7 +10,7 @@
  * A telemetry packet does not redraw a chart.
  */
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { Info } from 'lucide-react';
 import * as echarts from 'echarts/core';
 import { BarChart, LineChart, ScatterChart } from 'echarts/charts';
@@ -31,6 +31,7 @@ import { useNow, usePrefersReducedMotion } from '../hooks/useNow';
 import { CHART, token } from '../styles/color';
 import { toErrorMessage } from '../api/client';
 import { EmptyState, ErrorState, LoadingState, Metric, Panel, SectionHeader, StatusBadge } from '../design-system';
+import { Chart } from '../components/Chart';
 
 echarts.use([
   BarChart,
@@ -42,49 +43,6 @@ echarts.use([
   TitleComponent,
   CanvasRenderer,
 ]);
-
-interface ChartProps {
-  option: echarts.EChartsCoreOption;
-  height: number;
-  ariaLabel: string;
-  /** Prevents a resize observer loop when the panel is hidden. */
-  active?: boolean;
-}
-
-function Chart({ option, height, ariaLabel, active = true }: ChartProps) {
-  const hostRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<echarts.ECharts | null>(null);
-
-  useEffect(() => {
-    if (!active || !hostRef.current) return;
-    const chart = echarts.init(hostRef.current, undefined, { renderer: 'canvas' });
-    chartRef.current = chart;
-    chart.setOption(option);
-
-    const observer = new ResizeObserver(() => chart.resize());
-    observer.observe(hostRef.current);
-
-    return () => {
-      observer.disconnect();
-      chart.dispose();
-      chartRef.current = null;
-    };
-    // Recreated only when visibility flips; option updates go through setOption.
-  }, [active]);
-
-  useEffect(() => {
-    chartRef.current?.setOption(option, { notMerge: false, lazyUpdate: true });
-  }, [option]);
-
-  return (
-    <div
-      ref={hostRef}
-      style={{ width: '100%', height }}
-      role="img"
-      aria-label={ariaLabel}
-    />
-  );
-}
 
 export default function Analytics() {
   const overviewQuery = useAnalyticsOverview();
