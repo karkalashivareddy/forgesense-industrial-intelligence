@@ -233,6 +233,14 @@ export interface Factor {
   contribution: number;
   label: 'ELEVATED' | 'REDUCED' | 'NEUTRAL';
   direction: 'up' | 'down' | 'flat';
+  /**
+   * The sensor this factor refers to, when `feature` names one the console
+   * knows. Present so an attribution factor can deep-link to that instrument's
+   * readings instead of only the machine.
+   */
+  sensorKey?: SensorKey;
+  /** Unit for the sensor, so the contribution can be read against a scale. */
+  unit?: string;
 }
 
 export interface Prediction {

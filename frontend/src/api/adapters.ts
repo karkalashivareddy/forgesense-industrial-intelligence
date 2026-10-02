@@ -31,6 +31,7 @@ import type {
   TelemetryRangeResponse,
   Zone,
 } from './types';
+import { SENSOR_UNITS, type SensorKey } from './types';
 
 function toNumber(value: unknown, fallback = 0): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -169,18 +170,50 @@ export function normaliseRiskRanking(raw: Record<string, unknown>[]): RiskRankin
   }));
 }
 
+/**
+ * Attribution factors arrive in two shapes, and both are live.
+ *
+ * The ML service sends a state label plus an up/down direction. The backend's
+ * heuristic fallback sends a human-readable label ("Rotational speed") and a
+ * prose direction ("increased" / "decreased") instead. Coercing the fallback
+ * shape straight into the enum collapsed every driver to NEUTRAL/flat, so on a
+ * heuristic run the whole attribution panel read as inert even though the
+ * backend had ranked five drivers. Both shapes are normalised here.
+ */
 function normaliseFactor(raw: unknown): Prediction['factors'][number] {
   const f = (raw ?? {}) as Record<string, unknown>;
-  const direction = toStr(f.direction, 'flat');
+  const feature = toStr(f.feature);
+
+  const rawDirection = toStr(f.direction, 'flat').toLowerCase();
+  const direction: 'up' | 'down' | 'flat' =
+    rawDirection === 'up' || rawDirection === 'increased' || rawDirection === 'increase'
+      ? 'up'
+      : rawDirection === 'down' || rawDirection === 'decreased' || rawDirection === 'decrease'
+        ? 'down'
+        : 'flat';
+
+  const rawLabel = toStr(f.label);
+  const label: 'ELEVATED' | 'REDUCED' | 'NEUTRAL' =
+    rawLabel === 'ELEVATED' || rawLabel === 'REDUCED'
+      ? rawLabel
+      : rawLabel === 'NEUTRAL'
+        ? 'NEUTRAL'
+        : // Fallback shape: derive the state from the direction the backend reported.
+          direction === 'up'
+          ? 'ELEVATED'
+          : direction === 'down'
+            ? 'REDUCED'
+            : 'NEUTRAL';
+
+  const sensorKey = feature in SENSOR_UNITS ? (feature as SensorKey) : undefined;
+
   return {
-    feature: toStr(f.feature),
+    feature,
     contribution: toNumber(f.contribution),
-    label: (['ELEVATED', 'REDUCED', 'NEUTRAL'] as const).includes(f.label as never)
-      ? (f.label as 'ELEVATED' | 'REDUCED' | 'NEUTRAL')
-      : 'NEUTRAL',
-    direction: (['up', 'down', 'flat'] as const).includes(direction as never)
-      ? (direction as 'up' | 'down' | 'flat')
-      : 'flat',
+    label,
+    direction,
+    ...(sensorKey ? { sensorKey } : {}),
+    ...(sensorKey ? { unit: SENSOR_UNITS[sensorKey].unit } : {}),
   };
 }
 

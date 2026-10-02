@@ -12,7 +12,7 @@
  *    backend re-checks regardless
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   AlertOctagon,
@@ -398,6 +398,18 @@ function TelemetryTab({ machineId }: { machineId: string }) {
   const live = useLiveReading(machineId);
   const now = useNow(2000);
 
+  /*
+   * Attribution bridge.
+   *
+   * When an operator activates a prediction driver, the store carries the
+   * sensor key across workspaces. The matching instrument is marked and
+   * scrolled into view once it exists in the DOM, then the focus is released
+   * so it does not persist onto the next asset the operator selects.
+   */
+  const focusSensor = useUiStore((state) => state.focusSensor);
+  const setFocusSensor = useUiStore((state) => state.setFocusSensor);
+  const focusRef = useRef<HTMLDivElement | null>(null);
+
   const rows = telemetry.data?.rows ?? [];
 
   // Sensors the backend actually reports for this machine type.
@@ -414,7 +426,15 @@ function TelemetryTab({ machineId }: { machineId: string }) {
     return Array.from(keys).filter((key) => key in SENSOR_UNITS) as SensorKey[];
   }, [machine.data?.sensors, rows, live]);
 
-  if (telemetry.isLoading) return <LoadingState label="Loading telemetryâ€¦" />;
+  useEffect(() => {
+    if (!focusSensor || !focusRef.current) return;
+    focusRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // Release the focus once it has been honoured, so selecting another asset
+    // does not inherit a stale driver highlight.
+    setFocusSensor(null);
+  }, [focusSensor, setFocusSensor]);
+
+  if (telemetry.isLoading) return <LoadingState label="Loading telemetry…" />;
   if (telemetry.isError) {
     return (
       <ErrorState
@@ -457,8 +477,20 @@ function TelemetryTab({ machineId }: { machineId: string }) {
           const meta = SENSOR_UNITS[key];
           const value = live?.values[key] ?? findLatest(rows, key);
           return (
-            <div className="metric metric--sm" key={key}>
-              <div className="metric__label">{meta.label}</div>
+            <div
+              className="metric metric--sm"
+              key={key}
+              data-focus-sensor={key === focusSensor ? 'true' : undefined}
+              ref={key === focusSensor ? focusRef : undefined}
+            >
+              <div className="metric__label">
+                {meta.label}
+                {key === focusSensor && (
+                  <span className="badge badge--info" style={{ marginLeft: 'var(--space-2)' }}>
+                    ATTRIBUTION DRIVER
+                  </span>
+                )}
+              </div>
               <div className="metric__value">
                 {typeof value === 'number' ? formatNumber(value, key === 'rpm' || key === 'frequency' ? 0 : 1) : EM_DASH}
                 <span className="metric__unit">{meta.unit}</span>

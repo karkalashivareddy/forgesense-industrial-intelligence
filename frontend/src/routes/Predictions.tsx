@@ -14,6 +14,7 @@ import { LineChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { Chart } from '../components/Chart';
+import { SENSOR_UNITS } from '../api/types';
 import { CHART, token } from '../styles/color';
 import {
   Badge,
@@ -54,6 +55,7 @@ export default function Predictions() {
   const rankingQuery = useRiskRanking();
   const statusQuery = useSystemStatus();
   const openInspector = useUiStore((state) => state.openInspector);
+  const setFocusSensor = useUiStore((state) => state.setFocusSensor);
   const now = useNow(3000);
 
   const [focusMachineId, setFocusMachineId] = useState<string | null>(null);
@@ -458,6 +460,7 @@ export default function Predictions() {
                   <DriverPanel
                     machineId={focus.row.machineId}
                     onOpenTelemetry={() => openInspector(focus.row.machineId, 'telemetry')}
+                    setFocusSensor={setFocusSensor}
                   />
                 ) : (
                   <EmptyState title="Machine detail unavailable" description="Select a row to see its attribution." />
@@ -489,7 +492,15 @@ export default function Predictions() {
   );
 }
 
-function DriverPanel({ machineId, onOpenTelemetry }: { machineId: string; onOpenTelemetry(): void }) {
+function DriverPanel({
+  machineId,
+  onOpenTelemetry,
+  setFocusSensor,
+}: {
+  machineId: string;
+  onOpenTelemetry(): void;
+  setFocusSensor(sensor: string | null): void;
+}) {
   // One request for the focused asset only â€” the fleet ranking endpoint does
   // not carry attribution, and fanning out to every asset would be wasteful.
   const explanation = useMachineExplanation(machineId);
@@ -531,8 +542,21 @@ function DriverPanel({ machineId, onOpenTelemetry }: { machineId: string; onOpen
             type="button"
             className="driver"
             data-tone={tone}
-            onClick={onOpenTelemetry}
-            title={`Open ${machineId} telemetry â€” ${factor.feature} is the selected attribution driver`}
+            onClick={() => {
+              /*
+               * Deep-link the operator to the instrument this factor names,
+               * not just to the machine. Without the sensor key the telemetry
+               * view opened on every instrument at once and the operator had
+               * to hunt for the one the model had actually flagged.
+               */
+              setFocusSensor(factor.sensorKey ?? null);
+              onOpenTelemetry();
+            }}
+            title={
+              factor.sensorKey
+                ? `Open ${machineId} telemetry, focused on ${SENSOR_UNITS[factor.sensorKey].label}`
+                : `Open ${machineId} telemetry — ${factor.feature} has no matching instrument`
+            }
           >
             <span className="driver__head">
               <span className="row" style={{ gap: 'var(--space-2)' }}>

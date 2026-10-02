@@ -26,6 +26,7 @@ import { describe, expect, it } from 'vitest';
 import {
   normaliseAlertList,
   normaliseEventList,
+  normaliseExplanation,
   normaliseMaintenance,
   normaliseRiskRanking,
   normaliseTelemetryRange,
@@ -185,5 +186,72 @@ describe('collection envelope handling — remaining endpoints', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.zone).toBe('MATERIAL_HANDLING');
+  });
+});
+
+describe('normaliseExplanation factor shapes', () => {
+  /*
+   * Two live shapes reach the frontend for the same endpoint.
+   *
+   * The ML service sends an enum label plus an up/down direction. The
+   * backend heuristic fallback sends a human label ("Rotational speed") and a
+   * prose direction ("increased"). Coercing the fallback straight into the
+   * enum collapsed every driver to NEUTRAL/flat, so on a heuristic run the
+   * attribution panel rendered five ranked drivers as inert. Captured from a
+   * live heuristic response for M-101.
+   */
+  const heuristic = {
+    machineId: 'M-101',
+    timestamp: '2026-10-02T14:19:21.711449Z',
+    anomalyScore: 0.998,
+    mode: 'HEURISTIC',
+    failureRisk: 0.95,
+    factors: [
+      { feature: 'rpm', contribution: 0.998, label: 'Rotational speed', direction: 'increased' },
+      { feature: 'power', contribution: 0.913, label: 'Power', direction: 'decreased' },
+      { feature: 'pressure', contribution: 0.12, label: 'Pressure', direction: 'unchanged' },
+    ],
+  };
+
+  it('derives state and direction from the heuristic prose shape', () => {
+    const { factors } = normaliseExplanation(heuristic);
+    expect(factors[0]?.direction).toBe('up');
+    expect(factors[0]?.label).toBe('ELEVATED');
+    expect(factors[1]?.direction).toBe('down');
+    expect(factors[1]?.label).toBe('REDUCED');
+    expect(factors[2]?.direction).toBe('flat');
+    expect(factors[2]?.label).toBe('NEUTRAL');
+  });
+
+  it('exposes the sensor key so a driver can deep-link to its instrument', () => {
+    const { factors } = normaliseExplanation(heuristic);
+    expect(factors[0]?.sensorKey).toBe('rpm');
+    expect(factors[0]?.unit).toBe('rpm');
+  });
+
+  it('omits sensorKey for a feature that is not a known instrument', () => {
+    const { factors } = normaliseExplanation({
+      ...heuristic,
+      factors: [{ feature: 'residual', contribution: 0.4, label: 'Residual', direction: 'increased' }],
+    });
+    expect(factors[0]?.sensorKey).toBeUndefined();
+    expect(factors[0]?.unit).toBeUndefined();
+    // Direction is still honoured for an unmapped feature.
+    expect(factors[0]?.label).toBe('ELEVATED');
+  });
+
+  it('keeps the ML enum shape unchanged', () => {
+    const { factors } = normaliseExplanation({
+      ...heuristic,
+      factors: [
+        { feature: 'vibration', contribution: 0.7, label: 'ELEVATED', direction: 'up' },
+        { feature: 'current', contribution: 0.2, label: 'NEUTRAL', direction: 'flat' },
+      ],
+    });
+    expect(factors[0]?.label).toBe('ELEVATED');
+    expect(factors[0]?.direction).toBe('up');
+    expect(factors[0]?.sensorKey).toBe('vibration');
+    expect(factors[1]?.label).toBe('NEUTRAL');
+    expect(factors[1]?.direction).toBe('flat');
   });
 });

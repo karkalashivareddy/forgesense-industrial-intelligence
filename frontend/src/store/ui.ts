@@ -29,6 +29,12 @@ interface UiState {
   inspectorTab: InspectorTab;
   /** True when the inspector is a modal bottom sheet (mobile). */
   inspectorReturnFocus: HTMLElement | null;
+  /**
+   * Sensor an attribution driver pointed the operator at. Set when a
+   * prediction factor is activated, cleared once the telemetry view has
+   * scrolled to it. Null means "no specific instrument".
+   */
+  focusSensor: string | null;
 
   navCollapsed: boolean;
   mobileNavOpen: boolean;
@@ -45,6 +51,7 @@ interface UiState {
   openInspector(machineId: string, tab?: InspectorTab, returnFocus?: HTMLElement | null): void;
   closeInspector(): void;
   setInspectorTab(tab: InspectorTab): void;
+  setFocusSensor(sensor: string | null): void;
 
   setNavCollapsed(collapsed: boolean): void;
   toggleNavCollapsed(): void;
@@ -66,6 +73,7 @@ export const useUiStore = create<UiState>((set) => ({
   inspectorOpen: false,
   inspectorTab: 'overview',
   inspectorReturnFocus: null,
+  focusSensor: null,
 
   navCollapsed: false,
   mobileNavOpen: false,
@@ -95,9 +103,10 @@ export const useUiStore = create<UiState>((set) => ({
       inspectorReturnFocus: returnFocus ?? state.inspectorReturnFocus,
     })),
 
-  closeInspector: () => set({ inspectorOpen: false, inspectorReturnFocus: null }),
+  closeInspector: () => set({ inspectorOpen: false, inspectorReturnFocus: null, focusSensor: null }),
 
   setInspectorTab: (tab) => set({ inspectorTab: tab }),
+  setFocusSensor: (sensor) => set({ focusSensor: sensor }),
 
   setNavCollapsed: (navCollapsed) => set({ navCollapsed }),
   toggleNavCollapsed: () => set((state) => ({ navCollapsed: !state.navCollapsed })),
@@ -126,4 +135,5 @@ export const uiActions = {
   openInspector: (machineId: string, tab?: InspectorTab, element?: HTMLElement | null) =>
     useUiStore.getState().openInspector(machineId, tab, element),
   closeInspector: () => useUiStore.getState().closeInspector(),
+  setFocusSensor: (sensor: string | null) => useUiStore.getState().setFocusSensor(sensor),
 };
