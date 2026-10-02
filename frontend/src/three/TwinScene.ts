@@ -62,12 +62,12 @@ function hex(tokenName: string, fallback: number): number {
 }
 
 const PALETTE = {
-  floor: hex('--color-bg-app', 0x0a0d11),
-  slab: hex('--color-bg-panel', 0x10141a),
+  floor: hex('--color-bg-app', 0x0d1218),
+  slab: hex('--color-bg-panel', 0x1a212b),
   grid: hex('--color-border-subtle', 0x1c222a),
   gridMajor: hex('--color-border-default', 0x273040),
-  body: hex('--color-border-strong', 0x3a4658),
-  bodyDark: hex('--color-border-default', 0x273040),
+  body: hex('--color-border-strong', 0x5a6a80),
+  bodyDark: hex('--color-border-default', 0x36414f),
   accent: hex('--color-accent-muted', 0x0e7f96),
   plate: hex('--color-bg-inset', 0x070a0e),
   steel: hex('--color-border-strong', 0x3a4658),
@@ -328,18 +328,22 @@ export class TwinScene {
      * rather than as black, but with a cool key and a warmer rim so machine
      * forms stay legible against the floor.
      */
-    this.scene.add(new THREE.HemisphereLight(0xd8e6f4, hex('--color-bg-inset', 0x070a0e), 1.5));
+    this.scene.add(new THREE.HemisphereLight(0xd8e6f4, hex('--color-bg-inset', 0x0a0f16), 2.4));
 
-    const key = new THREE.DirectionalLight(0xffffff, 2.1);
+    const key = new THREE.DirectionalLight(0xffffff, 2.8);
     key.position.set(18, 28, 12);
     this.scene.add(key);
 
-    const rim = new THREE.DirectionalLight(0x9fc0e0, 0.95);
+    const rim = new THREE.DirectionalLight(0x9fc0e0, 1.3);
     rim.position.set(-16, 14, -16);
     this.scene.add(rim);
 
-    // Low fill so shadowed faces do not crush to black.
-    this.scene.add(new THREE.AmbientLight(0x2b3a4c, 0.9));
+    /*
+     * Fill light. The hall is an enclosed box, so the interior faces the camera
+     * are shadowed by the key and crushed to near-black without a floor-bounce
+     * term. This is the light a real building gets off its own floor.
+     */
+    this.scene.add(new THREE.AmbientLight(0x3d4f66, 1.7));
 
     this.buildHall();
     this.buildStructure();
@@ -1431,7 +1435,7 @@ export class TwinScene {
     const distance = Math.max(
       bounds.size.z / 2 / Math.tan(fov / 2),
       bounds.size.x / 2 / Math.tan(fov / 2) / aspect,
-    ) * 1.04;
+    ) * 1.18 + 3;
     this.animateCamera(
       new THREE.Vector3(bounds.target.x, distance, bounds.target.z + 0.01),
       bounds.target,
@@ -1506,11 +1510,12 @@ export class TwinScene {
     const fitWidthDistance = size.x / 2 / Math.tan(fov / 2) / aspect;
     const fitDepthDistance = size.z / 2;
     /*
-     * 1.06 + 2 leaves a little breathing room without shrinking the plant into
-     * the middle third of the frame. The earlier 1.18 + 6 pushed the building
-     * out to roughly half the viewport width.
+     * Margin around the fitted bounds. The hall has to sit inside the viewport
+     * with air on every side: at 1.06 the building filled the frame edge to
+     * edge and the near kerb and far wall were both cut off, which read as a
+     * cropped render rather than a framed view of a plant.
      */
-    const distance = Math.max(fitHeightDistance, fitWidthDistance, fitDepthDistance) * 1.06 + 2;
+    const distance = Math.max(fitHeightDistance, fitWidthDistance, fitDepthDistance) * 1.24 + 9;
 
     const direction = new THREE.Vector3(0.42, 0.62, 0.66).normalize();
     return { position: centre.clone().add(direction.multiplyScalar(distance)), target: centre, size };
