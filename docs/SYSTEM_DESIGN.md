@@ -155,7 +155,7 @@ uses JPA `ddl-auto: update`; there is no checked-in SQL schema.
 
 ## 10. WebSocket protocol
 
-Endpoints `/ws` and `/ws/telemetry` (STOMP/SockJS) with a simple in-memory
+Endpoints `/ws` and `/ws/telemetry` (STOMP over WebSocket) with a simple in-memory
 broker under `/topic`. Topics include `machine.updated`,
 `machine.state.changed`, `telemetry.updated`, `prediction.updated`,
 `alert.created`, `alert.updated`, `maintenance.created`, `impact.updated`,

@@ -9,7 +9,7 @@ change that touches `frontend/src`, `infra/nginx`, or the backend contracts.
 ## Code
 
 - [x] **TypeScript clean** — `npx tsc --noEmit -p tsconfig.json`, strict, tests included
-- [x] **Unit tests passing** — 86 Vitest
+- [x] **Unit tests passing** — 93 Vitest
 - [x] **E2E passing** — 43 Playwright (30 functional + 13 visual)
 - [x] **Production build** — `vite build` clean
 - [x] **No console errors** — asserted on all 12 workspaces

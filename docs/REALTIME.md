@@ -16,7 +16,7 @@ flowchart LR
 
 ## Browser behavior
 
-- The browser connects to the Spring WebSocket endpoint at `/ws` and sends a STOMP `CONNECT` frame. The endpoint also keeps SockJS transports available for clients that need them.
+- The browser connects to the Spring WebSocket endpoint at `/ws` and sends a STOMP `CONNECT` frame. The transport is a plain WebSocket; no SockJS fallback is configured, and this client does not use one.
 - It subscribes to the backend’s canonical topics: `telemetry.updated`, `machine.updated`, `machine.state.changed`, `prediction.updated`, `alert.*`, `maintenance.*`, `simulation.updated`, `events.updated`, and `impact.updated`.
 - Messages are JSON-validated at the transport boundary and coalesced by topic plus machine ID for one animation frame. The queue is bounded at 240 pending deltas.
 - A reconnect uses exponential backoff up to 30 seconds. Closing a route or reloading the page does not leave timers or sockets behind.
