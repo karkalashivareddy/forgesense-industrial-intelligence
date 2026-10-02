@@ -28,7 +28,7 @@ import { useMachineExplanation, useMachines, useRiskRanking, useSystemStatus } f
 import { useUiStore } from '../store/ui';
 import { anomalyTone, deriveOperationalState, riskTone } from '../domain/machineState';
 import { DATA_BASIS } from '../domain/basis';
-import { formatAge, formatContribution, formatProbability, formatRulSteps, formatTime } from '../domain/format';
+import { formatAge, formatContribution, formatProbability, formatRulSteps, formatScore, formatTime } from '../domain/format';
 import { useNow } from '../hooks/useNow';
 import { toErrorMessage } from '../api/client';
 
@@ -102,12 +102,16 @@ export default function Predictions() {
       },
       {
         key: 'anomaly',
-        header: 'Anomaly',
+        header: 'Anomaly score',
         align: 'end',
         hideBelow: 'sm',
         cell: ({ row }) => (
-          <span className="num" style={{ color: anomalyTone(row.anomalyScore) === 'crit' ? 'var(--color-critical-text)' : 'var(--color-text-secondary)' }}>
-            {formatProbability(row.anomalyScore)}
+          <span
+            className="num"
+            style={{ color: anomalyTone(row.anomalyScore) === 'crit' ? 'var(--color-critical-text)' : 'var(--color-text-secondary)' }}
+            title="Bounded model score, not a probability. 1.0 is the most extreme reading seen in training."
+          >
+            {formatScore(row.anomalyScore)}
           </span>
         ),
       },
@@ -123,11 +127,20 @@ export default function Predictions() {
         header: 'Est. remaining',
         align: 'end',
         hideBelow: 'md',
-        cell: ({ row }) => (
-          <span className="num" title="Simulator degradation steps remaining">
-            {formatRulSteps(row.failureRisk >= 0 ? (machinesQuery.data?.find((m) => m.machineId === row.machineId)?.rulEstimate ?? 0) : 0)}
-          </span>
-        ),
+        /*
+         * `rulEstimate` is absent until the ML service has produced an
+         * assessment. Defaulting it to 0 here rendered "0 steps", which reads
+         * as "this machine has nothing left" rather than "nothing is known".
+         * An absent estimate is an em dash.
+         */
+        cell: ({ row }) => {
+          const machine = machinesQuery.data?.find((m) => m.machineId === row.machineId);
+          return (
+            <span className="num" title="Simulator degradation steps remaining — not a time unit">
+              {formatRulSteps(machine?.rulEstimate)}
+            </span>
+          );
+        },
       },
       {
         key: 'mode',
@@ -285,7 +298,7 @@ export default function Predictions() {
                   <div className="grid grid--2">
                     <Metric
                       label="Anomaly score"
-                      value={formatProbability(focus.row.anomalyScore)}
+                      value={formatScore(focus.row.anomalyScore)}
                       tone={anomalyTone(focus.row.anomalyScore)}
                       basis={DATA_BASIS.PREDICTED}
                       size="sm"

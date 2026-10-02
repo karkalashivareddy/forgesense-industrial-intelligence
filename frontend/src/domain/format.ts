@@ -2,8 +2,16 @@
  * Formatting helpers.
  *
  * Unit discipline is enforced here. In particular:
- *  - `formatProbability` is for values in [0,1] and always shows enough
- *    significant digits that a small non-zero value is never rounded to "0%".
+ *  - `formatProbability` is for values in [0,1] that ARE probabilities, and
+ *    always shows enough significant digits that a small non-zero value is
+ *    never rounded to "0%".
+ *  - `formatScore` is for bounded [0,1] model SCORES that are not
+ *    probabilities - specifically the anomaly score, which IsolationForest's
+ *    `decision_function` is rescaled against its own training distribution
+ *    (ml-service/app/main.py `_anomaly_score`). A score of 0.9993 means "the
+ *    most extreme reading this model has ever seen on training data", not
+ *    "a 99.93% chance of a fault". Rendering it with a "%" suffix would invent
+ *    a calibration the model does not have, so it is shown as a bare number.
  *  - `formatContribution` renders a signed probability delta. It is NEVER
  *    suffixed with "%" because `Factor.contribution` is a raw delta on model
  *    output, not a percentage.
@@ -26,6 +34,19 @@ export function formatProbability(
   if (Math.abs(pctValue) < 1) return `${pctValue.toFixed(3)}%`;
   if (Math.abs(pctValue) < 10) return `${pctValue.toFixed(digits)}%`;
   return `${pctValue.toFixed(1)}%`;
+}
+
+/**
+ * Bounded [0,1] model score that is NOT a probability -> "0.999".
+ *
+ * Deliberately unsuffixed. Used for the anomaly score, which is a rescaled
+ * IsolationForest decision function, and for any future bounded score.
+ * A score of 0 must still read as a real observation, so `null` (no
+ * assessment) is the only thing that becomes an em dash.
+ */
+export function formatScore(value: number | null | undefined, digits = 3): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return EM_DASH;
+  return value.toFixed(digits);
 }
 
 /** Signed probability delta: "+0.0034" / "-0.0069". Unitless by contract. */

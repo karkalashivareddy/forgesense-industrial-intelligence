@@ -28,7 +28,15 @@ public class MachineTwin {
     private volatile double rulEstimate = 60;
 
     private volatile String modelVersion = "none";
-    private volatile String modelMode = "MODEL";
+    /**
+     * How these numbers were produced.
+     *
+     * Starts at UNAVAILABLE, not MODEL. A twin that has never been scored has
+     * no model output at all, and defaulting it to MODEL made the console
+     * report "ML model" on an asset the ML service had never been asked about.
+     * UNAVAILABLE means exactly that: no assessment has been produced yet.
+     */
+    private volatile String modelMode = "UNAVAILABLE";
 
     private volatile Instant lastTelemetryAt;
     private volatile long lastSequence;

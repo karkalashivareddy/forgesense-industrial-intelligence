@@ -22,7 +22,7 @@ import {
 import { useMachines, useZones } from '../api/queries';
 import { useUiStore, type InspectorTab } from '../store/ui';
 import { deriveOperationalState, type OperationalState } from '../domain/machineState';
-import { formatAge, formatProbability, formatRulSteps, titleCase } from '../domain/format';
+import { formatAge, formatProbability, formatRulSteps, formatScore, titleCase } from '../domain/format';
 import { useNow } from '../hooks/useNow';
 import { toErrorMessage } from '../api/client';
 import type { Machine } from '../api/types';
@@ -160,7 +160,7 @@ export default function Fleet() {
         hideBelow: 'md',
         cell: (machine) => (
           <span className="num" title="Isolation-forest anomaly score">
-            {formatProbability(machine.anomalyScore)}
+            {formatScore(machine.anomalyScore)}
           </span>
         ),
       },

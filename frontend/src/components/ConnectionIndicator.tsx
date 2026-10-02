@@ -70,7 +70,7 @@ export function ConnectionIndicator({ compact = false }: { compact?: boolean }) 
   const title = [
     quality.detail,
     telemetryStatus.data
-      ? `Input transport: ${telemetryStatus.data.transport} from ${telemetryStatus.data.source}`
+      ? `Input transport: ${telemetryStatus.data.inputTransport} from ${telemetryStatus.data.source}`
       : null,
     'ForgeSense renders synthetic simulator telemetry. It does not control physical machines.',
   ]

@@ -24,7 +24,7 @@ import { useMachines } from '../api/queries';
 import { useUiStore } from '../store/ui';
 import { anomalyBand, anomalyTone, deriveOperationalState } from '../domain/machineState';
 import { DATA_BASIS } from '../domain/basis';
-import { formatAge, formatProbability, titleCase } from '../domain/format';
+import { formatAge, formatProbability, formatScore, titleCase } from '../domain/format';
 import { useNow } from '../hooks/useNow';
 import { toErrorMessage } from '../api/client';
 import type { Machine } from '../api/types';
@@ -83,7 +83,7 @@ export default function Anomalies() {
         align: 'end',
         cell: (machine) => (
           <span className="num" style={{ fontWeight: 600, color: anomalyTone(machine.anomalyScore) === 'crit' ? 'var(--color-critical-text)' : 'var(--color-warning-text)' }}>
-            {formatProbability(machine.anomalyScore)}
+            {formatScore(machine.anomalyScore)}
           </span>
         ),
       },

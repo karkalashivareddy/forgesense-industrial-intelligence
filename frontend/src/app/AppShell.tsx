@@ -420,7 +420,7 @@ function StatusBar() {
       </span>
       <span className="statusbar__item">
         <span className="statusbar__key">Input</span>
-        <span className="statusbar__val">{telemetryStatus.data?.transport ?? '—'}</span>
+        <span className="statusbar__val">{telemetryStatus.data?.inputTransport ?? '—'}</span>
       </span>
       <span className="statusbar__item">
         <span className="statusbar__key">Data basis</span>

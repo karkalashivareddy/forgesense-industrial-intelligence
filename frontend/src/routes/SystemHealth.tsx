@@ -120,9 +120,9 @@ export default function SystemHealth() {
       basis: DATA_BASIS.OBSERVED,
     },
     {
-      name: 'Event transport',
-      state: telemetry?.transport ? 'available' : 'unknown',
-      detail: telemetry ? `${telemetry.transport} Â· ${telemetry.source}` : 'Not reported',
+      name: 'Telemetry ingress',
+      state: telemetry?.inputTransport ? 'available' : 'unknown',
+      detail: telemetry ? `${telemetry.inputTransport} Â· ${telemetry.source}` : 'Not reported',
       icon: <Activity size={14} aria-hidden />,
       basis: DATA_BASIS.OBSERVED,
     },
@@ -227,10 +227,14 @@ export default function SystemHealth() {
           size="sm"
         />
         <Metric
-          label="Poll cadence"
-          value={<span style={{ fontSize: 'var(--text-md)' }}>{status?.pollIntervalSeconds ?? 'â€”'}s</span>}
+label="Realtime link"
+          value={
+            <span style={{ fontSize: 'var(--text-md)' }}>
+              {status?.streaming ? 'Established' : 'No clients connected'}
+            </span>
+          }
           size="sm"
-          hint="REST snapshot"
+          hint="derived from the live session count, not a constant"
         />
         <Metric
           label="Realtime deltas"

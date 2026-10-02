@@ -9,14 +9,16 @@ import com.forgesense.telemetry.TelemetryRepository;
 import com.forgesense.telemetry.domain.TelemetrySample;
 import com.forgesense.telemetry.validation.TelemetryNormalizer;
 import com.forgesense.telemetry.validation.TelemetryValidator;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,6 +51,7 @@ public class TelemetryIngestController {
     }
 
     @PostMapping("/ingest")
+    @PreAuthorize("hasAnyRole('OPERATOR','ENGINEER','ADMIN')")
     public Map<String, Object> ingest(@RequestBody TelemetrySample sample) {
         Optional<String> rejection = validator.validate(sample, Instant.now());
         if (rejection.isPresent()) {
@@ -62,30 +65,64 @@ public class TelemetryIngestController {
     }
 
     @PostMapping("/ingest/batch")
+    @PreAuthorize("hasAnyRole('OPERATOR','ENGINEER','ADMIN')")
     public Map<String, Object> ingestBatch(@RequestBody List<TelemetrySample> batch) {
         int accepted = 0;
-        for (TelemetrySample s : batch) {
-            if (validator.validate(s, Instant.now()).isEmpty()) {
+        List<Map<String, Object>> rejected = new ArrayList<>();
+        for (int i = 0; i < batch.size(); i++) {
+            TelemetrySample s = batch.get(i);
+            Optional<String> rejection = validator.validate(s, Instant.now());
+            if (rejection.isEmpty()) {
                 eventBus.publish(EventEnvelope.of(EventType.TELEMETRY_RECEIVED, s.machineId(),
                         "simulator-http", payload(normalizer.normalize(s))));
                 accepted++;
+            } else {
+                /*
+                 * Rejections are reported per sample rather than silently
+                 * discarded. A caller that sent 18 records and received
+                 * `{received: 18, accepted: 12}` with no explanation had no way
+                 * to tell a deliberate filter from a broken pipeline, and a
+                 * partial ingest that looks identical to a successful one.
+                 */
+                rejected.add(Map.of("index", i,
+                        "machineId", s == null ? null : s.machineId(),
+                        "reason", rejection.get()));
             }
         }
-        return Map.of("received", batch.size(), "accepted", accepted);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("received", batch.size());
+        result.put("accepted", accepted);
+        result.put("rejected", rejected.size());
+        result.put("rejections", rejected);
+        return result;
     }
 
     @GetMapping("/status")
     public Map<String, Object> status() {
         Instant from = Instant.now().minusSeconds(60);
         boolean kafka = props.streaming().kafka().enabled();
-        boolean streaming = kafka;
-        String transport = kafka ? "KAFKA" : "REST_POLL";
+        long recent = telemetryRepository.countByTimestampAfter(from);
+        /*
+         * One transport name, one meaning.
+         *
+         * This endpoint previously reported `transport: "REST_POLL"` and
+         * `inputTransport: "IN_PROCESS"` for the same running configuration,
+         * because it reused a client-side delivery label to describe a
+         * server-side ingestion path. A console reading both fields had no way
+         * to tell which one it was being told, which is exactly the
+         * contradictory-transport defect the System workspace exists to
+         * surface. `transport` now names the inbound path only, and
+         * `streaming` reports whether records are arriving at all rather than
+         * restating the configured mode as a constant.
+         *
+         * `pollIntervalSeconds` was a hard-coded 3. There is no configurable
+         * poll interval anywhere in the system - clients reconcile over the
+         * realtime link - so the field is removed rather than invented.
+         */
         return Map.of(
-                "streaming", streaming,
-                "transport", transport,
-                "inputTransport", kafka ? "KAFKA" : "IN_PROCESS",
-                "pollIntervalSeconds", 3,
-                "telemetryPerMinute", telemetryRepository.countByTimestampAfter(from),
+                "inputTransport", kafka ? "KAFKA" : "IN_PROCESS_HTTP_INGEST",
+                "streaming", recent > 0,
+                "telemetryPerMinute", recent,
                 "source", kafka ? "kafka:forge.telemetry.raw" : "http:ingest,in-memory-bus",
                 "dataBasis", props.demoMode() ? "SYNTHETIC" : "OBSERVED");
     }

@@ -15,6 +15,7 @@ import {
   formatNumber,
   formatProbability,
   formatRulSteps,
+  formatScore,
   titleCase,
 } from '../src/domain/format';
 
@@ -69,6 +70,34 @@ describe('formatProbability', () => {
     expect(formatProbability(null)).toBe('—');
     expect(formatProbability(undefined)).toBe('—');
     expect(formatProbability(Number.NaN)).toBe('—');
+  });
+});
+
+describe('formatScore', () => {
+  /*
+   * The anomaly score is IsolationForest's `decision_function` rescaled
+   * against its own training distribution (ml-service/app/main.py
+   * `_anomaly_score`). It is bounded [0,1] but it is NOT a probability, so
+   * appending "%" would assert a calibration the model does not have.
+   */
+  it('never appends a percent sign to a bounded score', () => {
+    expect(formatScore(0.9993)).not.toContain('%');
+    expect(formatScore(0.9993)).toBe('0.999');
+    expect(formatScore(0.5)).toBe('0.500');
+  });
+
+  it('distinguishes a genuine zero score from an absent score', () => {
+    // A real 0.0 measurement must render as a value, not as "unavailable".
+    expect(formatScore(0)).toBe('0.000');
+    expect(formatScore(null)).toBe('—');
+    expect(formatScore(undefined)).toBe('—');
+    expect(formatScore(Number.NaN)).toBe('—');
+  });
+
+  it('is not interchangeable with the probability formatter', () => {
+    // Same number, different claim. This is the regression that would turn a
+    // calibrated score into a fabricated likelihood.
+    expect(formatScore(0.9993)).not.toBe(formatProbability(0.9993));
   });
 });
 

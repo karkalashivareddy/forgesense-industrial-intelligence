@@ -1,8 +1,10 @@
 package com.forgesense.simulation;
 
+import com.forgesense.common.errors.ApiException;
 import com.forgesense.events.EventLogService;
 import com.forgesense.impact.ImpactEngine;
 import com.forgesense.impact.domain.ProductionImpact;
+import com.forgesense.machine.domain.Machine;
 import com.forgesense.observability.ForgeMetrics;
 import com.forgesense.simulation.domain.ScenarioType;
 import com.forgesense.simulation.domain.SimulationScenario;
@@ -56,8 +58,17 @@ public class SimulationService {
 
     @Transactional
     public SimulationScenario run(ScenarioRequest request) {
+        /*
+         * A what-if run against an unknown asset is a client mistake, not a
+         * scenario. It previously fell through: the impact engine returned
+         * null, every field defaulted to 0, the record was marked COMPLETED and
+         * persisted, an event was broadcast and the caller received HTTP 200
+         * with an all-zero "result" - a successful simulation that simulated
+         * nothing. Reject it up front.
+         */
         String machineName = machineRepository.findByMachineId(request.machineId())
-                .map(m -> m.getName()).orElse(request.machineId());
+                .map(Machine::getName)
+                .orElseThrow(() -> ApiException.notFound("Unknown asset: " + request.machineId()));
         double severity = clamp01(request.severity());
 
         String impactType = switch (request.scenarioType()) {
@@ -130,8 +141,15 @@ public class SimulationService {
         return record;
     }
 
+    /**
+     * The clean-plant reference the what-if is compared against.
+     *
+     * The impact engine is not called here: a "BASELINE" scenario is still a
+     * modelled projection, and reporting it as the measured starting state
+     * would present an estimate as an observation. Normal operation is stated
+     * as a constant, because that is what it means.
+     */
     private Map<String, Object> baselineView(String machineId) {
-        ProductionImpact clean = impactEngine.computeScenario(machineId, "BASELINE", 0.0);
         return Map.of(
                 "downtimeMinutes", 0.0,
                 "affectedMachines", 0,

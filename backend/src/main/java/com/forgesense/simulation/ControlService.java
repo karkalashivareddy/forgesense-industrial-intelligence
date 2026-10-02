@@ -84,6 +84,17 @@ public class ControlService {
         return control;
     }
 
+    /**
+     * Stop perturbing the synthetic feed for one asset.
+     *
+     * This clears the control. It does NOT snap the machine back to NORMAL:
+     * once a scenario has moved health and anomaly, the machine stays where it
+     * is and the decision engine walks it back over the next few telemetry
+     * cycles as clean signals return. That is the honest behaviour - the
+     * scenario removed the cause, it did not erase the consequence - so the
+     * caller is told the control is cleared and that recovery is in progress
+     * rather than being handed a fabricated "cleared" flag.
+     */
     @Transactional
     public void clearScenario(String machineId) {
         applyScenario(machineId, ScenarioType.NONE, 0.0, null);

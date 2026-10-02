@@ -57,18 +57,26 @@ public class SystemController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("application", "ForgeSense Backend");
         result.put("demoMode", props.demoMode());
-        // STOMP over WebSocket is always available server-side; clients that
-        // cannot hold a socket fall back to REST polling on their own.
-        result.put("streaming", true);
+        /*
+         * `streaming` is the server-side realtime channel being actively used.
+         *
+         * It is derived from the WebSocket broker's own session count, not
+         * hard-coded. Reporting a literal `true` here would make the field
+         * incapable of reporting false, which is precisely the failure this
+         * class exists to prevent: a UI that always reads "realtime OK" cannot
+         * show that the realtime path is down. Zero sessions is a truthful
+         * answer (nobody is connected right now), not an error.
+         */
+        int connections = (int) Math.min(ws.connections(), Integer.MAX_VALUE);
+        result.put("streaming", connections > 0);
         result.put("transport", "WEBSOCKET_STOMP");
-        result.put("pollIntervalSeconds", 3);
         result.put("inputTransport", kafka ? "KAFKA" : "IN_PROCESS");
         result.put("database", describeDatabase());
         result.put("mlServiceAvailable", mlGateway.mlAvailable());
         result.put("mlModelVersion", mlGateway.failureModelVersion());
         result.put("anomalyModelVersion", mlGateway.anomalyModelVersion());
         result.put("simulationPaused", systemState.isPaused());
-        result.put("webSocketConnections", ws.connections());
+        result.put("webSocketConnections", connections);
         result.put("definedMachines", machineService.all().size());
         result.put("dataBasis", List.of(props.demoMode() ? "SYNTHETIC" : "OBSERVED"));
         return result;

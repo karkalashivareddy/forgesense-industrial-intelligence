@@ -8,6 +8,7 @@ import com.forgesense.machine.MachineService;
 import com.forgesense.machine.domain.Machine;
 import com.forgesense.machine.domain.MachineDependency;
 import com.forgesense.machine.domain.MachineState;
+import com.forgesense.machine.domain.SensorType;
 import com.forgesense.machine.twin.MachineTwin;
 import com.forgesense.prediction.PredictionRepository;
 import com.forgesense.prediction.domain.Prediction;
@@ -71,8 +72,27 @@ public class MachineController {
         out.put("sensors", m.getSensors().stream().map(s -> s.name()).toList());
         out.put("modelVersion", m.getModelVersion());
         out.put("description", m.getDescription());
-        out.put("position", Map.of("x", m.getPosX(), "y", m.getPosY(), "z", m.getPosZ()));
+        // Map.of rejects null values; a machine seeded without coordinates would
+        // have thrown a 500 here instead of reporting a null position.
+        Map<String, Object> position = new java.util.LinkedHashMap<>();
+        position.put("x", m.getPosX());
+        position.put("y", m.getPosY());
+        position.put("z", m.getPosZ());
+        out.put("position", position);
         return out;
+    }
+
+    /**
+     * Resolve the machine or fail with a 404.
+     *
+     * Every sub-resource endpoint below routes through here. They previously
+     * queried by machine id alone, so an unknown id returned `200` with an empty
+     * collection - indistinguishable from "this machine has no telemetry", which
+     * is the `error -&gt; empty` confusion the console is explicitly built to
+     * avoid. A wrong id is now an error; a real absence is still an empty list.
+     */
+    private Machine require(String machineId) {
+        return machineService.machine(machineId);
     }
 
     /**
@@ -119,6 +139,7 @@ public class MachineController {
     @GetMapping("/{machineId}/telemetry")
     public Map<String, Object> telemetry(@PathVariable String machineId,
                                          @RequestParam(defaultValue = "120") int limit) {
+        require(machineId);
         List<Map<String, Object>> rows = telemetryRepository
                 .findByMachineIdOrderByTimestampDesc(machineId, PageRequest.of(0, limit))
                 .getContent().stream().map(MachineController::telemetryRow).toList();
@@ -128,6 +149,7 @@ public class MachineController {
     @GetMapping("/{machineId}/telemetry/range")
     public Map<String, Object> telemetryRange(@PathVariable String machineId,
                                               @RequestParam(defaultValue = "300") int seconds) {
+        require(machineId);
         var from = java.time.Instant.now().minusSeconds(seconds);
         List<Map<String, Object>> rows = telemetryRepository
                 .findRange(machineId, from, java.time.Instant.now()).stream()
@@ -156,11 +178,16 @@ public class MachineController {
 
     @GetMapping("/{machineId}/predictions")
     public List<Map<String, Object>> predictions(@PathVariable String machineId) {
+        require(machineId);
         return predictionRepository.findTop50ByMachineIdOrderByTimestampDesc(machineId).stream()
                 .map(MachineController::predictionRow).toList();
     }
 
     private static Map<String, Object> predictionRow(Prediction p) {
+        // `mode` is null-safe by contract, not by optimistic default: a record
+        // with no recorded inference mode is reported as UNAVAILABLE, because
+        // defaulting it to MODEL would claim a model produced a number it may
+        // not have.
         return Map.of(
                 "id", p.getId(),
                 "machineId", p.getMachineId() == null ? "" : p.getMachineId(),
@@ -169,7 +196,7 @@ public class MachineController {
                 "anomalyLabel", p.getAnomalyLabel() == null ? "LOW" : p.getAnomalyLabel(),
                 "failureRisk", p.getFailureRisk(),
                 "healthScore", p.getHealthScore(),
-                "mode", p.getMode() == null ? "MODEL" : p.getMode(),
+                "mode", p.getMode() == null ? "UNAVAILABLE" : p.getMode(),
                 "modelVersion", p.getModelVersion() == null ? "none" : p.getModelVersion(),
                 "factors", p.getFactors() == null ? List.of() : p.getFactors());
     }
@@ -177,6 +204,7 @@ public class MachineController {
     @GetMapping("/{machineId}/events")
     public List<Map<String, Object>> events(@PathVariable String machineId,
                                             @RequestParam(defaultValue = "50") int limit) {
+        require(machineId);
         return eventRepository.findByMachineIdOrderByEventTimeDesc(machineId, PageRequest.of(0, limit))
                 .getContent().stream()
                 .map(e -> Map.<String, Object>of(
@@ -188,8 +216,20 @@ public class MachineController {
                 .toList();
     }
 
+    /**
+     * Baseline-perturbation attribution for one asset.
+     *
+     * Each factor is enriched with the physical quantity behind it: the sensor
+     * key, its engineering unit, and the current observed value. Without these
+     * the console could show "Vibration, +0.0031" with no way to answer "of what,
+     * by how much, from what baseline" - the three questions an engineer asks
+     * first. The unit comes from the shared {@link SensorType} catalog and the
+     * value from the latest persisted telemetry row, so both are real
+     * observations rather than re-derived guesses.
+     */
     @GetMapping("/{machineId}/explanation")
     public Map<String, Object> explanation(@PathVariable String machineId) {
+        require(machineId);
         Prediction latest = predictionRepository.findFirstByMachineIdOrderByTimestampDesc(machineId);
         if (latest == null) {
             throw ApiException.notFound("No predictions recorded for " + machineId + " yet");
@@ -198,13 +238,63 @@ public class MachineController {
                 "machineId", machineId,
                 "failureRisk", latest.getFailureRisk(),
                 "anomalyScore", latest.getAnomalyScore(),
-                "mode", latest.getMode(),
-                "factors", latest.getFactors() == null ? List.of() : latest.getFactors(),
+                "anomalyLabel", latest.getAnomalyLabel() == null ? "LOW" : latest.getAnomalyLabel(),
+                "mode", latest.getMode() == null ? "UNAVAILABLE" : latest.getMode(),
+                "modelVersion", latest.getModelVersion() == null ? "none" : latest.getModelVersion(),
+                "method", "BASELINE_PERTURBATION",
+                "factors", enrichFactors(machineId, latest.getFactors()),
                 "timestamp", latest.getTimestamp().toString());
+    }
+
+    /** Reverse lookup of the ML service's display labels back to a sensor. */
+    private static final Map<String, SensorType> LABEL_TO_SENSOR = java.util.Arrays.stream(SensorType.values())
+            .collect(java.util.stream.Collectors.toMap(
+                    s -> s.name().charAt(0) + s.name().substring(1).toLowerCase(), s -> s, (a, b) -> a));
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> enrichFactors(String machineId, List<Prediction.Factor> factors) {
+        if (factors == null || factors.isEmpty()) return List.of();
+        TelemetryRecord latest = telemetryRepository
+                .findByMachineIdOrderByTimestampDesc(machineId, PageRequest.of(0, 1))
+                .getContent().stream().findFirst().orElse(null);
+
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        for (Prediction.Factor f : factors) {
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("feature", f.feature());
+            row.put("contribution", f.contribution());
+            row.put("label", f.label());
+            row.put("direction", f.direction());
+            SensorType sensor = f.feature() == null ? null : LABEL_TO_SENSOR.get(f.feature());
+            if (sensor != null) {
+                row.put("sensor", sensor.name());
+                row.put("unit", sensor.unit());
+                row.put("currentValue", observedValue(latest, sensor));
+            }
+            out.add(row);
+        }
+        return out;
+    }
+
+    private static Double observedValue(TelemetryRecord t, SensorType sensor) {
+        if (t == null) return null;
+        return switch (sensor) {
+            case TEMPERATURE -> t.getTemperature();
+            case VIBRATION -> t.getVibration();
+            case PRESSURE -> t.getPressure();
+            case RPM -> t.getRpm();
+            case TORQUE -> t.getTorque();
+            case CURRENT -> t.getCurrent();
+            case VOLTAGE -> t.getVoltage();
+            case POWER -> t.getPower();
+            case FLOW -> t.getFlow();
+            case FREQUENCY -> t.getFrequency();
+        };
     }
 
     @GetMapping("/{machineId}/dependencies")
     public List<Map<String, Object>> dependencies(@PathVariable String machineId) {
+        require(machineId);
         return dependencyRepository.findByUpstreamMachineId(machineId).stream()
                 .map(MachineController::dependencyRow).toList();
     }
@@ -227,6 +317,7 @@ public class MachineController {
 
     @GetMapping("/{machineId}/impact")
     public List<Map<String, Object>> impacts(@PathVariable String machineId) {
+        require(machineId);
         return impactRepository.findTop20ByOriginMachineIdOrderByCreatedAtDesc(machineId).stream()
                 .map(i -> Map.<String, Object>of(
                         "id", i.getId(),

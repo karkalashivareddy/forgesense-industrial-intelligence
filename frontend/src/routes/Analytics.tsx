@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useMemo, useRef } from 'react';
+import { Info } from 'lucide-react';
 import * as echarts from 'echarts/core';
 import { BarChart, LineChart, ScatterChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TitleComponent, TooltipComponent, type GridComponentOption } from 'echarts/components';
@@ -24,7 +25,7 @@ import {
   useRiskRanking,
 } from '../api/queries';
 import { DATA_BASIS, describeBasis } from '../domain/basis';
-import { formatInteger, formatNumber, formatProbability } from '../domain/format';
+import { formatInteger, formatNumber, formatProbability, formatScore } from '../domain/format';
 import { summariseFleet } from '../domain/machineState';
 import { useNow, usePrefersReducedMotion } from '../hooks/useNow';
 import { CHART, token } from '../styles/color';
@@ -210,7 +211,7 @@ export default function Analytics() {
         confine: true,
         formatter: (params: unknown) => {
           const point = (params as { data: [number, number, number, string] }).data;
-          return `<strong>${point[3]}</strong><br/>Failure risk ${formatProbability(point[0])}<br/>Anomaly ${formatProbability(point[1])}<br/>Health ${formatNumber(point[2], 1)}`;
+          return `<strong>${point[3]}</strong><br/>Failure risk ${formatProbability(point[0])}<br/>Anomaly ${formatScore(point[1])}<br/>Health ${formatNumber(point[2], 1)}`;
         },
       },
       xAxis: {
@@ -288,7 +289,6 @@ export default function Analytics() {
         <Metric label="Fleet health" value={formatNumber(summary.averageHealth, 1)} unit="/ 100" basis={DATA_BASIS.DERIVED} size="sm" />
         <Metric label="At risk" value={formatInteger(overview?.machinesAtRisk)} hint="failure risk ≥ 0.50" basis={DATA_BASIS.DERIVED} size="sm" />
         <Metric label="Open alerts" value={formatInteger(alertStats?.open)} basis={DATA_BASIS.OBSERVED} size="sm" />
-        <Metric label="Production efficiency" value={formatNumber(overview?.productionEfficiency.value, 0)} unit="%" basis={DATA_BASIS.DERIVED} size="sm" hint="modelled from fleet failure risk" />
         <Metric label="Telemetry throughput" value={formatInteger(overview?.telemetryThroughputPerMinute)} unit="/ min" basis={DATA_BASIS.OBSERVED} size="sm" />
       </div>
 
@@ -367,11 +367,16 @@ export default function Analytics() {
         </Panel>
       </div>
 
-      <p className="note">
-        Production efficiency and estimated downtime risk are <strong>modelled</strong> figures derived from average
-        fleet failure risk and machine count. They are not observed throughput measurements and must not be read as
-        realised production loss. Health, alert and event counts are observed directly from system state.
-      </p>
+      <div className="banner">
+        <Info size={13} aria-hidden style={{ flexShrink: 0 }} />
+        <span>
+          <strong>There is no OEE, throughput or downtime metric on this page, and there is not one hiding elsewhere.</strong>{' '}
+          This system observes synthetic machine signals. It has no production counter, no good-part count, no shift
+          calendar and no planned-versus-actual downtime, so it cannot compute availability, performance or quality, and
+          it does not estimate them. Every figure above is counted from persisted system state. Where a number is
+          model output rather than a count, the panel says so.
+        </span>
+      </div>
     </div>
   );
 }

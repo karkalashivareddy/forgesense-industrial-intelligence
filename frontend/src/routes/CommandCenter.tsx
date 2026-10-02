@@ -51,6 +51,7 @@ import {
   formatInteger,
   formatNumber,
   formatProbability,
+  formatScore,
   formatTime,
 } from '../domain/format';
 import { useNow } from '../hooks/useNow';
@@ -471,7 +472,7 @@ function RiskList({ now, onSelect }: { now: number; onSelect: InspectorOpener })
                     <span className="priority-row__metric-label">Risk</span>
                   </span>
                   <span className="priority-row__metric">
-                    <span className="priority-row__metric-value">{formatProbability(row.anomalyScore)}</span>
+                    <span className="priority-row__metric-value">{formatScore(row.anomalyScore)}</span>
                     <span className="priority-row__metric-label">Anomaly</span>
                   </span>
                   <span className="priority-row__metric">

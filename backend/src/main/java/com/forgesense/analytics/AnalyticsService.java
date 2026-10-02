@@ -18,9 +18,27 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Aggregated analytics endpoints. Every metric states its basis:
- * OBSERVED (counted from system state), ESTIMATED (modeled assumption),
- * SIMULATED (simulation origin). Metrics are never fabricated.
+ * Aggregated analytics endpoints.
+ *
+ * Every metric here is COUNTED from persisted system state. Nothing is modelled,
+ * scaled by a magic constant, or inferred from an unrelated quantity.
+ *
+ * Two metrics that were previously published are deliberately absent:
+ *
+ *   productionEfficiency       was 100 - (average failure risk * 100). Failure
+ *                              probability is not a throughput measure, so
+ *                              subtracting it from 100 produced a number with
+ *                              no operational meaning that nevertheless read as
+ *                              a real OEE-style KPI. There is no OEE in this
+ *                              system and none is claimed.
+ *   estimatedDowntimeRiskMinutes  was (machines at risk * 30), where the 30 was
+ *                              an unsourced minute-per-machine constant.
+ *
+ * Publishing a fabricated figure with an ESTIMATED label is still a fabricated
+ * figure: the label transfers the doubt away from the reader. A capability the
+ * backend cannot measure is absent, not estimated.
+ *
+ * Every metric states its basis: OBSERVED (counted from persisted system state).
  */
 @Service
 public class AnalyticsService {
@@ -52,9 +70,6 @@ public class AnalyticsService {
         double avgHealth = machines.isEmpty() ? 0 : machines.stream()
                 .mapToDouble(m -> m.getHealthScore() == null ? 0 : m.getHealthScore()).average().orElse(0);
         long activeMaintenance = maintenanceRepository.findByStatusOrderByCreatedAtDesc(MaintenanceStatus.ACTIVE).size();
-        double avgRisk = machines.isEmpty() ? 0 : machines.stream()
-                .mapToDouble(m -> m.getFailureRisk() == null ? 0 : m.getFailureRisk()).average().orElse(0);
-        double efficiency = Math.max(0, 100 - avgRisk * 100);
 
         Instant rangeFrom = Instant.now().minusSeconds(60);
         long telemetryInLastMin = telemetryRepository.countByTimestampAfter(rangeFrom);
@@ -66,12 +81,8 @@ public class AnalyticsService {
         kpis.put("criticalAlerts", critical);
         kpis.put("averageFleetHealth", Math.round(avgHealth));
         kpis.put("activeMaintenance", activeMaintenance);
-        kpis.put("productionEfficiency", Map.of(
-                "value", Math.round(efficiency),
-                "label", "ESTIMATED - derived from average fleet failure risk"));
         kpis.put("telemetryThroughputPerMinute", telemetryInLastMin);
-        kpis.put("estimatedDowntimeRiskMinutes", Math.round(atRisk * 30.0));
-        kpis.put("dataBasis", List.of("OBSERVED", "ESTIMATED"));
+        kpis.put("dataBasis", List.of("OBSERVED"));
         return kpis;
     }
 
@@ -117,7 +128,9 @@ public class AnalyticsService {
                     "failureRisk", m.getFailureRisk() == null ? 0 : m.getFailureRisk()));
         }
         out.put("machines", rows);
-        out.put("basis", "OBSERVED - current twin state");
+        out.put("basis", "OBSERVED - persisted machine state, one row per asset");
+        out.put("sampleType", "CURRENT_SNAPSHOT");
+        out.put("isTimeSeries", false);
         return out;
     }
 

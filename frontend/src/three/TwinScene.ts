@@ -117,6 +117,75 @@ const MACHINE_SPACING = 4.8;
 const ZONE_DEPTH = 5.8;
 const MACHINE_HEIGHT = 3.0;
 
+/*
+ * Building envelope.
+ *
+ * The plant is a hall, not a void. These dimensions bound it: the far walls
+ * and the roof structure form the backdrop that gives the machines scale, the
+ * near walls are low kerbs so they enclose without occluding, and the aisles
+ * between zone rows are where the circulation and material handling lives.
+ *
+ * Zones are laid out as rows along -Z. Row r is centred at -r*ROW_PITCH-ROW_OFFSET,
+ * so with 6 zones the hall runs from z=+6 (entrance) to z=-44 (utilities wall).
+ */
+const HALL_HALF_WIDTH = 15.5;
+const HALL_NEAR_Z = 6;
+const HALL_FAR_Z = -44;
+const HALL_DEPTH = HALL_NEAR_Z - HALL_FAR_Z;
+const HALL_CENTRE_Z = (HALL_NEAR_Z + HALL_FAR_Z) / 2;
+
+/** Structural column grid, following the aisle lines between zone rows. */
+const COLUMN_SPACING_X = 7.6;
+const AISLE_HEIGHT = 9.4;
+
+/** Clear gap between a column and the wall face it stands against. */
+const COLUMN_MARGIN = 1.4;
+const COLUMN_USABLE_WIDTH = HALL_HALF_WIDTH * 2 - COLUMN_MARGIN * 2;
+
+/** Column count per line, derived from the target bay spacing, not hardcoded. */
+const COLUMNS_PER_LINE = Math.max(2, Math.floor(COLUMN_USABLE_WIDTH / COLUMN_SPACING_X) + 1);
+const COLUMN_SPACING = COLUMN_USABLE_WIDTH / (COLUMNS_PER_LINE - 1);
+
+/** X of the `i`th column on a line, symmetric about the hall centre. */
+function columnX(i: number): number {
+  return -COLUMN_USABLE_WIDTH / 2 + i * COLUMN_SPACING;
+}
+
+/** Clear walkable gap between two zone rows. Derived, not guessed. */
+const AISLE_CLEAR = ROW_PITCH - ZONE_DEPTH;
+
+/**
+ * Z of a structural column line. Line 0 sits just inside the entrance kerb;
+ * every later line sits on the aisle boundary between two zone rows.
+ *
+ * Column lines, aisle strips, roof beams and lights all read from this so the
+ * building stays aligned with the machine layout if the row pitch changes.
+ */
+function columnLineZ(line: number): number {
+  if (line <= 0) return HALL_NEAR_Z - 1.2;
+  return -line * ROW_PITCH - ROW_OFFSET + ROW_PITCH / 2;
+}
+
+/** Z of the walkable aisle strip for aisle index `a`. */
+function aisleZ(a: number): number {
+  if (a <= 0) return HALL_NEAR_Z - 3.1;
+  return columnLineZ(a);
+}
+
+/** Industrial hall colour, kept inside the token system. */
+const BUILDING = {
+  wall: hex('--color-bg-inset', 0x070a0e),
+  wallTrim: hex('--color-border-subtle', 0x1c222a),
+  column: hex('--color-border-default', 0x273040),
+  roofBeam: hex('--color-border-subtle', 0x1c222a),
+  aisle: hex('--color-bg-panel', 0x10141a),
+  pad: hex('--color-bg-inset', 0x0c1017),
+  kerb: hex('--color-border-default', 0x273040),
+  belt: hex('--color-plate', 0x151b23),
+  rail: hex('--color-border-strong', 0x3a4658),
+  hazard: hex('--color-warning', 0xe8a93f),
+} as const;
+
 /** How long the loop keeps drawing after the last change ("settle window"). */
 const SETTLE_MS = 700;
 
@@ -272,41 +341,401 @@ export class TwinScene {
     // Low fill so shadowed faces do not crush to black.
     this.scene.add(new THREE.AmbientLight(0x2b3a4c, 0.9));
 
-    const floorGeo = this.track(new THREE.PlaneGeometry(140, 110), true);
-    const floor = new THREE.Mesh(
-      floorGeo,
-      this.track(new THREE.MeshStandardMaterial({ color: PALETTE.floor, roughness: 1, metalness: 0 })),
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -0.1;
-    this.scene.add(floor);
-
-    const slabGeo = this.track(new THREE.PlaneGeometry(56, 54), true);
-    const slab = new THREE.Mesh(
-      slabGeo,
-      this.track(new THREE.MeshStandardMaterial({ color: PALETTE.slab, roughness: 0.95, metalness: 0.02 })),
-    );
-    slab.rotation.x = -Math.PI / 2;
-    slab.position.set(0, -0.08, -19);
-    this.scene.add(slab);
-
-    const grid = new THREE.GridHelper(54, 27, PALETTE.gridMajor, PALETTE.grid);
-    grid.position.set(0, -0.05, -19);
-    const gridMat = grid.material as THREE.Material;
-    gridMat.transparent = true;
-    gridMat.opacity = 0.55;
-    this.scene.add(grid);
+    this.buildHall();
+    this.buildStructure();
+    this.buildAisles();
+    this.buildConveyors();
 
     this.edgeGroup = new THREE.Group();
     this.edgeGroup.visible = false;
     this.scene.add(this.edgeGroup);
   }
 
+  /**
+   * Floor, perimeter and the expansion-joint grid.
+   *
+   * The previous scene floated 18 machines on a 140x110 plane with a
+   * 54-unit GridHelper at 55% opacity. That reads as a graph rendering rather
+   * than a building: an unbounded dark plane around the plant, and a grid that
+   * out-shouted the machines it was supposed to give scale to.
+   *
+   * Now the plant is a defined hall. The floor is bounded, the far walls form
+   * a backdrop, the near walls are low kerbs that enclose the space without
+   * standing between the camera and the equipment, and the joint lines are
+   * present but faint enough to be floor rather than overlay.
+   */
+  private buildHall(): void {
+    // Apron: the ground outside the building, kept as a single dark plane so
+    // the horizon does not read as a void, but sized to just beyond the walls.
+    const apronGeo = this.track(new THREE.PlaneGeometry(HALL_HALF_WIDTH * 2 + 26, HALL_DEPTH + 26), true);
+    const apron = new THREE.Mesh(
+      apronGeo,
+      this.track(new THREE.MeshStandardMaterial({ color: PALETTE.floor, roughness: 1, metalness: 0 }), true),
+    );
+    apron.rotation.x = -Math.PI / 2;
+    apron.position.set(0, -0.35, HALL_CENTRE_Z);
+    this.scene.add(apron);
+
+    // Finished floor inside the building, one elevation up.
+    const floorGeo = this.track(new THREE.PlaneGeometry(HALL_HALF_WIDTH * 2, HALL_DEPTH), true);
+    const floor = new THREE.Mesh(
+      floorGeo,
+      this.track(new THREE.MeshStandardMaterial({ color: PALETTE.slab, roughness: 0.96, metalness: 0.02 }), true),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(0, -0.1, HALL_CENTRE_Z);
+    this.scene.add(floor);
+
+    // Control joints between floor pours. Faint: this is a surface detail, not
+    // a data layer. `GridHelper` at high opacity dominated the earlier scene.
+    const joints = new THREE.GridHelper(HALL_DEPTH, HALL_DEPTH / 2, PALETTE.grid, PALETTE.grid);
+    joints.rotation.x = Math.PI / 2;
+    joints.position.set(0, -0.06, HALL_CENTRE_Z);
+    joints.scale.x = (HALL_HALF_WIDTH * 2) / HALL_DEPTH;
+    const jointMat = joints.material as THREE.Material;
+    jointMat.transparent = true;
+    jointMat.opacity = 0.16;
+    this.track(joints.geometry, true);
+    this.track(jointMat, true);
+    this.scene.add(joints);
+
+    const wallMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.wall, roughness: 0.95, metalness: 0.05, side: THREE.DoubleSide }),
+      true,
+    );
+    const kerbMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.kerb, roughness: 0.85, metalness: 0.2 }),
+      true,
+    );
+    const trimMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.wallTrim, roughness: 0.7, metalness: 0.35 }),
+      true,
+    );
+
+    // Far walls: full height. These are the backdrop and the scale reference.
+    const farWallGeo = this.track(new THREE.BoxGeometry(HALL_HALF_WIDTH * 2, AISLE_HEIGHT, 0.5), true);
+    const farWall = new THREE.Mesh(farWallGeo, wallMat);
+    farWall.position.set(0, AISLE_HEIGHT / 2, HALL_FAR_Z);
+    this.scene.add(farWall);
+
+    const sideWallGeo = this.track(new THREE.BoxGeometry(0.5, AISLE_HEIGHT, HALL_DEPTH), true);
+    for (const sign of [-1, 1]) {
+      const side = new THREE.Mesh(sideWallGeo, wallMat);
+      side.position.set(sign * HALL_HALF_WIDTH, AISLE_HEIGHT / 2, HALL_CENTRE_Z);
+      this.scene.add(side);
+    }
+
+    // Near walls: low kerbs. Full height here would occlude the front rows
+    // from every camera angle the console offers.
+    const kerbGeo = this.track(new THREE.BoxGeometry(HALL_HALF_WIDTH * 2, 1.5, 0.5), true);
+    const nearKerb = new THREE.Mesh(kerbGeo, kerbMat);
+    nearKerb.position.set(0, 0.75, HALL_NEAR_Z);
+    this.scene.add(nearKerb);
+
+    // Dashed hazard kerb along the front, so the boundary reads as marked
+    // floor rather than a wall of the same material as the walls behind it.
+    const stripeGeo = this.track(new THREE.BoxGeometry(1.5, 0.06, 0.62), true);
+    const stripeMat = this.track(
+      new THREE.MeshStandardMaterial({
+        color: BUILDING.hazard,
+        roughness: 0.8,
+        metalness: 0.1,
+        emissive: BUILDING.hazard,
+        emissiveIntensity: 0.12,
+      }),
+      true,
+    );
+    const stripeCount = Math.floor((HALL_HALF_WIDTH * 2) / 2.4);
+    const stripes = new THREE.InstancedMesh(stripeGeo, stripeMat, stripeCount);
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < stripeCount; i += 1) {
+      dummy.position.set(-HALL_HALF_WIDTH + 1.2 + i * 2.4, 0.04, HALL_NEAR_Z);
+      dummy.updateMatrix();
+      stripes.setMatrixAt(i, dummy.matrix);
+    }
+    stripes.instanceMatrix.needsUpdate = true;
+    this.scene.add(stripes);
+
+    // Cill / bumper rail where the far wall meets the floor.
+    const cillGeo = this.track(new THREE.BoxGeometry(HALL_HALF_WIDTH * 2, 0.35, 0.34), true);
+    const cill = new THREE.Mesh(cillGeo, trimMat);
+    cill.position.set(0, 0.175, HALL_FAR_Z + 0.35);
+    this.scene.add(cill);
+  }
+
+  /**
+   * Portal frame: columns down the aisle lines, cross beams overhead.
+   *
+   * These are instanced rather than individual meshes. There are dozens of
+   * identical columns and beams, and one InstancedMesh per element type keeps
+   * the draw-call count constant instead of growing with the building.
+   */
+  private buildStructure(): void {
+    const columnGeo = this.track(new THREE.BoxGeometry(0.42, AISLE_HEIGHT, 0.42), true);
+    const columnMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.column, roughness: 0.62, metalness: 0.55 }),
+      true,
+    );
+    const beamGeo = this.track(new THREE.BoxGeometry(0.34, 0.5, HALL_DEPTH), true);
+    const beamMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.roofBeam, roughness: 0.7, metalness: 0.45 }),
+      true,
+    );
+    const tieGeo = this.track(new THREE.BoxGeometry(HALL_HALF_WIDTH * 2, 0.3, 0.3), true);
+
+    const columnsPerLine = COLUMNS_PER_LINE;
+    const lines = ZONE_ORDER.length + 1;
+    const columns = new THREE.InstancedMesh(columnGeo, columnMat, columnsPerLine * lines);
+    const dummy = new THREE.Object3D();
+    let index = 0;
+
+    for (let line = 0; line < lines; line += 1) {
+      // One column line per aisle boundary: the front kerb, the gap between
+      // every pair of zone rows, and the rear wall.
+      const zFinal = columnLineZ(line);
+      for (let c = 0; c < columnsPerLine; c += 1) {
+        const x = columnX(c);
+        dummy.position.set(x, AISLE_HEIGHT / 2, zFinal);
+        dummy.updateMatrix();
+        columns.setMatrixAt(index, dummy.matrix);
+        index += 1;
+
+        // Ties run across the hall at the top of each column line.
+        const tie = new THREE.Mesh(tieGeo, beamMat);
+        tie.position.set(0, AISLE_HEIGHT - 0.4, zFinal);
+        this.scene.add(tie);
+      }
+    }
+    columns.count = index;
+    columns.instanceMatrix.needsUpdate = true;
+    this.scene.add(columns);
+
+    // Longitudinal roof beams, one per column line, tying the portal frames
+    // together and giving the ceiling a readable direction.
+    for (let line = 0; line < columnsPerLine; line += 1) {
+      const beam = new THREE.Mesh(beamGeo, beamMat);
+      beam.position.set(columnX(line), AISLE_HEIGHT - 0.85, HALL_CENTRE_Z);
+      this.scene.add(beam);
+    }
+
+    // High-level strip lights: emissive only, no dynamic light, so they cost
+    // nothing per frame but explain where the illumination comes from.
+    const lampGeo = this.track(new THREE.BoxGeometry(3.6, 0.12, 0.34), true);
+    const lampMat = this.track(
+      new THREE.MeshStandardMaterial({
+        color: 0xdfe9f2,
+        emissive: 0xbdd4e6,
+        emissiveIntensity: 0.55,
+        roughness: 0.4,
+      }),
+      true,
+    );
+    const lampCount = lines * 2;
+    const lamps = new THREE.InstancedMesh(lampGeo, lampMat, lampCount);
+    let lampIndex = 0;
+    for (let line = 0; line < lines; line += 1) {
+      const z = columnLineZ(line);
+      for (const offset of [-4.4, 4.4]) {
+        dummy.position.set(offset, AISLE_HEIGHT - 1.15, z);
+        dummy.updateMatrix();
+        lamps.setMatrixAt(lampIndex, dummy.matrix);
+        lampIndex += 1;
+      }
+    }
+    lamps.count = lampIndex;
+    lamps.instanceMatrix.needsUpdate = true;
+    this.scene.add(lamps);
+  }
+
+  /**
+   * Walkable aisles between the zone rows, with directional floor markings.
+   *
+   * The markings are physical paint on the floor - thin, unlit, material
+   * coloured - not emissive guide lines. They exist so the eye can follow
+   * material flow through the hall, which is the difference between a layout
+   * and a diagram.
+   */
+  private buildAisles(): void {
+    const aisleMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.aisle, roughness: 0.98, metalness: 0.02 }),
+      true,
+    );
+    const guideMat = this.track(
+      new THREE.MeshStandardMaterial({
+        color: PALETTE.edge,
+        roughness: 0.8,
+        metalness: 0.1,
+        transparent: true,
+        opacity: 0.85,
+      }),
+      true,
+    );
+
+    const aisles = ZONE_ORDER.length + 1;
+    for (let a = 0; a < aisles; a += 1) {
+      const z = aisleZ(a);
+
+      const stripGeo = this.track(new THREE.PlaneGeometry(HALL_HALF_WIDTH * 2 - 1.6, AISLE_CLEAR), true);
+      const strip = new THREE.Mesh(stripGeo, aisleMat);
+      strip.rotation.x = -Math.PI / 2;
+      strip.position.set(0, -0.05, z);
+      this.scene.add(strip);
+
+      // Aisle edge lines, on the actual clear width between the two rows.
+      const edgeGeo = this.track(new THREE.BoxGeometry(HALL_HALF_WIDTH * 2 - 1.6, 0.03, 0.08), true);
+      for (const edge of [-1, 1]) {
+        const line = new THREE.Mesh(edgeGeo, guideMat);
+        line.position.set(0, 0.01, z + edge * (AISLE_CLEAR / 2 - 0.06));
+        this.scene.add(line);
+      }
+
+      // Directional chevrons pointing the way through the hall.
+      const chevronGeo = this.track(new THREE.BoxGeometry(0.7, 0.02, 0.16), true);
+      const chevronCount = 9;
+      const chevrons = new THREE.InstancedMesh(chevronGeo, guideMat, chevronCount * 2);
+      const dummy = new THREE.Object3D();
+      let ci = 0;
+      for (let c = 0; c < chevronCount; c += 1) {
+        const x = -HALL_HALF_WIDTH + 2.6 + (c * (HALL_HALF_WIDTH * 2 - 5.2)) / (chevronCount - 1);
+        for (const lean of [-1, 1]) {
+          dummy.position.set(x, 0.02, z + lean * 0.22);
+          dummy.rotation.set(0, lean * 0.55, 0);
+          dummy.updateMatrix();
+          chevrons.setMatrixAt(ci, dummy.matrix);
+          ci += 1;
+        }
+      }
+      chevrons.count = ci;
+      chevrons.instanceMatrix.needsUpdate = true;
+      this.scene.add(chevrons);
+    }
+  }
+
+  /**
+   * Overhead utility runs and a conveyor spine along the material-flow axis.
+   *
+   * Material handling is what physically connects the zones, so the twin shows
+   * it rather than leaving the rows as six unrelated clusters. The conveyor is
+   * static geometry - a belt, side rails and rollers. Nothing on it moves:
+   * the performance contract is on-demand rendering, and an animated belt
+   * would mean the scene never settles.
+   */
+  private buildConveyors(): void {
+    const beltMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.belt, roughness: 0.92, metalness: 0.05 }),
+      true,
+    );
+    const railMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.rail, roughness: 0.45, metalness: 0.7 }),
+      true,
+    );
+
+    /*
+     * Belt beds span the hall on the two transfer aisles where material
+     * actually changes hands: between MATERIAL_HANDLING and ASSEMBLY, and
+     * between INSPECTION and PACKAGING. Positions come from columnLineZ so the
+     * belt lands on the same aisle as the floor strip, column line and lamp
+     * row rather than on a separately-guessed offset.
+     */
+    const BELT_TOP = 0.95;
+    const runs = [columnLineZ(2), columnLineZ(4)];
+    const width = HALL_HALF_WIDTH * 2 - 4;
+
+    for (const z of runs) {
+      const bedGeo = this.track(new THREE.BoxGeometry(width, 0.22, 1.1), true);
+      const bed = new THREE.Mesh(bedGeo, beltMat);
+      bed.position.set(0, BELT_TOP, z);
+      this.scene.add(bed);
+
+      const railGeo = this.track(new THREE.BoxGeometry(width, 0.3, 0.1), true);
+      for (const side of [-1, 1]) {
+        const rail = new THREE.Mesh(railGeo, railMat);
+        rail.position.set(0, BELT_TOP + 0.24, z + side * 0.62);
+        this.scene.add(rail);
+      }
+
+      // Legs, and rollers across the bed.
+      const legGeo = this.track(new THREE.BoxGeometry(0.16, BELT_TOP, 0.16), true);
+      const legCount = 9;
+      const legs = new THREE.InstancedMesh(legGeo, railMat, legCount * 2);
+      const rollerGeo = this.track(new THREE.CylinderGeometry(0.09, 0.09, 1.14, 8), true);
+      const rollers = new THREE.InstancedMesh(rollerGeo, railMat, legCount * 4);
+      const dummy = new THREE.Object3D();
+      let li = 0;
+      let ri = 0;
+      for (let i = 0; i < legCount; i += 1) {
+        const x = -width / 2 + 0.6 + (i * (width - 1.2)) / (legCount - 1);
+        for (const side of [-1, 1]) {
+          dummy.position.set(x, BELT_TOP / 2, z + side * 0.45);
+          dummy.rotation.set(0, 0, 0);
+          dummy.updateMatrix();
+          legs.setMatrixAt(li, dummy.matrix);
+          li += 1;
+        }
+        for (let r = 0; r < 4; r += 1) {
+          dummy.position.set(x - 0.4 + r * 0.27, BELT_TOP + 0.14, z);
+          dummy.rotation.set(Math.PI / 2, 0, 0);
+          dummy.updateMatrix();
+          rollers.setMatrixAt(ri, dummy.matrix);
+          ri += 1;
+        }
+      }
+      legs.count = li;
+      legs.instanceMatrix.needsUpdate = true;
+      this.scene.add(legs);
+      rollers.count = ri;
+      rollers.instanceMatrix.needsUpdate = true;
+      this.scene.add(rollers);
+    }
+
+    // Overhead services: a pipe run and a cable tray on stanchions. Present so
+    // the volume above the machines is occupied rather than empty.
+    const pipeGeo = this.track(new THREE.CylinderGeometry(0.22, 0.22, HALL_DEPTH - 3, 10), true);
+    const pipeMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.rail, roughness: 0.4, metalness: 0.75 }),
+      true,
+    );
+    for (const x of [-HALL_HALF_WIDTH + 2.6, HALL_HALF_WIDTH - 2.6]) {
+      const pipe = new THREE.Mesh(pipeGeo, pipeMat);
+      pipe.rotation.x = Math.PI / 2;
+      pipe.position.set(x, 6.4, HALL_CENTRE_Z);
+      this.scene.add(pipe);
+    }
+
+    const trayGeo = this.track(new THREE.BoxGeometry(1.1, 0.16, HALL_DEPTH - 3), true);
+    const trayMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.roofBeam, roughness: 0.6, metalness: 0.5 }),
+      true,
+    );
+    const tray = new THREE.Mesh(trayGeo, trayMat);
+    tray.position.set(0, 7.1, HALL_CENTRE_Z);
+    this.scene.add(tray);
+
+    // Hangers from the roof structure.
+    const hangerGeo = this.track(new THREE.BoxGeometry(0.07, 1.6, 0.07), true);
+    const hangerCount = 10;
+    const hangers = new THREE.InstancedMesh(hangerGeo, pipeMat, hangerCount * 2);
+    const dummy = new THREE.Object3D();
+    let hi = 0;
+    for (let i = 0; i < hangerCount; i += 1) {
+      const z = HALL_NEAR_Z - 3 - (i * (HALL_DEPTH - 6)) / (hangerCount - 1);
+      for (const x of [-HALL_HALF_WIDTH + 2.6, HALL_HALF_WIDTH - 2.6]) {
+        dummy.position.set(x, 7.2, z);
+        dummy.updateMatrix();
+        hangers.setMatrixAt(hi, dummy.matrix);
+        hi += 1;
+      }
+    }
+    hangers.count = hi;
+    hangers.instanceMatrix.needsUpdate = true;
+    this.scene.add(hangers);
+  }
+
   private attachOrbit(): void {
     // Minimal orbit implementation — avoids pulling the addons bundle and
     // keeps the vendor chunk small.
     const controls = {
-      target: new THREE.Vector3(0, 0, -19),
+      target: new THREE.Vector3(0, 0, HALL_CENTRE_Z),
       enabled: true,
       update: () => false,
       dispose: () => {
@@ -525,7 +954,48 @@ export class TwinScene {
       const lineMat = this.track(new THREE.LineBasicMaterial({ color: PALETTE.edge, transparent: true, opacity: 0.7 }));
       group.add(new THREE.Line(lineGeo, lineMat));
     }
+
+    this.layoutPads(machines);
   }
+
+  /**
+   * Machinery pads: a raised concrete plinth under every machine.
+   *
+   * Machines in the earlier scene sat directly on the floor, so they read as
+   * icons placed on a plane rather than as installed equipment. Real machines
+   * are anchored to a pad, and the gap between pad and floor is what makes the
+   * row read as a line of assets rather than a floating row of boxes.
+   *
+   * Instanced because the count follows the machine count and all pads are
+   * identical.
+   */
+  private layoutPads(machines: Machine[]): void {
+    if (!this.padGroup) {
+      this.padGroup = new THREE.Group();
+      this.scene.add(this.padGroup);
+    }
+    this.disposeChildren(this.padGroup);
+
+    if (machines.length === 0) return;
+
+    const padGeo = this.track(new THREE.BoxGeometry(3.9, 0.22, 3.0), true);
+    const padMat = this.track(
+      new THREE.MeshStandardMaterial({ color: BUILDING.pad, roughness: 0.97, metalness: 0.02 }),
+      true,
+    );
+    const pads = new THREE.InstancedMesh(padGeo, padMat, machines.length);
+    const dummy = new THREE.Object3D();
+    machines.forEach((machine, index) => {
+      const position = this.positionFor(machine);
+      dummy.position.set(position.x, 0.11, position.z);
+      dummy.updateMatrix();
+      pads.setMatrixAt(index, dummy.matrix);
+    });
+    pads.instanceMatrix.needsUpdate = true;
+    this.padGroup.add(pads);
+  }
+
+  private padGroup: THREE.Group | null = null;
 
   private zoneGroup: THREE.Group | null = null;
 
@@ -950,7 +1420,18 @@ export class TwinScene {
 
   topView(): void {
     const bounds = this.sceneBounds();
-    const distance = Math.max(bounds.size.y, bounds.size.z) * 0.9 + 8;
+    /*
+     * Looking straight down, the frustum's vertical extent covers the hall's
+     * DEPTH and its horizontal extent covers the hall's WIDTH. Deriving the
+     * distance from both keeps the full floor in frame on wide and tall
+     * viewports alike, instead of guessing from the largest single dimension.
+     */
+    const fov = (this.camera.fov * Math.PI) / 180;
+    const aspect = Math.max(0.35, this.camera.aspect || 1);
+    const distance = Math.max(
+      bounds.size.z / 2 / Math.tan(fov / 2),
+      bounds.size.x / 2 / Math.tan(fov / 2) / aspect,
+    ) * 1.04;
     this.animateCamera(
       new THREE.Vector3(bounds.target.x, distance, bounds.target.z + 0.01),
       bounds.target,
@@ -971,18 +1452,42 @@ export class TwinScene {
     const box = new THREE.Box3();
     for (const node of members) box.expandByPoint(node.position);
     const centre = box.getCenter(new THREE.Vector3());
-    this.animateCamera(new THREE.Vector3(centre.x, 17, centre.z + 15), centre);
+
+    /*
+     * Frame the zone itself, not a fixed 17/15 offset. A three-machine row and
+     * a six-machine row need different camera distances, and the earlier fixed
+     * value cropped the wider zones while pushing the narrower ones into the
+     * far distance.
+     */
+    const size = box.getSize(new THREE.Vector3());
+    const fov = (this.camera.fov * Math.PI) / 180;
+    const aspect = Math.max(0.35, this.camera.aspect || 1);
+    const distance = Math.max(
+      (size.z + ZONE_DEPTH) / 2 / Math.tan(fov / 2),
+      (size.x + 6) / 2 / Math.tan(fov / 2) / aspect,
+      9,
+    ) * 1.12;
+    const direction = new THREE.Vector3(0.4, 0.68, 0.62).normalize().multiplyScalar(distance);
+    this.animateCamera(centre.clone().add(direction), centre);
   }
 
   private sceneBounds(): { position: THREE.Vector3; target: THREE.Vector3; size: THREE.Vector3 } {
-    const box = new THREE.Box3();
+    /*
+     * Frame the BUILDING, not just the machines.
+     *
+     * Framing the machine nodes alone let the hall walls, roof beams and
+     * conveyors fall outside the frustum, so the plant looked like objects on
+     * an infinite plane again. The building is a fixed, known volume, so the
+     * default view uses it directly and only widens to include a machine that
+     * has been dragged outside the hall.
+     */
+    const box = new THREE.Box3(
+      new THREE.Vector3(-HALL_HALF_WIDTH, 0, HALL_FAR_Z),
+      new THREE.Vector3(HALL_HALF_WIDTH, AISLE_HEIGHT, HALL_NEAR_Z),
+    );
     for (const node of this.nodes.values()) {
       box.expandByPoint(node.position.clone().add(new THREE.Vector3(-2, 0, -2)));
       box.expandByPoint(node.position.clone().add(new THREE.Vector3(2, MACHINE_HEIGHT + 1.4, 2)));
-    }
-    if (box.isEmpty()) {
-      const target = new THREE.Vector3(0, 0, -19);
-      return { position: new THREE.Vector3(28, 26, 14), target, size: new THREE.Vector3(20, 6, 40) };
     }
 
     const centre = box.getCenter(new THREE.Vector3());
@@ -1000,7 +1505,12 @@ export class TwinScene {
     const fitHeightDistance = size.y / 2 / Math.tan(fov / 2);
     const fitWidthDistance = size.x / 2 / Math.tan(fov / 2) / aspect;
     const fitDepthDistance = size.z / 2;
-    const distance = Math.max(fitHeightDistance, fitWidthDistance, fitDepthDistance) * 1.18 + 6;
+    /*
+     * 1.06 + 2 leaves a little breathing room without shrinking the plant into
+     * the middle third of the frame. The earlier 1.18 + 6 pushed the building
+     * out to roughly half the viewport width.
+     */
+    const distance = Math.max(fitHeightDistance, fitWidthDistance, fitDepthDistance) * 1.06 + 2;
 
     const direction = new THREE.Vector3(0.42, 0.62, 0.66).normalize();
     return { position: centre.clone().add(direction.multiplyScalar(distance)), target: centre, size };
@@ -1171,6 +1681,7 @@ export class TwinScene {
     this.nodes.clear();
 
     if (this.zoneGroup) this.disposeChildren(this.zoneGroup);
+    if (this.padGroup) this.disposeChildren(this.padGroup);
     if (this.edgeGroup) this.disposeChildren(this.edgeGroup);
 
     for (const item of this.disposables) item.dispose();

@@ -207,11 +207,12 @@ export interface TelemetryRangeResponse {
 
 export interface TelemetryStatus {
   dataBasis: string;
+  /** How telemetry ENTERS the backend: KAFKA | IN_PROCESS_HTTP_INGEST. */
   inputTransport: string;
-  transport: string;
   source: string;
-  pollIntervalSeconds: number;
   telemetryPerMinute: number;
+  /** True while records are actually arriving, derived server-side from the
+   *  per-minute count rather than restating the configured mode. */
   streaming: boolean;
 }
 
@@ -319,9 +320,7 @@ export interface AnalyticsOverview {
   criticalAlerts: number;
   averageFleetHealth: number;
   activeMaintenance: number;
-  productionEfficiency: { value: number; label: string };
   telemetryThroughputPerMinute: number;
-  estimatedDowntimeRiskMinutes: number;
   dataBasis: string[];
 }
 
@@ -350,6 +349,10 @@ export interface AlertStats {
 export interface FleetHealth {
   machines: { machineId: string; healthScore: number; failureRisk: number }[];
   basis: string;
+  /** The endpoint is named `health-trends` but returns one current row per
+   *  asset, not a time series. Flagged so no consumer can draw a trend from it. */
+  sampleType?: string;
+  isTimeSeries?: boolean;
 }
 
 export interface MaintenanceStats {
@@ -485,9 +488,10 @@ export interface SimulatorConfig {
 export interface SystemStatus {
   application: string;
   demoMode: boolean;
+  /** True only while at least one realtime client holds a session. The backend
+   *  derives this from the live connection count rather than a literal. */
   streaming: boolean;
   transport: string;
-  pollIntervalSeconds: number;
   inputTransport: string;
   database: string;
   mlServiceAvailable: boolean;

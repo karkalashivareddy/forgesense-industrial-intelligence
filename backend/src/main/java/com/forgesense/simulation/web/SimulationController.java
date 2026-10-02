@@ -10,6 +10,7 @@ import com.forgesense.simulation.SystemState;
 import com.forgesense.simulation.domain.ScenarioType;
 import com.forgesense.simulation.domain.SimulationControl;
 import com.forgesense.simulation.domain.SimulationScenario;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -84,7 +85,18 @@ public class SimulationController {
     @PreAuthorize("hasAnyRole('ENGINEER', 'ADMIN')")
     public Map<String, Object> clear(@PathVariable String machineId) {
         controlService.clearScenario(machineId);
-        return Map.of("cleared", true, "machineId", machineId);
+        return Map.of(
+                "machineId", machineId,
+                "scenarioCleared", true,
+                /*
+                 * Explicitly not "restored": clearing the control stops the
+                 * simulator injecting the fault. Machine state, health and
+                 * model output converge back over the following telemetry
+                 * cycles, and the caller should watch them rather than assume
+                 * an instant NORMAL.
+                 */
+                "stateRestoredImmediately", false,
+                "recoveryNote", "Injected fault removed. The decision engine returns the asset to NORMAL as clean telemetry arrives.");
     }
 
     @GetMapping("/simulation/control")
@@ -92,9 +104,17 @@ public class SimulationController {
         return controlRepository.findByActiveTrue();
     }
 
+    /**
+     * A machine that has never been given a scenario has no control record, and
+     * a synthesised empty one is indistinguishable from a real "NONE" control.
+     * Report 404 so the console can say "not simulated" instead of showing an
+     * invented control.
+     */
     @GetMapping("/simulation/control/{machineId}")
-    public SimulationControl control(@PathVariable String machineId) {
-        return controlService.controlFor(machineId);
+    public ResponseEntity<SimulationControl> control(@PathVariable String machineId) {
+        return controlRepository.findByMachineId(machineId)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping("/simulation/pause")
