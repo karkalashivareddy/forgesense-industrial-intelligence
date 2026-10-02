@@ -90,9 +90,6 @@ export function useRealtimeSession(enabled: boolean): void {
             // rather than letting client state drift.
             ref.current.requestReconcile(detail ?? 'sequence-regression', Date.now());
           }
-          if (import.meta.env.DEV) {
-            console.debug(`[realtime] ${code}${detail ? ` — ${detail}` : ''}`);
-          }
         },
       },
       { maxDedupe: config.limits.dedupe },
