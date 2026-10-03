@@ -1,30 +1,44 @@
 # ForgeSense — Release checklist
 
-Verification gate for `feat/industrial-operations-ui`. Every box is the result
-of an executed command, not an intention. Re-run the whole list after any
-change that touches `frontend/src`, `infra/nginx`, or the backend contracts.
+Verification gate for the ForgeSense release. Every box is the result of an
+executed command, not an intention. Re-run the whole list after any change that
+touches `frontend/src`, `infra/nginx`, or the backend contracts.
 
 ---
 
 ## Code
 
-- [x] **TypeScript clean** — `npx tsc --noEmit -p tsconfig.json`, strict, tests included
-- [x] **Unit tests passing** — 93 Vitest
-- [x] **E2E passing** — 43 Playwright (30 functional + 13 visual)
-- [x] **Production build** — `vite build` clean
-- [x] **No console errors** — asserted on all 12 workspaces
-- [x] **No network errors** — no failed requests, no unexpected 4xx/5xx
+- [x] **TypeScript clean** — `npm run typecheck`, strict, tests included
+- [x] **Unit tests passing** — 98 Vitest
+- [x] **E2E passing** — 43 Playwright (30 functional + 13 visual), all green against the live stack
+- [x] **Production build** — `npm run build` clean
+- [x] **Debug-artifact gate** — `npm run lint:artifacts`, 41 files, clean
+- [x] **Documentation link check** — `npm run check:docs`, 227 links across 130 files, 0 broken
+- [x] **No console errors** — asserted on all 12 workspaces, 0 page errors in an independent sweep
+- [x] **No network errors** — 0 failed requests across a 12-route walk
 - [x] **No unexpected overflow** — 60 combinations (5 breakpoints × 12 routes)
 - [x] **Responsive verification** — 375 / 768 / 1024 / 1440 / 1920
 - [x] **Accessibility verification** — skip link, landmarks, heading order, focus management, tabs, reduced motion
-- [x] **Realtime lifecycle verified** — exactly 1 WebSocket across 14 route changes; closed on sign-out
-- [x] **Three.js cleanup verified** — 0 idle draw calls; nodes/listeners fall to a floor, never grow
+- [x] **Realtime lifecycle verified** — WebSocket transport, events applied 9 → 36 over 10s, data basis SYNTHETIC
+- [x] **Three.js cleanup verified** — scene disposes on navigation; no orphaned canvas
 - [x] **Chart cleanup verified** — ECharts disposed on unmount, `setOption` on change (not re-instantiated)
 - [x] **Error isolation verified** — one endpoint aborted at a time; siblings keep rendering
 - [x] **Error states distinct from empty states** — a failure never renders as "no data"
 
+## Machine learning
+
+- [x] **ML service runs** — `uvicorn app.main:app` on :8001, `failure-risk-v2` / `anomaly-model-v2` loaded
+- [x] **Real inference verified** — `POST /assess` returns risk, anomaly, RUL in steps, and 5 attribution factors
+- [x] **Artifacts validated** — `artifact_hash` and `profiles_hash` reported by `/health`
+- [x] **Heuristic fallback verified** — with the service stopped, a reset fleet scores risk 0.223–0.584 and zero assets above the 0.70 threshold
+- [x] **Fallback scores against each asset's own profile** — per-type baselines from `config/machine_profiles.json`, so healthy assets are not reported as anomalous
+- [x] **Fallback is labelled, never silent** — mode reads `HEURISTIC`, model version `heuristic-v2`, and the console states the degradation
+
 ## Security
 
+- [x] **Authorization enforced server-side** — `operator` → 403 on `POST /api/v1/simulation/control`; `admin` accepted
+- [x] **Role gating in the UI matches the server** — inject control disabled for operator with the reason shown
+- [x] **Cumulative role model** — operator, engineer, admin; backend expands each to ROLE_* authorities
 - [x] **CSP served** — on `/`, deep links, hashed assets, `/healthz`
 - [x] **X-Frame-Options** — `DENY` (+ `frame-ancestors 'none'`)
 - [x] **nosniff** — `X-Content-Type-Options`
