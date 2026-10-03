@@ -24,6 +24,10 @@ source disagree, the source is correct and the document is a defect.
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | What this system does **not** do |
 | [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) | Guided walkthrough of the running product |
 
+Repository-level community documents live at the repository root:
+[README.md](../README.md), [SECURITY.md](../SECURITY.md),
+[CONTRIBUTING.md](../CONTRIBUTING.md), [LICENSE](../LICENSE).
+
 ## Product
 
 | Document | Purpose |
@@ -75,9 +79,17 @@ source disagree, the source is correct and the document is a defect.
 
 | Document | Purpose |
 |---|---|
+| [testing/README.md](testing/README.md) | Test layers, commands, and what each layer proves |
 | [TESTING.md](TESTING.md) | Test strategy and how to run each suite |
-| [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | Pre-release gate |
+| [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | Pre-release gate, recorded as executed evidence |
 | [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) | How release evidence is produced |
+
+## Reference material
+
+| Document | Purpose |
+|---|---|
+| [SCREENSHOTS](screenshots/README.md) | Captured from the running application |
+| [audit/](audit/README.md) | Dated audits and verification records |
 
 ## Evaluation
 

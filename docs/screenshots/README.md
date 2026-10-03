@@ -1,16 +1,28 @@
 # Screenshots
 
-Captured from the running application during verification.
+All images below were captured from the running application against the live
+backend with the ML service serving real inference.
 
-> These images are **historical**. Several predate the factory-hall digital twin
-> rebuild and the current prediction/attribution presentation, and are retained
-> as a record of what was verified at the time rather than as an exact picture
-> of the current UI.
+## Current
 
-For the current interface, run the product and use the documentation index at
-[../README.md](../README.md).
+These reflect the console as it stands now, including the factory-hall digital
+twin and the current predictions and analytics surfaces.
 
-## Contents
+| Image | View |
+|---|---|
+| `current-command-center.png` | Command Center |
+| `current-factory-twin.png` | Factory Twin |
+| `current-predictions.png` | Predictions |
+| `current-analytics.png` | Analytics |
+| `current-scenario-lab.png` | Scenario Lab |
+| `current-event-stream.png` | Event Stream |
+
+## Previous captures
+
+Retained as a record of what was verified at the time. Several predate the
+factory-hall twin rebuild and the current predictions and attribution
+presentation, so they do not represent the present UI. They are not referenced
+by the README.
 
 | Image | View |
 |---|---|
@@ -28,3 +40,6 @@ For the current interface, run the product and use the documentation index at
 | `09-system.png` | System |
 | `10-command-center-375.png` | Command Center at 375px |
 | `10-maintenance-board.png` | Maintenance |
+
+No screenshot contains credentials or other sensitive material; the sign-in
+surface is not captured.
