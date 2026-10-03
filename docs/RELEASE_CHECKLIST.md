@@ -4,6 +4,19 @@ Verification gate for the ForgeSense release. Every box is the result of an
 executed command, not an intention. Re-run the whole list after any change that
 touches `frontend/src`, `infra/nginx`, or the backend contracts.
 
+## Evidence provenance
+
+This checklist mixes two kinds of check, and they are labelled separately:
+
+- **Sections marked _executed_** were run in the final repository audit pass
+  against the real stack (backend `dev` profile + ML service serving live
+  inference). The counts quoted are the observed output of those commands.
+- **Section "Not re-verified in this pass"** lists checks that require the
+  Docker Compose topology or a browser session. They were executed during the
+  original release verification but could **not** be re-executed in the audit
+  pass, so they are recorded as prior evidence rather than as a fresh result.
+  Do not read them as verified by the audit pass.
+
 ---
 
 ## Code
@@ -13,10 +26,10 @@ touches `frontend/src`, `infra/nginx`, or the backend contracts.
 - [x] **E2E passing** — 43 Playwright (30 functional + 13 visual), all green against the live stack
 - [x] **Production build** — `npm run build` clean
 - [x] **Debug-artifact gate** — `npm run lint:artifacts`, 41 files, clean
-- [x] **Documentation link check** — `npm run check:docs`, 227 links across 130 files, 0 broken
+- [x] **Documentation link check** — `npm run check:docs`, 132 links across 67 files, 0 broken
 - [x] **No console errors** — asserted on all 12 workspaces, 0 page errors in an independent sweep
 - [x] **No network errors** — 0 failed requests across a 12-route walk
-- [x] **No unexpected overflow** — 60 combinations (5 breakpoints × 12 routes)
+- [x] **No unexpected overflow** — 40 combinations (5 breakpoints × 8 workspaces)
 - [x] **Responsive verification** — 375 / 768 / 1024 / 1440 / 1920
 - [x] **Accessibility verification** — skip link, landmarks, heading order, focus management, tabs, reduced motion
 - [x] **Realtime lifecycle verified** — WebSocket transport, events applied 9 → 36 over 10s, data basis SYNTHETIC
@@ -36,6 +49,11 @@ touches `frontend/src`, `infra/nginx`, or the backend contracts.
 
 ## Security
 
+> The header items below are prior-release results verified **on the wire**
+> through nginx. The audit pass had no Compose stack, so they are recorded as
+> prior evidence, not as a fresh result. Authorization and the session model
+> _were_ re-verified in the audit pass against the running backend.
+
 - [x] **Authorization enforced server-side** — `operator` → 403 on `POST /api/v1/simulation/control`; `admin` accepted
 - [x] **Role gating in the UI matches the server** — inject control disabled for operator with the reason shown
 - [x] **Cumulative role model** — operator, engineer, admin; backend expands each to ROLE_* authorities
@@ -47,7 +65,7 @@ touches `frontend/src`, `infra/nginx`, or the backend contracts.
 - [x] **No unsafe HTML** — zero `innerHTML`, zero `dangerouslySetInnerHTML`
 - [x] **No `unsafe-eval` in CSP**
 - [x] **No secrets committed** — `.env` untracked, `.env.example` present, no keys in tracked source
-- [x] **Token not persisted** — bearer held in memory only
+- [x] **Password never stored** — no credential in `sessionStorage`, `localStorage` or a cookie; the JWT is `sessionStorage`-scoped and discarded when the tab closes
 - [x] **No dead CSP** — headers verified on the wire, not just in the config
 
 > Worth re-checking every release: nginx does not inherit `add_header` into a
@@ -70,6 +88,11 @@ touches `frontend/src`, `infra/nginx`, or the backend contracts.
 
 ## Docker
 
+> Requires the Compose topology. **Not re-verified in the audit pass** — the
+> Docker daemon was not available. These are prior-release results; re-run
+> `docker compose up -d --build --force-recreate` and confirm before relying
+> on them.
+
 - [x] **Clean build** — `npm ci` against the committed lockfile
 - [x] **Container healthy** — all 9 services `Up (healthy)`
 - [x] **nginx SPA fallback** — direct load of `/command` returns 200
@@ -82,7 +105,7 @@ touches `frontend/src`, `infra/nginx`, or the backend contracts.
 ## Git
 
 - [x] **Working tree clean**
-- [x] **Branch verified** — `feat/industrial-operations-ui`
+- [x] **Branch verified** — `main`
 - [x] **No accidental files** — no scratch scripts, no `package.json` at repo root, no build output
 - [x] **No debug artifacts** — no `console.log`, no `debugger`, no `TODO`/`FIXME`/`HACK`
 - [x] **No stale file references in current docs** — audited for references to files deleted in the re-architecture; `DEPLOYMENT.md` and `REALTIME.md` corrected
@@ -136,4 +159,4 @@ rm -rf frontend/dist frontend/test-results frontend/playwright-report
 | Twin frame rate unmeasurable in CI | the browser uses SwiftShader (software rendering). The GPU-independent property — zero idle draw calls — is asserted instead. |
 | `1/TODO`-style backlog | none. No known open defect. |
 | Stress/load testing not performed | single-node demo topology, out of scope for release. |
-| Backend unit tests not re-run this pass | no backend source was modified in this pass; frontend/backend contracts were verified against the live API instead. |
+| Backend unit tests re-run in the audit pass | 61/61 green (`./mvnw test`). |

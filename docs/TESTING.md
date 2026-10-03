@@ -6,12 +6,14 @@ The browser is the product, so browser tests are not an optional extra here.
 
 ## 1. Layers
 
-| Layer | Tool | Location | What it protects |
-| --- | --- | --- | --- |
-| Unit | Vitest | `frontend/test/` | unit discipline, state derivation, data basis, protocol framing, envelope validation |
-| Type | `tsc --noEmit` | — | contract shape across the whole app, including tests |
+| Layer | Tool | Location | Count | What it protects |
+| --- | --- | --- | --- | --- |
+| Unit | Vitest | `frontend/test/` | 98 | unit discipline, state derivation, data basis, protocol framing, envelope validation, design tokens |
+| Type | `tsc -b` | — | — | contract shape across the whole app, including tests |
 | E2E | Playwright | `frontend/e2e/app.spec.ts` | 30 | the product: boot, auth, every route, selection journey, realtime, scenario lab, failure handling, a11y |
 | Visual/responsive | Playwright | `frontend/e2e/visual.spec.ts` | 13 | layout integrity at 5 breakpoints, mobile nav, twin lifecycle, console/network cleanliness |
+| Backend | JUnit 5 | `backend/src/test/` | 61 | state machine, twin projection, alert lifecycle, decision formatting, RBAC, telemetry validation, STOMP auth |
+| ML | pytest | `ml-service/tests/` | 8 | inference contract, artifact provenance, feature schema |
 
 ---
 
@@ -26,18 +28,54 @@ npm run build         # tsc -b && vite build
 npm run e2e           # Playwright, builds + previews automatically
 ```
 
-Against an already-running stack:
+Or the whole static gate in one command:
 
 ```bash
-E2E_BASE_URL=http://localhost:5173 npm run e2e
+npm run verify        # doc links + artifact gate + typecheck + unit + build
 ```
+
+`npm run verify` is exactly what CI runs, so running it locally avoids a
+failed build.
+
+Backend and ML:
+
+```bash
+cd ../backend    && ./mvnw test
+cd ../ml-service && python -m pytest tests -q
+```
+
+### Running E2E against an already-running stack
+
+Playwright needs the backend and the console. With the ML service running the
+suite exercises the model path; without it the suite still passes and verifies
+the labelled fallback.
+
+```bash
+# terminal 1
+cd backend && ./mvnw spring-boot:run
+
+# terminal 2 (optional)
+cd ml-service && .venv/Scripts/python -m uvicorn app.main:app --port 8001
+
+# terminal 3
+cd frontend
+E2E_BASE_URL=http://127.0.0.1:4173 npm run e2e
+```
+
+If `E2E_BASE_URL` is unset, Playwright builds the console and starts
+`vite preview` itself.
+
+> If you serve the console from a port other than 5173, add that origin to
+> `FORGESENSE_ALLOWED_ORIGINS`. The backend allow-list defaults to
+> `http://localhost:5173` and `http://127.0.0.1:5173`, and a request from an
+> unlisted origin is rejected with `403` before it reaches a controller.
 
 Set `CAPTURE_SCREENSHOTS=true` to write breakpoint screenshots to
 `frontend/test-results/visual/`.
 
 ---
 
-## 3. Unit tests (66)
+## 3. Unit tests (98, across 6 files)
 
 ### `format.test.ts` — unit discipline
 The tests that matter most in the repository, because they encode product
@@ -77,6 +115,15 @@ promises rather than implementation detail:
 - `deriveConnectionQuality` never returns `LIVE` for a synthetic feed, and
   returns `STALE` for a silent socket.
 
+### `adapters.test.ts` — envelope contracts
+Adapters deserve a test whenever an endpoint envelope changes: an adapter that
+guesses wrong yields an empty result, which is indistinguishable from a
+genuinely empty one and is caught by no type error.
+
+### `tokens.test.ts` — design tokens
+Token integrity is asserted so a palette or spacing edit cannot silently break
+contrast or a spacing scale.
+
 ---
 
 ## 4. E2E tests (30)
@@ -98,7 +145,8 @@ route test via `expectCleanBrowser()`.
 
 ## 5. Visual & responsive tests (13)
 
-Eight workspaces × five breakpoints (375, 768, 1024, 1440, 1920).
+Eight workspaces × five breakpoints (375, 768, 1024, 1440, 1920) = 40 layout
+combinations.
 
 A screenshot alone is not a check, so each test also asserts:
 
@@ -130,6 +178,13 @@ Repository hygiene fails on:
   icons and Three.js must be bundled
 - **a missing `frontend/package-lock.json`** — builds must be reproducible
 
+### Documentation checks
+
+| Check | Command | Enforces |
+|---|---|---|
+| Documentation links | `npm run check:docs` | Every relative link resolves; directory links have an index; anchors exist |
+| Debug artifacts | `npm run lint:artifacts` | No console calls, `debugger`, `TODO`/`FIXME`/`HACK`, or raw DOM writes in `frontend/src` |
+
 ---
 
 ## 7. Resource discipline
@@ -147,7 +202,15 @@ The suite is deliberately frugal, because CI is a shared resource:
 
 ---
 
-## 8. What is not covered
+## 8. Adding tests
+
+- A bug fix needs a regression test that fails without the fix.
+- Adapters deserve a test whenever an endpoint envelope changes.
+- Keep loading, empty and error states distinct in both the UI and its tests.
+
+---
+
+## 9. What is not covered
 
 Honest gaps, listed rather than hidden:
 
@@ -160,3 +223,18 @@ Honest gaps, listed rather than hidden:
   against benign font-rendering differences.
 - **No load or performance budget test.** Performance properties are designed
   for and documented, but not gated by a measured threshold in CI.
+- **No Testcontainers integration tests.** The Compose topology
+  (PostgreSQL/Redis/Kafka) is exercised by hand, not by an automated suite.
+
+---
+
+## 10. Runtime verification beyond the suites
+
+Some guarantees are verified by exercising the running system rather than by a
+unit test, and are recorded in
+[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md):
+
+- ML inference against the trained artifacts, across all eight machine types
+- server-side authorization: `operator` receives 403 on a control endpoint
+- the scenario lifecycle end to end: healthy → degraded → cleared → recovery
+- realtime event counters advancing over a live WebSocket

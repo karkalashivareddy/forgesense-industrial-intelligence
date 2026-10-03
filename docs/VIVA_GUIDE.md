@@ -170,10 +170,14 @@ is impossible.
 **MIME sniffing?** `X-Content-Type-Options: nosniff`, so a browser cannot
 re-interpret a response's type.
 
-**Auth/session?** Bearer JWT held **in memory only** in `api/client.ts` —
-never `localStorage`, so XSS cannot exfiltrate it from storage. A `401` clears
-the token, raises `SessionExpiredError`, and reopens the gate without retry
-loops. Sign-out tears down the WebSocket.
+**Auth/session?** The bearer JWT is held in **`sessionStorage`** (see
+`src/auth/session.ts`) — tab-scoped and discarded when the tab closes, never in
+`localStorage` and never in a JS-readable cookie. The trade-off is explicit and
+documented in that module: an XSS payload *could* read the token from
+`sessionStorage`, which is why the console renders only through React, loads no
+external origins, and ships a strict CSP. The **password** is never stored at
+all. A `401` clears the token, raises `SessionExpiredError`, and reopens the
+gate without retry loops. Sign-out tears down the WebSocket.
 
 **Unsafe HTML?** **None.** No `innerHTML`, no `dangerouslySetInnerHTML` anywhere
 in `src/`. All rendering is React text nodes.

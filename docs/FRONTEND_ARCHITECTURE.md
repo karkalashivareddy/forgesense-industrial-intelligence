@@ -219,8 +219,8 @@ no external origin, and a strict CSP.
 
 | Layer | Tool | Count | Covers |
 | --- | --- | --- | --- |
-| Unit | Vitest | 66 | formatting/unit discipline, state derivation, data basis, envelope validation, STOMP framing, connection honesty, adapters |
-| E2E | Playwright | 27 | boot, auth, all 12 routes, deep links, refresh, selection journey, realtime honesty, backend-down, ML-down, a11y, reduced motion |
+| Unit | Vitest | 98 | formatting/unit discipline, state derivation, data basis, envelope validation, STOMP framing, connection honesty, adapters, design tokens |
+| E2E | Playwright | 30 | boot, auth, all 12 routes, deep links, refresh, selection journey, realtime honesty, backend-down, ML-down, a11y, reduced motion |
 | Visual/responsive | Playwright | 13 | 8 workspaces × 5 breakpoints, mobile nav, bottom sheet, twin lifecycle, console/network cleanliness |
 
 Run: `npm run typecheck`, `npm test`, `npm run e2e`.

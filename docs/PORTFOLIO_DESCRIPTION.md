@@ -28,7 +28,7 @@ capability the code does not have.
   model output is visually quarantined in violet, so an operator can always tell
   a measurement from an inference. When a value cannot be trusted it renders as
   *unavailable* rather than as a confident `0`.
-- **Verified it.** 93 Vitest unit tests, 43 Playwright browser tests (functional
+- **Verified it.** 98 Vitest unit tests, 43 Playwright browser tests (functional
   + responsive visual), strict TypeScript, and a reproducible Docker/nginx
   deployment. The suite caught real defects: an event list permanently empty
   because of a mis-guessed JSON envelope, and security headers that were

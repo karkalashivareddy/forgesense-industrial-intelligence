@@ -28,7 +28,9 @@ import { join, dirname, resolve, relative, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('../..', import.meta.url)));
-const SCAN_DIRS = ['.', 'docs'];
+// The repository root is scanned recursively and already includes `docs/`,
+// so listing subdirectories here would visit (and count) them twice.
+const SCAN_DIRS = ['.'];
 const MARKDOWN_EXT = new Set(['.md']);
 
 /** Directories never worth walking into. */

@@ -213,9 +213,9 @@ technical typography, semantic status colors, high information density.
 Pages: Dashboard (KPI + live 3D factory + telemetry strip), Machines, Machine
 Inspector (telemetry sparkline, risk factors, explanation), Alerts, Analytics,
 Maintenance, Simulation, Impact, and an Event Feed. A command palette
-(`Ctrl/Cmd+K`) and keyboard shortcuts are supported. All data is fetched from
-the backend REST API every 3 s; WebSocket broadcast is implemented
-server-side, and loading/empty/error/offline states render everywhere.
+(`Ctrl/Cmd+K`) and keyboard shortcuts are supported. The console subscribes to
+the backend over STOMP/WebSocket for updates and reconciles against a REST
+snapshot poll every 3 s; loading/empty/error/offline states render everywhere.
 
 ## 11. Infrastructure
 
@@ -223,8 +223,9 @@ Docker Compose: `frontend, backend, ml-service, simulator, postgres, redis,
 kafka, prometheus, grafana`. Prometheus scrapes the backend
 (`/actuator/prometheus`); Grafana is provisioned with the Prometheus datasource
 (dashboards are created manually). GitHub Actions CI: builds + tests the
-backend (`./mvnw package`), runs the ML pytest suite, syntax-checks the
-frontend (`node --check`), and enforces repository hygiene.
+backend (`./mvnw package`), runs the ML pytest suite, and for the frontend runs
+the doc-link check, the debug-artifact gate, a strict `tsc` typecheck, the Vitest
+unit suite, a production build, and the Playwright E2E suite.
 
 ## 12. Risks & Assumptions
 

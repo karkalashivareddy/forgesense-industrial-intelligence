@@ -208,7 +208,7 @@ Actuator health groups: `liveness`, `readiness`, `dependencies`
 | Redis down | cache falls back to memory; PostgreSQL unaffected | `CACHE: fallback` |
 | PostgreSQL down | health down; writes rejected; reads degraded | `DB: DOWN` + error states |
 | ML down | heuristic scorer + `MODEL: unavailable` badge | explanation uses heuristic |
-| WebSocket down | dashboard unaffected — it polls REST and never opens a socket | n/a |
+| WebSocket down | socket reconnects with backoff; the 3 s REST snapshot poll carries the console | `DEGRADED` · "realtime unavailable · polling REST snapshots" |
 | Machine offline | telemetry stops; state → OFFLINE; alerts generated | status color + stale label |
 
 ## 14. Environment & configuration
@@ -228,9 +228,11 @@ Actuator health groups: `liveness`, `readiness`, `dependencies`
   stability, evaluation metrics.
 - Simulator: exercised end-to-end via docker compose (`--degrade`, `--bare`,
   `--omit`); no dedicated test suite at present.
-- Frontend: `node --check` on all modules plus a `node:test` unit suite
-  (`test/util.test.mjs`, run in CI).
-- Testcontainers, Vitest/Testing Library, and Playwright E2E are **not**
-  currently implemented; they are candidate next steps.
+- Frontend: strict `tsc` typecheck across app and tests, a Vitest unit suite
+  (6 files in `frontend/test/`), a production `vite build`, and a Playwright
+  E2E suite (30 functional + 13 visual) run against the real backend.
+  See [TESTING.md](TESTING.md).
+- Testcontainers-based integration tests are **not** currently implemented;
+  they are a candidate next step.
 
 The CI workflow is at `.github/workflows/ci.yml`.

@@ -51,9 +51,13 @@ intended to help explain the project precisely.
 ## Testing
 
 - What is covered by the current tests?
-  - Backend state/decision/alert/maintenance behavior, ML service tests, and
-    frontend static/utility checks through the repository CI.
+  - 61 JUnit tests on the backend (state machine, twin projection, alert
+    lifecycle, decision formatting, telemetry validation, STOMP auth, and an
+    RBAC integration suite), 98 Vitest unit tests in the frontend, 8 pytest
+    tests in the ML service, and 43 Playwright tests (30 functional + 13
+    visual/responsive) that drive a real browser against the running backend.
 - What would you add next?
-  - An end-to-end telemetry-to-recovery test against the Docker profile and
-    explicit failure-injection tests for Kafka, Redis, PostgreSQL, and ML.
+  - Testcontainers-based integration tests for PostgreSQL, Redis and Kafka,
+    explicit failure-injection tests for those dependencies, and a
+    cross-browser Playwright matrix (currently Chromium only).
 

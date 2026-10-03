@@ -24,9 +24,12 @@ correlation ID.
 
 ## Transport and freshness claims
 
-The browser consumes REST polling. The UI reports `REST_POLL` and the poll
-interval/data age; it does not claim WebSocket streaming. Kafka, when enabled,
-is an internal backend input transport and is reported separately.
+The browser's primary transport is STOMP over WebSocket; the UI reports the
+live transport and the connection quality, and it never claims `LIVE` for a
+synthetic feed. A REST snapshot poll every 3 s remains the authoritative
+reconciliation path and the fallback when the broker is unavailable. Kafka,
+when enabled, is an internal backend input transport and is reported
+separately.
 
 ## Connectivity
 

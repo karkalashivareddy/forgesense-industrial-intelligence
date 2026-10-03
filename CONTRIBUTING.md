@@ -21,6 +21,8 @@ is small and the rules are few.
 
 ## Getting set up
 
+Prerequisites: Java 25, Node 20+, Python 3.13.
+
 ```bash
 # Backend (dev profile: embedded H2, in-process event bus, no external services)
 cd backend && ./mvnw spring-boot:run

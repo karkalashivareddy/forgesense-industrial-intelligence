@@ -24,9 +24,10 @@ source disagree, the source is correct and the document is a defect.
 | [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) | What this system does **not** do |
 | [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md) | Guided walkthrough of the running product |
 
-Repository-level community documents live at the repository root:
-[README.md](../README.md), [SECURITY.md](../SECURITY.md),
-[CONTRIBUTING.md](../CONTRIBUTING.md), [LICENSE](../LICENSE).
+Repository-level community documents live at the repository root and are the
+canonical copies: [README.md](../README.md),
+[SECURITY.md](../SECURITY.md), [CONTRIBUTING.md](../CONTRIBUTING.md),
+[LICENSE](../LICENSE).
 
 ## Product
 
@@ -66,7 +67,7 @@ Repository-level community documents live at the repository root:
 
 | Document | Purpose |
 |---|---|
-| [SECURITY.md](SECURITY.md) | Auth model, roles, secrets handling |
+| [../SECURITY.md](../SECURITY.md) | Auth model, roles, secrets handling, reporting |
 
 ## Operations
 
@@ -79,8 +80,7 @@ Repository-level community documents live at the repository root:
 
 | Document | Purpose |
 |---|---|
-| [testing/README.md](testing/README.md) | Test layers, commands, and what each layer proves |
-| [TESTING.md](TESTING.md) | Test strategy and how to run each suite |
+| [TESTING.md](TESTING.md) | Test layers, commands, and what each layer proves |
 | [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) | Pre-release gate, recorded as executed evidence |
 | [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) | How release evidence is produced |
 
@@ -89,7 +89,6 @@ Repository-level community documents live at the repository root:
 | Document | Purpose |
 |---|---|
 | [SCREENSHOTS](screenshots/README.md) | Captured from the running application |
-| [audit/](audit/README.md) | Dated audits and verification records |
 
 ## Evaluation
 

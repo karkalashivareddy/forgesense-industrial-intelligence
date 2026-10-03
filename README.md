@@ -111,8 +111,8 @@ Kafka are used by the Docker Compose topology.
 | Frontend | React 18.3, TypeScript (strict), Vite, React Router, TanStack Query, Zustand |
 | Visualization | Three.js 0.169 (digital twin), Apache ECharts 5.5 (charts) |
 | Styling | CSS custom-property design system, semantic tokens, no UI framework |
-| Backend | Spring Boot 4, Java 21, Spring Data JPA, Spring Security, Spring WebSocket (STOMP) |
-| ML | Python 3.11+, FastAPI, scikit-learn, joblib artifacts |
+| Backend | Spring Boot 4.1, Java 25, Spring Data JPA, Spring Security, Spring WebSocket (STOMP) |
+| ML | Python 3.13, FastAPI, scikit-learn, joblib artifacts |
 | Infrastructure | Docker, Docker Compose, GitHub Actions |
 
 ## Application surfaces
@@ -174,7 +174,7 @@ a tracked credential default. See [SECURITY.md](SECURITY.md).
 
 ## Local development
 
-Prerequisites: Java 21, Node 20+, Python 3.11+.
+Prerequisites: Java 25, Node 20+, Python 3.13.
 
 ```bash
 # Backend — dev profile needs no external services
@@ -221,7 +221,7 @@ cd ../ml-service && python -m pytest tests -q # 8 pytest
 | Frontend unit tests | PASS — 98 / 98 |
 | Frontend production build | PASS |
 | Debug-artifact gate | PASS — 41 files, no console/debug output |
-| Documentation links | PASS — 229 links across 130 files |
+| Documentation links | PASS — 132 links across 67 files |
 | Backend tests | PASS — 61 / 61 |
 | Backend build | PASS |
 | ML tests | PASS — 8 / 8 |
@@ -230,7 +230,7 @@ cd ../ml-service && python -m pytest tests -q # 8 pytest
 | Authorization | VERIFIED — `operator` receives 403 on a control endpoint, `admin` accepted |
 | Scenario lifecycle | VERIFIED — NORMAL → DEGRADED → clear → recovery to NORMAL |
 | Realtime | VERIFIED — WebSocket, event counter advancing, basis reported as `SYNTHETIC` |
-| Responsive | PASS — 375 / 768 / 1024 / 1366 / 1920, no overflow |
+| Responsive | PASS — 375 / 768 / 1024 / 1440 / 1920, no overflow |
 | CI | PASS — backend, frontend, ML, hygiene, Docker, E2E |
 
 ## Repository structure

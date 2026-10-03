@@ -21,8 +21,10 @@ twin and the current predictions and analytics surfaces.
 
 Retained as a record of what was verified at the time. Several predate the
 factory-hall twin rebuild and the current predictions and attribution
-presentation, so they do not represent the present UI. They are not referenced
-by the README.
+presentation, so they do not represent the present UI. They are **not** shown in
+the root `README.md`; they are still cited by
+[../RELEASE_EVIDENCE.md](../RELEASE_EVIDENCE.md) as the artifacts captured during
+the original release verification.
 
 | Image | View |
 |---|---|

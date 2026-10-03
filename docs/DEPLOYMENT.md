@@ -52,7 +52,8 @@ Prometheus + Grafana.
 
 ## Telemetry & ML
 
-- The simulator streams the fabricated fleet (`M-101`…`M-108`). Degrade a machine with
+- The simulator streams the fabricated fleet (`M-101`…`M-118`, 18 assets as
+  defined in `config/machine_profiles.json`). Degrade a machine with
   `--degrade M-105` to watch anomaly → risk → alert → maintenance in the UI.
 - On boot the ML service trains `ml-service/models/` artifacts if the
   `config/machine_profiles.json` retrain-hash changed (see
