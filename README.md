@@ -59,7 +59,7 @@ the sensor, decide.
 | **Prediction history** | Recorded model outputs over time, charted per asset |
 | **Realtime streaming** | Authenticated STOMP-over-WebSocket with sequencing and snapshot reconciliation |
 | **What-if simulation** | Engineer-gated scenario injection against the live synthetic feed |
-| **Role-based access** | viewer / operator / engineer / admin, enforced server-side |
+| **Role-based access** | Cumulative operator / engineer / admin authorities, enforced server-side |
 | **Maintenance & alerts** | Work records, alert lifecycle, acknowledgement |
 
 ## Architecture
@@ -118,7 +118,7 @@ a silent substitution.
 
 - JWT issued by `POST /api/v1/auth/login`; held in `sessionStorage` (tab-scoped,
   never `localStorage`).
-- Four roles; control-plane endpoints protected server-side with
+- Three cumulative roles; control-plane endpoints protected server-side with
   `@PreAuthorize`. The frontend hides what an operator cannot use, but **the
   backend is authoritative** — role checks are not UI-only.
 - STOMP connections are authenticated; anonymous subscription is rejected.
@@ -136,7 +136,7 @@ cd backend && ./mvnw spring-boot:run
 cd frontend && npm ci && npm run dev
 ```
 
-Sign in with a seeded development account (`admin` / `operator` / `engineer`);
+Sign in with a seeded development account (`operator` / `engineer` / `admin`);
 the password comes from `FORGESENSE_DEV_PASSWORD`. Full container topology:
 
 ```bash

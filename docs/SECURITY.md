@@ -24,12 +24,16 @@ Any statement implying the system commands a machine would be false.
 
 ## Roles
 
-| Role | Capability |
-|---|---|
-| `viewer` | Read-only: dashboards, telemetry, reports |
-| `operator` | Viewer plus acknowledging alerts and recording work |
-| `engineer` | Operator plus scenario injection and machine control actions |
-| `admin` | Engineer plus configuration and administrative operations |
+| Role | Granted authorities | Capability |
+|---|---|---|
+| `operator` | `ROLE_OPERATOR` | Read dashboards, telemetry, predictions and reports; acknowledge alerts |
+| `engineer` | `ROLE_OPERATOR`, `ROLE_ENGINEER` | Operator plus scenario injection and machine control actions |
+| `admin` | `ROLE_OPERATOR`, `ROLE_ENGINEER`, `ROLE_ADMIN` | Engineer plus configuration and administrative operations |
+
+Roles are cumulative: the backend expands each account to the authority set
+above, so `engineer` implies `operator` and `admin` implies both. There is no
+separate read-only role; an account that may read may also acknowledge alerts.
+Three accounts are seeded in demo mode: `operator`, `engineer`, `admin`.
 
 Control-plane endpoints are protected server-side with `@PreAuthorize`, for
 example:
