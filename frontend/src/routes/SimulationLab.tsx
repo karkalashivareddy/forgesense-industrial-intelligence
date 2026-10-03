@@ -147,15 +147,23 @@ export default function SimulationLab() {
         cell: (run) => <span className="num">{formatInteger(run.affectedMachineCount)}</span>,
       },
       {
+        /*
+         * Modelled, not measured. `expectedDowntimeMinutes` is a static
+         * per-scenario figure declared in the scenario catalogue, and
+         * `productionLossUnits` is the seeded `throughputPerHour` from
+         * config/machine_profiles.json scaled by scenario duration. Neither
+         * is derived from telemetry, so neither is presented as an estimate of
+         * real downtime or real lost output.
+         */
         key: 'downtime',
-        header: 'Est. downtime',
+        header: 'Scenario downtime',
         align: 'end',
         hideBelow: 'md',
         cell: (run) => <span className="num">{formatDuration(run.expectedDowntimeMinutes)}</span>,
       },
       {
         key: 'loss',
-        header: 'Est. loss',
+        header: 'Modelled output',
         align: 'end',
         hideBelow: 'md',
         cell: (run) => <span className="num">{formatNumber(run.productionLossUnits, 0)} u</span>,

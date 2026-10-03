@@ -206,11 +206,20 @@ export default function CommandCenter() {
           size="sm"
         />
         <Metric
-          label="Throughput"
+          /*
+           * Telemetry ingest rate, NOT plant output.
+           *
+           * The backend counts telemetry messages received in the last 60
+           * seconds. Labelling that "Throughput" invites the reading that the
+           * plant produced 114 parts a minute, which no sensor in this system
+           * could ever establish. The label names what is actually measured.
+           */
+          label="Telemetry rate"
           value={formatInteger(analyticsQuery.data?.telemetryThroughputPerMinute)}
-          unit="/min"
+          unit="msg/min"
           tone="info"
           basis={DATA_BASIS.OBSERVED}
+          hint="messages ingested in the last 60s"
           size="sm"
         />
       </div>

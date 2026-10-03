@@ -247,7 +247,8 @@ export default function Analytics() {
         <Metric label="Fleet health" value={formatNumber(summary.averageHealth, 1)} unit="/ 100" basis={DATA_BASIS.DERIVED} size="sm" />
         <Metric label="At risk" value={formatInteger(overview?.machinesAtRisk)} hint="failure risk ≥ 0.50" basis={DATA_BASIS.DERIVED} size="sm" />
         <Metric label="Open alerts" value={formatInteger(alertStats?.open)} basis={DATA_BASIS.OBSERVED} size="sm" />
-        <Metric label="Telemetry throughput" value={formatInteger(overview?.telemetryThroughputPerMinute)} unit="/ min" basis={DATA_BASIS.OBSERVED} size="sm" />
+        {/* Ingest rate of telemetry messages, not plant output. */}
+        <Metric label="Telemetry rate" value={formatInteger(overview?.telemetryThroughputPerMinute)} unit="msg/min" basis={DATA_BASIS.OBSERVED} hint="messages ingested in the last 60s" size="sm" />
       </div>
 
       <div className="cc__row">
