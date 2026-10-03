@@ -62,3 +62,6 @@ test-results/
 
 # --- QA artifacts (generated, never commit screenshots/logs) ---
 _qa/
+
+# Local browser-verification scratch scripts (agent tooling, not product)
+frontend/_*.cjs
