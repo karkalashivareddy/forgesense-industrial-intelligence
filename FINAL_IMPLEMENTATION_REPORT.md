@@ -1,5 +1,15 @@
 # ForgeSense implementation report
 
+<!-- forge:historical -->
+> **Historical record.** This report describes a single past pass over the
+> repository and is kept as evidence of what was audited and changed at that
+> time. It is **not** a description of the current system.
+>
+> Some statements below are now out of date — notably the "Future extensions"
+> list, which predates work that has since shipped. For current behaviour see
+> the [documentation index](docs/README.md), the [README](README.md), and the
+> source, which are authoritative.
+
 ## Executive summary
 
 ForgeSense was audited as an existing production-style prototype rather than rebuilt blindly. The repository already contained a Spring Boot industrial domain backend, Python ML service, synthetic telemetry simulator, REST contracts, STOMP broker, maintenance/alert workflows, analytics, a Three.js twin, and a multi-view static frontend.
