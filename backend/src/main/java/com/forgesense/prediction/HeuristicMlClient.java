@@ -2,6 +2,7 @@ package com.forgesense.prediction;
 
 import com.forgesense.prediction.domain.Assessment;
 import com.forgesense.prediction.domain.Prediction;
+import com.forgesense.profiles.MachineProfileCatalog;
 import com.forgesense.telemetry.domain.TelemetrySample;
 import org.springframework.stereotype.Component;
 
@@ -12,23 +13,60 @@ import java.util.Map;
 
 /**
  * Deterministic heuristic scorer used ONLY when the ML service is unreachable.
- * Clearly labeled HEURISTIC. Assumptions: sensor baselines below are modeled
- * engineering defaults, not learned parameters.
+ * Clearly labeled HEURISTIC.
+ *
+ * <p>Baselines come from {@code config/machine_profiles.json} - the same
+ * per-machine-type sensor means and standard deviations the simulator itself
+ * generates from. They are modelled engineering defaults, not learned
+ * parameters, and the result is labelled {@code HEURISTIC} so no consumer can
+ * mistake it for model inference.
+ *
+ * <p>This previously scored against a single hardcoded table shared by every
+ * machine type, which was wrong in both directions: a robotic arm running at its
+ * normal speed, or a cooling unit drawing its normal current, landed many
+ * standard deviations from a baseline written for some other asset, so healthy
+ * machines were reported as anomalies. In degraded mode that made an entire
+ * healthy fleet read as CRITICAL. Scoring against the asset's own profile is
+ * what makes the fallback a usable substitute rather than noise.
  */
 @Component
 public class HeuristicMlClient implements MlClient {
 
-    private static final Map<String, double[]> BASELINES = Map.ofEntries(
-            Map.entry("temperature", new double[]{75.0, 6.0, 1.0}),
-            Map.entry("vibration", new double[]{2.2, 0.7, 2.0}),
-            Map.entry("pressure", new double[]{4.5, 0.6, 3.0}),
-            Map.entry("rpm", new double[]{1400.0, 90.0, 4.0}),
-            Map.entry("torque", new double[]{180.0, 28.0, 5.0}),
-            Map.entry("current", new double[]{12.0, 2.2, 6.0}),
-            Map.entry("voltage", new double[]{415.0, 12.0, 7.0}),
-            Map.entry("power", new double[]{55.0, 9.0, 8.0}),
-            Map.entry("flow", new double[]{120.0, 14.0, 9.0}),
-            Map.entry("frequency", new double[]{50.0, 1.5, 10.0}));
+    /**
+     * Used only when an asset's type is absent from the catalog, so the scorer
+     * still returns a labelled result rather than refusing to score. These are
+     * deliberately conservative mid-range defaults, not a general model.
+     */
+    private static final Map<String, double[]> FALLBACK_BASELINES = Map.ofEntries(
+            Map.entry("temperature", new double[]{60.0, 5.0}),
+            Map.entry("vibration", new double[]{1.0, 0.5}),
+            Map.entry("pressure", new double[]{5.0, 1.0}),
+            Map.entry("rpm", new double[]{1500.0, 300.0}),
+            Map.entry("torque", new double[]{60.0, 25.0}),
+            Map.entry("current", new double[]{20.0, 10.0}),
+            Map.entry("voltage", new double[]{470.0, 20.0}),
+            Map.entry("power", new double[]{12.0, 8.0}),
+            Map.entry("flow", new double[]{150.0, 80.0}),
+            Map.entry("frequency", new double[]{60.0, 1.0}));
+
+    /** Display label per sensor key, used in attribution factors. */
+    private static final Map<String, String> SENSOR_LABELS = Map.ofEntries(
+            Map.entry("temperature", "Temperature"),
+            Map.entry("vibration", "Vibration"),
+            Map.entry("pressure", "Pressure"),
+            Map.entry("rpm", "Rotational speed"),
+            Map.entry("torque", "Torque"),
+            Map.entry("current", "Current"),
+            Map.entry("voltage", "Voltage"),
+            Map.entry("power", "Power"),
+            Map.entry("flow", "Flow"),
+            Map.entry("frequency", "Frequency"));
+
+    private final MachineProfileCatalog catalog;
+
+    public HeuristicMlClient(MachineProfileCatalog catalog) {
+        this.catalog = catalog;
+    }
 
     private record SensorHit(String feature, String label, double value, double mean, double z) {}
 
@@ -39,17 +77,19 @@ public class HeuristicMlClient implements MlClient {
 
     @Override
     public Assessment assess(TelemetrySample s) {
+        Map<String, MachineProfileCatalog.SensorProfile> baselines = baselinesFor(s);
+
         List<SensorHit> hits = new ArrayList<>();
-        add(hits, s.temperature(), "temperature", "Temperature");
-        add(hits, s.vibration(), "vibration", "Vibration");
-        add(hits, s.pressure(), "pressure", "Pressure");
-        add(hits, s.rpm(), "rpm", "Rotational speed");
-        add(hits, s.torque(), "torque", "Torque");
-        add(hits, s.current(), "current", "Current");
-        add(hits, s.voltage(), "voltage", "Voltage");
-        add(hits, s.power(), "power", "Power");
-        add(hits, s.flow(), "flow", "Flow");
-        add(hits, s.frequency(), "frequency", "Frequency");
+        add(hits, s.temperature(), "temperature", baselines);
+        add(hits, s.vibration(), "vibration", baselines);
+        add(hits, s.pressure(), "pressure", baselines);
+        add(hits, s.rpm(), "rpm", baselines);
+        add(hits, s.torque(), "torque", baselines);
+        add(hits, s.current(), "current", baselines);
+        add(hits, s.voltage(), "voltage", baselines);
+        add(hits, s.power(), "power", baselines);
+        add(hits, s.flow(), "flow", baselines);
+        add(hits, s.frequency(), "frequency", baselines);
 
         double maxAnomaly = 0.05;
         double sumDev = 0;
@@ -78,15 +118,58 @@ public class HeuristicMlClient implements MlClient {
         List<String> recs = recommendations(failureRisk, maxAnomaly, s);
 
         return new Assessment(s.machineId(), round(maxAnomaly), label, round(failureRisk), health, rul,
-                "steps", "heuristic-v1", "heuristic-v1", "HEURISTIC",
+                "steps", "heuristic-v2", "heuristic-v2", "HEURISTIC",
                 factors.size() > 5 ? factors.subList(0, 5) : factors, recs);
     }
 
-    private void add(List<SensorHit> hits, Double val, String feature, String label) {
+    /**
+     * Resolve the sensor baselines for this asset's own machine type.
+     *
+     * <p>The catalog maps machine ID to type, so the profile is correct even
+     * when the sample omits {@code machineType}. Falls back to the conservative
+     * table only for an unknown asset, so an unrecognised machine is scored
+     * against wide bounds rather than being reported as anomalous by
+     * construction.
+     */
+    private Map<String, MachineProfileCatalog.SensorProfile> baselinesFor(TelemetrySample s) {
+        String typeKey = null;
+        if (s.machineId() != null) {
+            // Preferred: the catalog already maps machine ID to type, so the
+            // profile is right even when the sample omits machineType.
+            typeKey = catalog.machine(s.machineId()).map(MachineProfileCatalog.MachineSpec::type).orElse(null);
+        }
+        if (typeKey == null) {
+            typeKey = s.machineType();
+        }
+        if (typeKey == null) {
+            return null;
+        }
+        MachineProfileCatalog.TypeProfile type = catalog.data().machineTypes().get(typeKey);
+        if (type == null || type.sensors() == null || type.sensors().isEmpty()) {
+            return null;
+        }
+        return type.sensors();
+    }
+
+    private void add(List<SensorHit> hits, Double val, String feature,
+                     Map<String, MachineProfileCatalog.SensorProfile> baselines) {
         if (val == null) return;
-        double[] base = BASELINES.get(feature);
-        if (base == null) return;
-        hits.add(new SensorHit(feature, label, val, base[0], Math.abs(val - base[0]) / base[1]));
+        double mean;
+        double std;
+        if (baselines != null) {
+            MachineProfileCatalog.SensorProfile profile = baselines.get(feature);
+            // A type that does not carry this sensor must not be scored on it.
+            if (profile == null) return;
+            mean = profile.mean();
+            std = profile.std() <= 0 ? 1.0 : profile.std();
+        } else {
+            double[] base = FALLBACK_BASELINES.get(feature);
+            if (base == null) return;
+            mean = base[0];
+            std = base[1];
+        }
+        hits.add(new SensorHit(feature, SENSOR_LABELS.getOrDefault(feature, feature),
+                val, mean, Math.abs(val - mean) / std));
     }
 
     private static List<String> recommendations(double risk, double anomaly, TelemetrySample s) {
