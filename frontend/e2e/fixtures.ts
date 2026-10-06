@@ -7,9 +7,26 @@
 
 import { test as base, expect, type Page } from '@playwright/test';
 
+/*
+ * The password has no fallback on purpose.
+ *
+ * docker-compose.yml reads FORGESENSE_DEV_PASSWORD with the `:?` form, so the
+ * browser-run stack refuses to start without it. A default here would let the
+ * suite silently fall back to a credential the stack never received, and the
+ * E2E run would fail at sign-in with an error that looks like a UI bug. Failing
+ * immediately with a message naming the variable is the useful failure.
+ */
+const e2ePassword = process.env.E2E_PASSWORD;
+if (!e2ePassword) {
+  throw new Error(
+    'E2E_PASSWORD is not set. It must match FORGESENSE_DEV_PASSWORD, which the ' +
+      'Compose stack requires (see .ci/boot-stack.sh, which exports both for CI).',
+  );
+}
+
 export const CREDENTIALS = {
   username: process.env.E2E_USERNAME ?? 'admin',
-  password: process.env.E2E_PASSWORD ?? 'forgesense-dev',
+  password: e2ePassword,
 };
 
 export interface Collector {

@@ -139,6 +139,12 @@ jobs:
           # 100644 script makes this step fail with exit 126 (Permission denied).
           bash ../.ci/boot-stack.sh
       - name: Run E2E
+        # The fixtures require E2E_PASSWORD and have no default of their own, so
+        # it is set here to the same throwaway value boot-stack.sh seeded the
+        # backend with. A GitHub Actions step cannot inherit an export from the
+        # previous step, so the two must agree by value.
+        env:
+          E2E_PASSWORD: ci-browser-run-password
         run: npm run e2e
       - name: Tear down the browser-run stack
         # Must happen after the browser run, and must always happen. boot-stack.sh
@@ -150,6 +156,8 @@ jobs:
         env:
           POSTGRES_PASSWORD: ci
           FORGESENSE_SECURITY_JWT_SECRET: ci-secret-for-build-validation
+          FORGESENSE_DEV_PASSWORD: ci
+          GRAFANA_ADMIN_PASSWORD: ci
         run: docker compose down -v --remove-orphans
       - name: Upload Playwright report
         if: always()
@@ -247,9 +255,13 @@ jobs:
         env:
           POSTGRES_PASSWORD: ci
           FORGESENSE_SECURITY_JWT_SECRET: ci-secret-for-build-validation
+          FORGESENSE_DEV_PASSWORD: ci
+          GRAFANA_ADMIN_PASSWORD: ci
         run: docker compose build frontend
       - name: Verify the compose topology still resolves
         env:
           POSTGRES_PASSWORD: ci
           FORGESENSE_SECURITY_JWT_SECRET: ci-secret-for-build-validation
+          FORGESENSE_DEV_PASSWORD: ci
+          GRAFANA_ADMIN_PASSWORD: ci
         run: docker compose config --quiet

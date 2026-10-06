@@ -15,16 +15,29 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# Every secret below is a throwaway CI placeholder, scoped to an ephemeral
+# runner with no exposed port. They are defined here rather than in the workflow
+# because docker-compose.yml reads them with the `:?` form, which refuses to
+# interpolate at all when a value is missing. GRAFANA_ADMIN_PASSWORD is included
+# for the same reason: Compose parses the whole file before it runs anything, so
+# a required variable anywhere in it must be set even by a job that only builds
+# the frontend image.
 : "${POSTGRES_PASSWORD:=ci-postgres-password}"
 : "${FORGESENSE_SECURITY_JWT_SECRET:=ci-jwt-signing-secret-for-browser-tests-only}"
-: "${FORGESENSE_DEV_PASSWORD:=forgesense-dev}"
+: "${FORGESENSE_DEV_PASSWORD:=ci-browser-run-password}"
+: "${GRAFANA_ADMIN_PASSWORD:=ci-grafana-password}"
+# The Playwright fixtures read E2E_PASSWORD and deliberately have no default of
+# their own, so the credential the browser signs in with must be the same one
+# the backend was seeded with.
+export E2E_PASSWORD="$FORGESENSE_DEV_PASSWORD"
 # The Playwright config serves the console with `vite preview` on port 4173, so
 # the browser origin is http://127.0.0.1:4173. The frontend calls the backend
 # cross-origin (VITE_API_BASE_URL defaults to http://localhost:8080), so this
 # origin has to be in the backend allowlist or the browser blocks every API
 # call and sign-in never completes. 5173 is kept for the compose-served console.
 : "${FORGESENSE_ALLOWED_ORIGINS:=http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:4173}"
-export POSTGRES_PASSWORD FORGESENSE_SECURITY_JWT_SECRET FORGESENSE_DEV_PASSWORD FORGESENSE_ALLOWED_ORIGINS
+export POSTGRES_PASSWORD FORGESENSE_SECURITY_JWT_SECRET FORGESENSE_DEV_PASSWORD \
+  GRAFANA_ADMIN_PASSWORD FORGESENSE_ALLOWED_ORIGINS
 
 log() { printf '\n[boot-stack] %s\n' "$1"; }
 
