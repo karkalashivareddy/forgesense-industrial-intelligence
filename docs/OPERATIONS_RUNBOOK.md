@@ -20,7 +20,11 @@ Running, verifying and troubleshooting ForgeSense locally.
 ```bash
 # From the repository root
 cp .env.example .env      # PowerShell: Copy-Item .env.example .env
-# Edit .env — at minimum set POSTGRES_PASSWORD and FORGESENSE_SECURITY_JWT_SECRET.
+# Edit .env and set all four required secrets. Compose uses the `:?` form for
+# each, so the stack refuses to start while any is unset instead of falling back
+# to a committed default:
+#   POSTGRES_PASSWORD, FORGESENSE_SECURITY_JWT_SECRET (openssl rand -base64 48),
+#   FORGESENSE_DEV_PASSWORD, GRAFANA_ADMIN_PASSWORD
 
 docker compose up --build -d
 docker compose ps
@@ -36,8 +40,8 @@ docker compose ps
 | Prometheus | http://localhost:9090 | |
 | Grafana | http://localhost:3000 | |
 
-Sign in with `admin` / `forgesense-dev` (or `operator` / `engineer` with the
-same `FORGESENSE_DEV_PASSWORD`).
+Sign in as `admin` with the `FORGESENSE_DEV_PASSWORD` you set in `.env`. The
+seeded `operator` and `engineer` accounts use the same development-only value.
 
 > The simulator is a **separate** service. `docker compose up` includes it, so
 > the console receives a live synthetic feed immediately. To demonstrate the

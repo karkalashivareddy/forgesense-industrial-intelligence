@@ -9,11 +9,18 @@ figures are quoted from that run, not estimated.
 ## 0. Before you start (2 minutes, once)
 
 ```bash
+cp .env.example .env       # then set the four required secrets (see below)
 docker compose up -d --build frontend
 docker compose ps          # all services should be Up (healthy)
 ```
 
-Open <http://localhost:5173>. Sign in with `admin` / `forgesense-dev`.
+`.env` must define `POSTGRES_PASSWORD`, `FORGESENSE_SECURITY_JWT_SECRET`,
+`FORGESENSE_DEV_PASSWORD`, and `GRAFANA_ADMIN_PASSWORD`. Compose uses the `:?`
+form for each, so the stack refuses to start while one is missing rather than
+using a committed default.
+
+Open <http://localhost:5173> and sign in as `admin` with the
+`FORGESENSE_DEV_PASSWORD` you set in `.env`.
 
 > **`localhost:5173` is an nginx container serving a built bundle, not a Vite dev
 > server.** If you changed source and the browser looks unchanged, rebuild with

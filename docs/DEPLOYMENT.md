@@ -39,11 +39,17 @@ Prometheus + Grafana.
 
 ## IAM notes
 
+Before the first `docker compose up`, copy `.env.example` to `.env` and set
+`FORGESENSE_SECURITY_JWT_SECRET`, `FORGESENSE_DEV_PASSWORD`, `POSTGRES_PASSWORD`,
+and `GRAFANA_ADMIN_PASSWORD`. Those four are read with Compose's `:?` form, so
+the stack refuses to start while any of them is unset rather than falling back to
+a committed default. Generate the JWT key with `openssl rand -base64 48`.
+
 - Dev users (seeded on boot): `admin`, `operator`, `engineer`. Passwords come from
-`FORGESENSE_DEV_PASSWORD` (a development-only seed credential; never reuse it for any
-  real deployment — override it in `.env`). The JWT signing key is a
-  documented demo placeholder (`forgesense-demo-...`) — replace it for any real
-  deployment.
+  `FORGESENSE_DEV_PASSWORD`, which is a development-only seed credential; set a
+  unique local value in `.env` and never reuse it for a real deployment. The JWT
+  signing key must also be replaced: `.env.example` ships a recognisable
+  placeholder (`change-me-in-production-...`), not a usable secret.
 - WebSocket/STOMP is the browser's primary transport and is authenticated: the
   client presents its JWT when connecting and `SUBSCRIBE`s to `/topic/**`
   destinations. `/api/v1/**` additionally requires a Bearer token from

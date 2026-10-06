@@ -72,12 +72,30 @@ subscriptions. Anonymous socket access is not permitted.
   `.env` for any real deployment.
 - Never reuse a development secret elsewhere.
 
-| Variable | Purpose |
-|---|---|
-| `FORGESENSE_SECURITY_JWT_SECRET` | JWT signing key |
-| `FORGESENSE_DEV_PASSWORD` | Seeded account password (demo only) |
-| `POSTGRES_PASSWORD` | Container database password |
-| `FORGESENSE_ALLOWED_ORIGINS` | CORS allow-list |
+`.env` itself is git-ignored and is never committed. `.env.example` contains
+placeholders only, so a value there is not a deployed credential.
+
+The Docker Compose profile does not fall back to a baked-in password. The
+backend, PostgreSQL, and Grafana services all read their secret with Compose's
+`:?` form, so `docker compose up` **refuses to start** rather than silently
+running on `forgesense-dev`. Supply the values in `.env` first:
+
+| Variable | Purpose | Compose behaviour if unset |
+|---|---|---|
+| `FORGESENSE_SECURITY_JWT_SECRET` | JWT signing key (min. 48 bytes) | **required**, startup fails |
+| `FORGESENSE_DEV_PASSWORD` | Seeded demo account password | **required**, startup fails |
+| `POSTGRES_PASSWORD` | Container database password | **required**, startup fails |
+| `GRAFANA_ADMIN_PASSWORD` | Grafana admin password | **required**, startup fails |
+| `FORGESENSE_ALLOWED_ORIGINS` | CORS allow-list | has a documented local default |
+
+`.env.example` shows `change-me-in-production-48-bytes-minimum-change-me` for the
+JWT secret. That is a visible placeholder, not a key, and it is deliberately
+recognisable so a deployment that keeps it is obvious in review. Generate a
+unique value, for example:
+
+```sh
+openssl rand -base64 48
+```
 
 ## Known limitations
 
