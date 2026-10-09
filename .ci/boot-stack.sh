@@ -15,17 +15,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-# Every secret below is a throwaway CI placeholder, scoped to an ephemeral
-# runner with no exposed port. They are defined here rather than in the workflow
-# because docker-compose.yml reads them with the `:?` form, which refuses to
-# interpolate at all when a value is missing. GRAFANA_ADMIN_PASSWORD is included
-# for the same reason: Compose parses the whole file before it runs anything, so
-# a required variable anywhere in it must be set even by a job that only builds
-# the frontend image.
-: "${POSTGRES_PASSWORD:=ci-postgres-password}"
-: "${FORGESENSE_SECURITY_JWT_SECRET:=ci-jwt-signing-secret-for-browser-tests-only}"
-: "${FORGESENSE_DEV_PASSWORD:=ci-browser-run-password}"
-: "${GRAFANA_ADMIN_PASSWORD:=ci-grafana-password}"
+# Generate per-run credentials when the caller has not supplied them. Compose
+# requires every variable during interpolation, even when a job only builds the
+# frontend. CI exports and masks these values for cleanup and browser steps.
+: "${POSTGRES_PASSWORD:=$(openssl rand -hex 32)}"
+: "${FORGESENSE_SECURITY_JWT_SECRET:=$(openssl rand -hex 32)}"
+: "${FORGESENSE_DEV_PASSWORD:=$(openssl rand -hex 32)}"
+: "${GRAFANA_ADMIN_PASSWORD:=$(openssl rand -hex 32)}"
 # The Playwright fixtures read E2E_PASSWORD and deliberately have no default of
 # their own, so the credential the browser signs in with must be the same one
 # the backend was seeded with.
@@ -38,6 +34,16 @@ export E2E_PASSWORD="$FORGESENSE_DEV_PASSWORD"
 : "${FORGESENSE_ALLOWED_ORIGINS:=http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:4173}"
 export POSTGRES_PASSWORD FORGESENSE_SECURITY_JWT_SECRET FORGESENSE_DEV_PASSWORD \
   GRAFANA_ADMIN_PASSWORD FORGESENSE_ALLOWED_ORIGINS
+
+# Keep this run's test credentials available to later GitHub Actions steps
+# without printing or committing them. Local invocations remain process-local.
+if [[ -n "${GITHUB_ENV:-}" ]]; then
+  for name in POSTGRES_PASSWORD FORGESENSE_SECURITY_JWT_SECRET \
+    FORGESENSE_DEV_PASSWORD GRAFANA_ADMIN_PASSWORD E2E_PASSWORD; do
+    printf '%s=%s\n' "$name" "${!name}" >> "$GITHUB_ENV"
+    printf '::add-mask::%s\n' "${!name}"
+  done
+fi
 
 log() { printf '\n[boot-stack] %s\n' "$1"; }
 

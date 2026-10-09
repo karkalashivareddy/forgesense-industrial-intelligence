@@ -9,6 +9,9 @@ on:
       - 'v*'
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -19,14 +22,14 @@ concurrency:
 # that needs it (the boot smoke test), never to the whole workflow. Hoisting
 # it disables authentication during `./mvnw package`, so the security tests
 # assert against an open server and fail — and it would also disable auth for
-# the Playwright run, whose fixtures sign in. The E2E job needs no workflow
-# env: `.ci/boot-stack.sh` sets its own credentials and boots the full Compose
-# profile.
+# the Playwright run, whose fixtures sign in. E2E and Docker job steps generate
+# their own per-run credentials; none are shared at workflow scope.
 
 jobs:
   hygiene:
     name: Repository hygiene
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Reject tracked local credential defaults
@@ -79,6 +82,7 @@ jobs:
   frontend:
     name: Frontend (typecheck, build, unit)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: frontend
@@ -91,6 +95,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install (lockfile-pinned)
         run: npm ci --no-audit --no-fund
+      - name: Audit locked npm dependencies
+        run: npm audit --audit-level=high
       - name: Typecheck
         run: npm run typecheck
       - name: Debug-artifact gate
@@ -110,12 +116,24 @@ jobs:
   e2e:
     name: Frontend E2E (Playwright)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [hygiene, backend, ml-service]
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - name: Generate per-run browser-stack credentials
+        run: |
+          set -euo pipefail
+          for secret_name in POSTGRES_PASSWORD FORGESENSE_SECURITY_JWT_SECRET \
+            FORGESENSE_DEV_PASSWORD GRAFANA_ADMIN_PASSWORD; do
+            secret_value="$(openssl rand -hex 32)"
+            printf '::add-mask::%s\n' "$secret_value"
+            printf '%s=%s\n' "$secret_name" "$secret_value" >> "$GITHUB_ENV"
+            export "$secret_name=$secret_value"
+          done
+          printf 'E2E_PASSWORD=%s\n' "$FORGESENSE_DEV_PASSWORD" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -139,39 +157,31 @@ jobs:
           # 100644 script makes this step fail with exit 126 (Permission denied).
           bash ../.ci/boot-stack.sh
       - name: Run E2E
-        # The fixtures require E2E_PASSWORD and have no default of their own, so
-        # it is set here to the same throwaway value boot-stack.sh seeded the
-        # backend with. A GitHub Actions step cannot inherit an export from the
-        # previous step, so the two must agree by value.
-        env:
-          E2E_PASSWORD: ci-browser-run-password
+        # .ci/boot-stack.sh creates a per-run demo password and shares it via
+        # GITHUB_ENV with this step and the Compose teardown.
         run: npm run e2e
       - name: Tear down the browser-run stack
         # Must happen after the browser run, and must always happen. boot-stack.sh
         # deliberately leaves the stack up on success. Compose interpolates the
-        # whole file before it runs, so the required placeholders must be present
-        # here too. CI placeholders only, never real secrets.
+        # whole file before it runs, so the per-run values created by the boot
+        # step must remain available here too.
         if: always()
         working-directory: .
-        env:
-          POSTGRES_PASSWORD: ci
-          FORGESENSE_SECURITY_JWT_SECRET: ci-secret-for-build-validation
-          FORGESENSE_DEV_PASSWORD: ci
-          GRAFANA_ADMIN_PASSWORD: ci
         run: docker compose down -v --remove-orphans
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          # Relative to this job's working-directory (frontend), so the
-          # prefix must not be repeated or the report is never uploaded.
-          path: playwright-report
+          # Actions resolve artifact paths from the workspace root, even though
+          # shell commands in this job run from frontend/.
+          path: frontend/playwright-report
           retention-days: 7
 
   backend:
     name: Backend (Spring Boot 4)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: backend
@@ -181,8 +191,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Compile, test, package
-        run: ./mvnw -q package
+      - name: Clean verification
+        run: ./mvnw -q clean verify
       - name: Boot smoke test
         # Security is off *here only*: the smoke test curls an authenticated
         # endpoint without a token. Every other step keeps security enabled so
@@ -226,6 +236,7 @@ jobs:
   ml-service:
     name: ML service (FastAPI)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: ml-service
@@ -234,8 +245,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - name: Install advisory scanner and patched installer
+        run: python -m pip install --upgrade 'pip>=26.2,<27' 'pip-audit==2.10.1'
       - name: Install
         run: pip install -r requirements.txt
+      - name: Audit installed Python dependencies
+        run: pip-audit --local
       - name: Train models (lazy on first boot)
         run: python -c "from app.models import _build_or_load; b=_build_or_load(); assert b.feature_names is not None"
       - name: Run API tests
@@ -244,24 +259,42 @@ jobs:
   docker:
     name: Docker build
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [hygiene, frontend]
     steps:
       - uses: actions/checkout@v4
-      - name: Build the frontend image (npm ci + vite build + nginx)
-        # Compose interpolates the whole file before it builds anything, so
-        # these must be present even though the frontend image does not use
-        # them. Never commit a real secret: these are build-time placeholders
-        # and the hygiene job rejects any tracked credential default.
-        env:
-          POSTGRES_PASSWORD: ci
-          FORGESENSE_SECURITY_JWT_SECRET: ci-secret-for-build-validation
-          FORGESENSE_DEV_PASSWORD: ci
-          GRAFANA_ADMIN_PASSWORD: ci
-        run: docker compose build frontend
+      - name: Generate per-run Compose credentials
+        run: |
+          set -euo pipefail
+          for secret_name in POSTGRES_PASSWORD FORGESENSE_SECURITY_JWT_SECRET \
+            FORGESENSE_DEV_PASSWORD GRAFANA_ADMIN_PASSWORD; do
+            secret_value="$(openssl rand -hex 32)"
+            printf '::add-mask::%s\n' "$secret_value"
+            printf '%s=%s\n' "$secret_name" "$secret_value" >> "$GITHUB_ENV"
+          done
+      - name: Build all application images
+        # Compose interpolates the whole file before it builds anything. Build
+        # every service with a source Dockerfile, not just the web client.
+        run: docker compose build
       - name: Verify the compose topology still resolves
-        env:
-          POSTGRES_PASSWORD: ci
-          FORGESENSE_SECURITY_JWT_SECRET: ci-secret-for-build-validation
-          FORGESENSE_DEV_PASSWORD: ci
-          GRAFANA_ADMIN_PASSWORD: ci
         run: docker compose config --quiet
+      - name: Keep ML inference private to the backend
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+
+          config = json.loads(subprocess.check_output(
+              ["docker", "compose", "config", "--format", "json"], text=True
+          ))
+          services = config["services"]
+          assert not services["ml-service"].get("ports"), "ML API must not publish host ports"
+          assert "ml-inference" in services["ml-service"]["networks"]
+          assert "ml-inference" in services["backend"]["networks"]
+          assert config["networks"]["ml-inference"].get("internal") is True
+          for name, service in services.items():
+              for port in service.get("ports", []):
+                  assert port.get("host_ip") == "127.0.0.1", (
+                      f"{name} publishes {port.get('published')} beyond loopback"
+                  )
+          PY

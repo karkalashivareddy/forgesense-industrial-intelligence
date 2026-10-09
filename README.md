@@ -26,27 +26,32 @@ simulator and machine profiles
       → inference on simulator-generated telemetry
 ```
 
-The reported metrics are reproducible generated-data metrics, not real-world
-industrial accuracy:
+Previous metric values used a random row split and are withdrawn because rows
+from the same synthetic machine trajectory could appear in both partitions.
+Training now evaluates on a deterministic 20% group holdout of complete
+synthetic machine trajectories and records ROC AUC, PR AUC, thresholded
+precision/recall/F1, confusion matrix, class balance, a majority-class baseline,
+RUL MAE/RMSE in simulator steps, and held-out group/sample counts. The latest
+generated evaluation was on 2026-10-09 using 8 held-out trajectories (7,200
+rows, 926 failure-risk positives; 12.86%):
 
-| Evaluation output | Current recorded value | Scope |
+| Evaluation | Result | Interpretation |
 |---|---:|---|
-| Anomaly ROC AUC | 0.8859 | Held-out synthetic samples |
-| Failure-risk ROC AUC | 0.9978 | Held-out synthetic samples |
-| RUL RMSE | 27.18 steps | Estimated remaining degradation steps |
+| Anomaly ROC AUC / PR AUC | 0.9037 / 0.8729 | threshold 0.009576; precision 0.8654, recall 0.7466; 26.19% anomaly prevalence |
+| Failure-risk ROC AUC / PR AUC | 0.9976 / 0.9843 | threshold 0.5; precision 0.9190, recall 0.9309, F1 0.9249; Brier 0.013485 |
+| Failure-risk accuracy | 0.9806 | majority-class baseline 0.8714; confusion matrix `[[6198, 76], [64, 862]]` |
+| RUL MAE / RMSE | 10.163 / 13.603 steps | failure-risk-positive held-out samples |
 
-Evaluation uses a random 20% sample split (seed 7); generated rows from the
-same simulated machine timelines can occur in both partitions. This is not a
-machine-held-out or trajectory-held-out study. High held-out synthetic
-performance does **not** establish real-world industrial predictive validity.
+These are results on generated held-out machines only. Even a valid held-out
+synthetic result does **not** establish real-world industrial predictive
+validity.
 The models were trained on synthetic simulator data, no real plant telemetry
 or failure history is included, and the system does not control physical
 machines.
 
-The model artifacts are generated rather than committed, so these values are
-reproduced by generating them. A from-scratch run on 2026-10-06 rebuilt all
-three exactly; the command and the resulting report are in
-[docs/ML_PROVENANCE.md](docs/ML_PROVENANCE.md#reproducing-these-numbers).
+The model artifacts and evaluation report are generated rather than committed;
+see [docs/ML_PROVENANCE.md](docs/ML_PROVENANCE.md) for the current method and
+reproduction command.
 
 For a production deployment, this project would still need a real OPC UA or
 MQTT ingestion path with source provenance, identity through an OIDC/SAML
@@ -249,16 +254,24 @@ than falling back to a committed default.
 ```bash
 cd frontend
 npm run verify            # doc links + artifact gate + typecheck + unit + build
-npm test                  # 98 Vitest
-npm run e2e                # 43 Playwright (30 functional + 13 visual)
+npm test
+npm run e2e                # requires the backend/ML stack per docs/TESTING.md
 
-cd ../backend && ./mvnw test                  # 61 JUnit
-cd ../ml-service && python -m pytest tests -q # 8 pytest
+cd ../backend && ./mvnw clean verify
+cd ../ml-service && python -m pytest tests -q
+python scripts/train.py                       # run from ml-service to regenerate the model report
 ```
 
-`npm run verify` is the same gate CI runs.
+`npm run verify` runs the frontend CI checks. See [docs/TESTING.md](docs/TESTING.md)
+for integration setup. Current command results and environment blockers are
+recorded in [docs/ENGINEERING_AUDIT.md](docs/ENGINEERING_AUDIT.md); older
+release reports describe earlier checkouts, not this verification run.
 
-## Verification
+## Historical verification report (2026-10-06)
+
+The table below is retained as historical evidence from an earlier checkout;
+it has not been reproduced for the current baseline. Current results and
+blockers are in [docs/ENGINEERING_AUDIT.md](docs/ENGINEERING_AUDIT.md).
 
 | Area | Result |
 |---|---|

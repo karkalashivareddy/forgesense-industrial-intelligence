@@ -28,9 +28,10 @@ capability the code does not have.
   model output is visually quarantined in violet, so an operator can always tell
   a measurement from an inference. When a value cannot be trusted it renders as
   *unavailable* rather than as a confident `0`.
-- **Verified it.** 98 Vitest unit tests, 43 Playwright browser tests (functional
-  + responsive visual), strict TypeScript, and a reproducible Docker/nginx
-  deployment. The suite caught real defects: an event list permanently empty
+- **Verified it.** Current local verification includes 98 Vitest unit tests,
+  64 backend tests, 10 ML tests, strict TypeScript, and a production frontend
+  build. Playwright and a full Docker deployment were not re-run in this
+  checkout. Earlier browser work caught real defects: an event list permanently empty
   because of a mis-guessed JSON envelope, and security headers that were
   declared in nginx but **never served** because `add_header` is not inherited
   into a location that declares one.

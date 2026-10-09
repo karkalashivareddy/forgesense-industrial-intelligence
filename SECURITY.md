@@ -64,10 +64,36 @@ The STOMP WebSocket is authenticated: the client supplies its JWT when
 connecting, and `StompAuthenticationInterceptor` rejects unauthenticated
 subscriptions. Anonymous socket access is not permitted.
 
+## Threat model and trust boundaries
+
+Protected assets include user credentials and JWT signing material, machine
+state and telemetry, alert/maintenance records, scenario controls, model
+artifacts, and service availability. Browser clients are untrusted. The backend
+is the authorization boundary for REST and STOMP operations. The ML API is a
+server-to-server dependency; it has no request authentication and must only be
+reachable from a trusted service network. Compose no longer publishes its
+port on the host. Compose places it and the backend on a dedicated internal
+network; the backend also remains on the application network for its other
+dependencies. This is network scoping rather than per-service authentication.
+
+The development Compose topology publishes the frontend, backend, Prometheus,
+and Grafana on loopback only. PostgreSQL, Redis, Kafka, and ML inference have no
+host-published ports. Do not expose that topology directly to the public
+internet. A real deployment still needs a reviewed firewall and TLS terminator,
+restricted management and monitoring access, and unique deployment credentials.
+Compose is a local integrated demo, not a hardened production deployment.
+
 ## Secrets
 
-- No real credential is committed. The CI hygiene job fails the build if a
-  tracked credential default appears in the tree.
+- The CI hygiene job rejects selected tracked development credential defaults.
+  It is a narrow regression check, not a full secret scan; complete credential
+  history review remains unverified.
+- CI database, demo-account, Grafana and JWT test credentials are generated
+  per job, masked by the runner, and never reused as deployment credentials.
+- CI audits the locked npm tree and installed Python environment for published
+  advisories. Maven dependency scanning and a dedicated full-history secret
+  scanner are not currently configured; the repository hygiene check is not a
+  substitute for either.
 - Development credentials are development-only and must be overridden via
   `.env` for any real deployment.
 - Never reuse a development secret elsewhere.
@@ -88,6 +114,11 @@ running on `forgesense-dev`. Supply the values in `.env` first:
 | `GRAFANA_ADMIN_PASSWORD` | Grafana admin password | **required**, startup fails |
 | `FORGESENSE_ALLOWED_ORIGINS` | CORS allow-list | has a documented local default |
 
+Any explicitly supplied JWT signing key shorter than 48 UTF-8 bytes is rejected
+at startup, including in demo mode; an invalid configured key is never silently
+replaced with a random one. With no key, only the documented demo mode may
+generate a fresh per-process key.
+
 `.env.example` shows `change-me-in-production-48-bytes-minimum-change-me` for the
 JWT secret. That is a visible placeholder, not a key, and it is deliberately
 recognisable so a deployment that keeps it is obvious in review. Generate a
@@ -107,3 +138,18 @@ Stated plainly rather than implied:
   That is the product's purpose; it is restricted to engineer and admin.
 - Model output is decision support, not an authoritative maintenance or safety
   instruction.
+
+## Incident response and secret rotation
+
+1. Restrict network access to the affected deployment and preserve relevant
+   access/application logs without copying tokens or credentials into tickets.
+2. Rotate the JWT signing key and affected database, Grafana, or seeded demo
+   credentials through the deployment secret manager; do not place replacements
+   in source control or image build arguments.
+3. Recreate affected services. JWT key rotation invalidates active sessions;
+   users must authenticate again. Rotate database credentials in the database
+   and application configuration as one coordinated change.
+4. Review access logs and persisted operator actions for unauthorized changes,
+   restore from a verified backup if integrity is affected, and document impact
+   and recovery actions.
+5. Report suspected vulnerabilities privately to the repository owner.

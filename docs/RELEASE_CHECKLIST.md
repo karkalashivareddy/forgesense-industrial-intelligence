@@ -4,6 +4,12 @@ Verification gate for the ForgeSense release. Every box is the result of an
 executed command, not an intention. Re-run the whole list after any change that
 touches `frontend/src`, `infra/nginx`, or the backend contracts.
 
+This is historical evidence from the 2026-10-06 release audit. The repository
+has changed since that run, so checked items below are not current release
+approval. Current verification for the 2026-10-09 checkout is recorded in
+[`ENGINEERING_AUDIT.md`](ENGINEERING_AUDIT.md); Playwright and Docker runtime
+checks remain unverified in that run.
+
 ## Evidence provenance
 
 This checklist mixes two kinds of check, and they are labelled separately:

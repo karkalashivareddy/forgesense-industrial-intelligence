@@ -50,8 +50,10 @@ services:
     build:
       context: .
       dockerfile: ml-service/Dockerfile
-    ports:
-      - "8001:8001"
+    # Backend-only inference dependency. Do not publish this unauthenticated
+    # service on the host; health checks and backend calls use the private net.
+    networks:
+      - ml-inference
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8001/health')"]
       interval: 15s
@@ -71,6 +73,9 @@ services:
         condition: service_healthy
       ml-service:
         condition: service_healthy
+    networks:
+      - default
+      - ml-inference
     environment:
       SPRING_PROFILES_ACTIVE: docker
       FORGESENSE_SECURITY_ENABLED: "true"
@@ -85,7 +90,7 @@ services:
       FORGESENSE_DEV_PASSWORD: ${FORGESENSE_DEV_PASSWORD:?Set FORGESENSE_DEV_PASSWORD in .env (development only)}
       FORGESENSE_SECURITY_JWT_SECRET: ${FORGESENSE_SECURITY_JWT_SECRET:?Set FORGESENSE_SECURITY_JWT_SECRET in .env}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   simulator:
     build:
@@ -108,14 +113,14 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "5173:80"
+      - "127.0.0.1:5173:80"
 
   prometheus:
     image: prom/prometheus:v2.53.0
     volumes:
       - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
 
   grafana:
     image: grafana/grafana:11.2.0
@@ -125,7 +130,11 @@ services:
     volumes:
       - ./infra/grafana:/etc/grafana/provisioning:ro
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
 volumes:
   pgdata:
+
+networks:
+  ml-inference:
+    internal: true

@@ -36,7 +36,7 @@ docker compose ps
 | Backend API | http://localhost:8080 | |
 | OpenAPI UI | http://localhost:8080/swagger-ui/index.html | |
 | Actuator health | http://localhost:8080/actuator/health | |
-| ML service | http://localhost:8001/health | |
+| ML service | `http://ml-service:8001/health` on Compose network | Not host-published |
 | Prometheus | http://localhost:9090 | |
 | Grafana | http://localhost:3000 | |
 
@@ -56,7 +56,8 @@ seeded `operator` and `engineer` accounts use the same development-only value.
 # Health of every service
 docker compose ps
 curl -sf http://localhost:8080/actuator/health
-curl -sf http://localhost:8001/health
+# ML health is available to backend containers only; inspect backend readiness
+# and `docker compose logs ml-service` from the host.
 
 # Frontend
 curl -sf http://localhost:5173/healthz
@@ -83,7 +84,7 @@ cd backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
 # ML service
-uvicorn app.main:app --app-dir ml-service --host 0.0.0.0 --port 8001
+uvicorn app.main:app --app-dir ml-service --host 127.0.0.1 --port 8001
 
 # Optional simulator
 python simulator/telemetry_feed.py --degrade M-105

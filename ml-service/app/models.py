@@ -14,10 +14,10 @@ whenever the catalog changes, the models are deterministically retrained so
 the fleet and the model can never disagree.  No fabricated field labels are
 used; raw sensor deviations are the input.
 
-At training time a holdout (20% of generated samples) is used only to compute
-honest evaluation metrics (anomaly ranking AUC, failure-risk AUC, RUL RMSE)
-which are persisted to ``models/eval-metrics.json``; the final artefacts are
-always trained on the full generated dataset.
+At training time a deterministic holdout of complete generated machine
+trajectories is used only for evaluation; its metrics are persisted to
+``models/eval-metrics.json``. The final artifacts are then trained on all
+generated trajectories.
 """
 
 from __future__ import annotations
@@ -60,9 +60,9 @@ _ANOMALY_VERSION = "anomaly-model-v2"
 _FAILURE_MODEL_VERSION = "failure-risk-v2"
 
 # Bumped if the synthetic-data generator parameters change (forces retrain).
-_GENERATOR_SCHEMA = 2
+_GENERATOR_SCHEMA = 4
 _FEATURE_SCHEMA_VERSION = "instantaneous-zscore-v1"
-_TRAINING_DATA_VERSION = "synthetic-generator-v2"
+_TRAINING_DATA_VERSION = "synthetic-generator-v4"
 _RUL_UNIT = "steps"
 _RUL_HORIZON_STEPS = 60
 
@@ -159,7 +159,7 @@ class _SyntheticDataset:
                                fault_start_min: int = 300,
                                fault_ramp_steps: int = 180,
                                healthy_only_extra: int = 300,
-                               ) -> Tuple[NDArray, NDArray, NDArray, NDArray]:
+                               ) -> Tuple[NDArray, NDArray, NDArray, NDArray, NDArray]:
         profile = PROFILES[machine_type]
         meta = self._z_score_array(profile)
         n_features = len(FEATURE_NAMES)
@@ -167,8 +167,11 @@ class _SyntheticDataset:
         all_failure_labels: List[int] = []
         all_rul: List[float] = []
         all_clean: List[int] = []
+        all_groups: List[int] = []
 
-        for _ in range(n_machines):
+        for machine_index in range(n_machines):
+            # Keep every sample from one generated machine trajectory together.
+            group_id = machine_index
             baseline = np.array([m for m, _ in meta], dtype=np.float64)
             stds = np.array([s for _, s in meta], dtype=np.float64)
             # machines of a type sit near one healthy operating point with mild
@@ -197,6 +200,7 @@ class _SyntheticDataset:
                 z_row = (raw_row - np.array([m for m, _ in meta])) / np.array([sd for _, sd in meta])
                 all_features.append(z_row)
                 all_clean.append(1 if t < fault_start else 0)
+                all_groups.append(group_id)
                 if fault_start <= t < timeline_len:
                     dist_to_peak = max(fault_peak - t, 0)
                     rul_val = float(dist_to_peak)
@@ -213,44 +217,99 @@ class _SyntheticDataset:
                 all_rul.append(float(fail_horizon))
                 all_failure_labels.append(0)
                 all_clean.append(1)
+                all_groups.append(group_id)
 
         X = np.array(all_features, dtype=np.float64)
         y_risk = np.array(all_failure_labels, dtype=np.int32)
         y_rul = np.array(all_rul, dtype=np.float64)
         clean = np.array(all_clean, dtype=bool)
-        return X, y_risk, y_rul, clean
+        groups = np.array(all_groups, dtype=np.int32)
+        return X, y_risk, y_rul, clean, groups
 
-    def generate(self) -> Tuple[NDArray, NDArray, NDArray, NDArray]:
+    def generate(self) -> Tuple[NDArray, NDArray, NDArray, NDArray, NDArray]:
         parts = [self._generate_machine_type(mt, n_machines=5) for mt in PROFILES]
         X = np.vstack([p[0] for p in parts])
         y_risk = np.concatenate([p[1] for p in parts])
         y_rul = np.concatenate([p[2] for p in parts])
         clean = np.concatenate([p[3] for p in parts])
-        return X, y_risk, y_rul, clean
+        groups = np.concatenate([p[4] + i * 5 for i, p in enumerate(parts)])
+        return X, y_risk, y_rul, clean, groups
 
 
-def _evaluate(iso, clf, reg, X_test, y_test, y_rul_test, clean_test) -> Dict[str, object]:
-    """Holdout metrics for the report; never used to train production artefacts."""
-    from sklearn.metrics import mean_squared_error, roc_auc_score
+def _group_holdout(groups: NDArray, test_fraction: float = 0.2, seed: int = 7):
+    """Create a deterministic holdout with no machine trajectory overlap."""
+    from sklearn.model_selection import GroupShuffleSplit
 
-    anomaly_scores = iso.decision_function(X_test)
-    # anomaly detector scores HIGHER = more normal; AUC = probability that a
-    # normal sample ranks above a degraded one
-    anomaly_auc = roc_auc_score((clean_test == 1).astype(int), anomaly_scores)
+    split = GroupShuffleSplit(n_splits=1, test_size=test_fraction, random_state=seed)
+    train_idx, test_idx = next(split.split(np.zeros(len(groups)), groups=groups))
+    if np.intersect1d(groups[train_idx], groups[test_idx]).size:
+        raise RuntimeError("group holdout contains machine-trajectory leakage")
+    return train_idx, test_idx
+
+
+def _evaluate(iso, clf, reg, X_test, y_test, y_rul_test, clean_test,
+              groups_test, X_train, clean_train) -> Dict[str, object]:
+    """Leakage-safe holdout metrics; the final evaluation rows are not fitted."""
+    from sklearn.metrics import (accuracy_score, average_precision_score,
+                                 brier_score_loss,
+                                 confusion_matrix, f1_score, mean_squared_error,
+                                 mean_absolute_error, precision_score, recall_score,
+                                 roc_auc_score)
+
+    anomaly_target = (clean_test == 0).astype(int)
+    anomaly_scores = -iso.decision_function(X_test)
+    anomaly_threshold = float(np.quantile(-iso.decision_function(X_train[clean_train]), 0.95))
+    anomaly_pred = (anomaly_scores >= anomaly_threshold).astype(int)
+    if np.unique(anomaly_target).size != 2 or np.unique(y_test).size != 2:
+        raise ValueError("grouped evaluation holdout must contain both classes for anomaly and risk targets")
+    anomaly_auc = roc_auc_score(anomaly_target, anomaly_scores)
+    anomaly_pr_auc = average_precision_score(anomaly_target, anomaly_scores)
+    anomaly_positive_rate = float(np.mean(anomaly_target))
 
     risk_proba = clf.predict_proba(X_test)[:, 1]
+    risk_pred = (risk_proba >= 0.5).astype(int)
+    risk_cm = confusion_matrix(y_test, risk_pred, labels=[0, 1])
     risk_auc = roc_auc_score(y_test, risk_proba)
+    risk_pr_auc = average_precision_score(y_test, risk_proba)
+    risk_brier = brier_score_loss(y_test, risk_proba)
 
-    fail = y_rul_test > 0
+    # The regressor is fitted only on classifier-positive samples, so its
+    # evaluation population must use the same target horizon.
+    fail = y_test == 1
+    rul_mae = float(mean_absolute_error(y_rul_test[fail], reg.predict(X_test[fail]))) if np.any(fail) else None
     rul_rmse = float(np.sqrt(mean_squared_error(
         y_rul_test[fail], reg.predict(X_test[fail])))) if np.any(fail) else None
+    positive_rate = float(np.mean(y_test))
 
     return {
         "anomaly_auc": round(float(anomaly_auc), 4),
+        "anomaly_pr_auc": round(float(anomaly_pr_auc), 4),
+        "anomaly_threshold": round(anomaly_threshold, 6),
+        "anomaly_precision": round(float(precision_score(anomaly_target, anomaly_pred, zero_division=0)), 4),
+        "anomaly_recall": round(float(recall_score(anomaly_target, anomaly_pred, zero_division=0)), 4),
+        "anomaly_positive_rate": round(anomaly_positive_rate, 4),
+        "anomaly_majority_baseline_accuracy": round(max(anomaly_positive_rate, 1 - anomaly_positive_rate), 4),
         "risk_auc": round(float(risk_auc), 4),
+        "risk_pr_auc": round(float(risk_pr_auc), 4),
+        "risk_threshold": 0.5,
+        "risk_confusion_matrix": risk_cm.tolist(),
+        "risk_precision": round(float(precision_score(y_test, risk_pred, zero_division=0)), 4),
+        "risk_recall": round(float(recall_score(y_test, risk_pred, zero_division=0)), 4),
+        "risk_f1": round(float(f1_score(y_test, risk_pred, zero_division=0)), 4),
+        "risk_accuracy": round(float(accuracy_score(y_test, risk_pred)), 4),
+        "risk_brier_score": round(float(risk_brier), 6),
+        "risk_positive_rate": round(positive_rate, 4),
+        "risk_majority_baseline_accuracy": round(max(positive_rate, 1 - positive_rate), 4),
+        "test_rows": int(len(y_test)),
+        "test_positive_rows": int(np.sum(y_test)),
+        "test_machine_groups": int(len(np.unique(groups_test))),
+        "rul_mae_steps": None if rul_mae is None else round(rul_mae, 3),
         "rul_rmse_steps": None if rul_rmse is None else round(rul_rmse, 3),
-        "method": "held-out 20% of generated samples (random split, seed 7); "
-                  "final artefacts train on the full dataset",
+        "evaluation_timestamp": datetime.now(timezone.utc).isoformat(),
+        "training_data_version": _TRAINING_DATA_VERSION,
+        "feature_schema_version": _FEATURE_SCHEMA_VERSION,
+        "seed": 7,
+        "method": "held-out 20% of synthetic machine trajectories (GroupShuffleSplit, seed 7); final artefacts train on the full generated dataset",
         "rul_unit": _RUL_UNIT,
     }
 
@@ -297,13 +356,11 @@ def _build_or_load() -> ModelBundle:
     t0 = time.time()
     rng = np.random.RandomState(42)
     ds = _SyntheticDataset(rng)
-    X, y_risk, y_rul, clean = ds.generate()
+    X, y_risk, y_rul, clean, groups = ds.generate()
 
-    # --- holdout evaluation report (not used for final artefacts) ---
-    rng_eval = np.random.RandomState(7)
-    n = X.shape[0]
-    test_idx = rng_eval.choice(n, size=int(0.2 * n), replace=False)
-    train_idx = np.array([i for i in range(n) if i not in set(test_idx.tolist())])
+    # Hold out complete synthetic machines so nearby readings from a timeline
+    # cannot occur in both evaluation and training partitions.
+    train_idx, test_idx = _group_holdout(groups)
 
     eval_iso = IsolationForest(n_estimators=200, contamination=0.08, random_state=42)
     eval_iso.fit(X[train_idx][clean[train_idx]])
@@ -315,8 +372,11 @@ def _build_or_load() -> ModelBundle:
         n_estimators=300, max_depth=3, learning_rate=0.05, subsample=0.8, random_state=42,
     )
     eval_reg.fit(X[train_idx][y_risk[train_idx] == 1], y_rul[train_idx][y_risk[train_idx] == 1])
-    eval_metrics = _evaluate(eval_iso, eval_clf, eval_reg,
-                             X[test_idx], y_risk[test_idx], y_rul[test_idx], clean[test_idx])
+    eval_metrics = _evaluate(
+        eval_iso, eval_clf, eval_reg, X[test_idx], y_risk[test_idx],
+        y_rul[test_idx], clean[test_idx], groups[test_idx], X[train_idx],
+        clean[train_idx],
+    )
     logger.info("Holdout evaluation: %s", eval_metrics)
 
     # Z-scores are the native feature space; no second scaling.

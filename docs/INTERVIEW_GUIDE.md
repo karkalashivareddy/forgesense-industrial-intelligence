@@ -51,11 +51,12 @@ intended to help explain the project precisely.
 ## Testing
 
 - What is covered by the current tests?
-  - 61 JUnit tests on the backend (state machine, twin projection, alert
-    lifecycle, decision formatting, telemetry validation, STOMP auth, and an
-    RBAC integration suite), 98 Vitest unit tests in the frontend, 8 pytest
-    tests in the ML service, and 43 Playwright tests (30 functional + 13
-    visual/responsive) that drive a real browser against the running backend.
+  - As verified on 2026-10-09: 64 backend tests (including RBAC, JWT key
+    policy, and STOMP
+    authentication), 98 frontend unit tests, and 10 ML tests including grouped
+    evaluation isolation. Frontend production build and typecheck passed.
+    Playwright and full Compose runtime tests were not re-run in this checkout;
+    see `docs/ENGINEERING_AUDIT.md` for evidence and limitations.
 - What would you add next?
   - Testcontainers-based integration tests for PostgreSQL, Redis and Kafka,
     explicit failure-injection tests for those dependencies, and a

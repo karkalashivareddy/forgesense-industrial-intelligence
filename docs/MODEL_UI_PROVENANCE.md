@@ -79,14 +79,19 @@ From `ml-service/models/model-metadata.json` and `/health`:
 | Failure risk | `failure-risk-v2` | GradientBoosting classifier → probability |
 | Anomaly | `anomaly-model-v2` | IsolationForest → novelty score |
 
-Reported evaluation figures, **held-out metrics on generated data**:
+Latest evaluation figures, **held-out metrics on generated machines** (run
+2026-10-09, `synthetic-generator-v4`, GroupShuffleSplit seed 7; 8 trajectories,
+7,200 rows, 926 risk-positive):
 
 | Metric | Value |
 | --- | --- |
-| Anomaly AUC | 0.8859 |
-| Risk AUC | 0.9978 |
-| RUL RMSE | 27.18 **steps** |
-| Protocol | 20% held-out random split, seed 7 |
+| Anomaly ROC AUC / PR AUC | 0.9037 / 0.8729 |
+| Anomaly precision / recall | 0.8654 / 0.7466 at threshold 0.009576 |
+| Failure-risk ROC AUC / PR AUC | 0.9976 / 0.9843 |
+| Failure-risk precision / recall / F1 | 0.9190 / 0.9309 / 0.9249 at threshold 0.5 |
+| Failure-risk Brier / accuracy | 0.013485 / 0.9806 (majority baseline 0.8714) |
+| RUL MAE / RMSE | 10.163 / 13.603 **simulator steps**; failure-risk-positive samples |
+| Protocol | 20% complete synthetic machine trajectories held out; final artifacts fit to all generated data |
 
 > These numbers describe how the models performed on data drawn from the same
 > synthetic generator they were trained on. They are **not** a claim about
@@ -96,7 +101,7 @@ Reported evaluation figures, **held-out metrics on generated data**:
 
 `feature_schema_version: instantaneous-zscore-v1` — the feature vector is an
 instantaneous z-score against the training distribution.
-`training_data_version: synthetic-generator-v2` — the training data is generated.
+`training_data_version: synthetic-generator-v4` — the training data is generated.
 
 ---
 

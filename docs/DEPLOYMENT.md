@@ -12,6 +12,11 @@ integrated environment.
 | Simulator  | `python simulator/telemetry_feed.py`  | — |
 | Frontend   | `cd frontend && npm ci && npm run dev` | 5173 |
 
+Standalone ML development should bind to loopback (`127.0.0.1`) unless an
+explicit trusted network boundary is configured. In Compose, the ML service is
+available to the backend at `http://ml-service:8001` and its port is not
+published on the host.
+
 The frontend is a Vite dev server. Note the difference from the Docker
 workflow: in Compose, port 5173 is served by the **nginx container** from a
 built bundle, so a source change needs
@@ -29,9 +34,14 @@ disable authentication for local tooling.
 service, the backend (Spring profile `docker`), the static frontend behind nginx, and
 Prometheus + Grafana.
 
+Published application and monitoring ports bind to `127.0.0.1`; database, cache,
+broker, and ML ports are not published to the host. This is a local demo topology.
+
 - Backend: `http://localhost:8080` — API + Swagger at `/swagger-ui/index.html`,
   health at `/actuator/health`, Prometheus metrics at `/actuator/prometheus`.
 - Frontend: `http://localhost:5173` — prompts for the operator password.
+- ML service: backend-only at `http://ml-service:8001` inside Compose; no host
+  port is published.
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000` — the admin password comes from
   `GRAFANA_ADMIN_PASSWORD`; the Prometheus datasource is

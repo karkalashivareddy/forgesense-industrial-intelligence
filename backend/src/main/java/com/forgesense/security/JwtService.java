@@ -53,13 +53,18 @@ private SecretKey key() {
         }
         String secret = props.security() == null ? null : props.security().jwtSecret();
         boolean securityEnabled = props.security() == null || props.security().enabled();
-        if (secret != null && secret.length() >= 32) {
+        if (secret != null && !secret.isBlank()) {
+            int secretBytes = secret.getBytes(StandardCharsets.UTF_8).length;
+            if (secretBytes < 48) {
+                throw new IllegalStateException(
+                        "FORGESENSE_SECURITY_JWT_SECRET must be at least 48 bytes when configured");
+            }
             cachedKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
             return cachedKey;
         }
         if (securityEnabled && !props.demoMode()) {
             throw new IllegalStateException(
-                    "FORGESENSE_SECURITY_JWT_SECRET must be at least 32 characters when security is enabled outside demo mode");
+                    "FORGESENSE_SECURITY_JWT_SECRET must be configured when security is enabled outside demo mode");
         }
         // Demo-only: fresh random key per boot so tokens cannot be forged with a known value.
         cachedKey = randomKey();
