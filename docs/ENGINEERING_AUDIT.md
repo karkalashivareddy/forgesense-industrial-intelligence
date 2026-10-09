@@ -1,5 +1,46 @@
 # Engineering audit
 
+## Re-verification for the current hardening pass
+
+Date: 2026-10-09. Repository root:
+`C:\Users\karka\forgesense-industrial-intelligence`.
+
+The current baseline was `main` at
+`e83cf79fe2e83254f7a791a2c1a80c8be7adbf76`. `origin/main` matched after
+`git fetch origin main --tags`. The initial index and worktree were clean;
+ignored `.env`, runtime logs, build output, virtual environment, and generated
+model artifacts were left untouched. The earlier audit below records its
+original `43be48b` baseline and remains historical evidence.
+
+Environment: Node `v24.19.0` / npm `11.17.0`, Java `25`, Python `3.14.6`,
+Docker CLI `29.7.2`, Compose `v5.4.0`. The project documents Python 3.13; that
+interpreter is not installed locally. The Docker engine named pipe is absent.
+`gh auth status` reports an invalid token; public GitHub API access works.
+
+| Reproduced command | Result |
+|---|---|
+| `npm.cmd ci --no-audit --no-fund` (`frontend/`) | Exit 0; 168 packages installed from the lockfile. |
+| `npm.cmd run verify` (`frontend/`) | Initial sandbox invocation exit 1 because esbuild could not traverse `../..`; elevated rerun exit 0. Docs 137 links/69 Markdown files; artifact scan 41 files; strict TypeScript; 6 Vitest files, 98 tests; Vite production build, 2,268 modules. |
+| `.\mvnw.cmd -q clean verify` (`backend/`) | Initial sandbox invocation exit 1 because access to `C:\.m2\repository` was denied; elevated rerun exit 0. Surefire reports 64 tests, 0 failures, 0 errors, 0 skips. Java 25. |
+| `.\.venv\Scripts\python.exe -m pip check` and `-m pytest tests -q` (`ml-service/`) | Exit 0; no broken requirements, 10 passed. Python 3.14.6 (not documented 3.13); FastAPI/Starlette deprecation and pytest cache permission warnings. |
+| `npm.cmd audit --audit-level=high` (`frontend/`) | Exit 0; 0 advisories. Initial sandbox network request failed; elevated rerun completed. |
+| `.\.venv\Scripts\python.exe -m pip_audit --local --cache-dir %TEMP%\forgesense-pip-audit-cache` (`ml-service/`) | Exit 0; no known vulnerabilities. Initial sandbox request to PyPI was denied; elevated rerun completed. |
+| Gitleaks `8.29.1 git --redact --report-format=json --report-path=- --timeout 120` | First full-history run exited 1 on one historical synthetic test-key pattern in commit `994183f`; finding value was redacted. Exact fingerprint was added to `.gitleaksignore`; rerun scanned 72 commits / 2.84 MB and exited 0 with no remaining findings. Binary SHA-256 matched official release checksums. |
+| OSV-Scanner `2.6.0 scan source --lockfile=backend/pom.xml` | Discovered 22 Maven packages, then did not return advisory results before being stopped. Maven vulnerability status is **unverified**, not clean. The CI workflow now runs the pinned OSV scanner across supported manifests; its result is pending a run for this candidate. |
+| `docker compose --env-file .env.example config --quiet` | Exit 0. |
+| `docker info --format {{.ServerVersion}}` | Exit 1; Docker API named pipe `//./pipe/docker_engine` does not exist. Local image build and runtime cannot run. |
+| Current remote Actions run `37895292077` | Public API reports success on exact baseline `e83cf79`. Job API reports all six existing jobs successful (backend, frontend, ML, hygiene, Docker build/topology, and Playwright E2E). New Gitleaks/OSV steps in the working candidate are not included in that run. |
+| `git diff --check` (baseline) | Exit 0. |
+
+The current change adds Gitleaks full-history scanning and OSV dependency
+analysis to CI, and pins the workflow actions to immutable commits. Local
+Gitleaks covered history; OSV could not finish its remote advisory query here.
+Do not describe the candidate as remotely green until a run for its exact
+commit completes. Docker build/runtime, browser E2E for the candidate, Python
+3.13, PostgreSQL migration/backup/restore, and production TLS/secret-management
+remain unverified in this environment. No real industrial dataset or field
+validation is present; production readiness is not established.
+
 Audit date: 2026-10-09
 Baseline branch: `main`
 Baseline commit: `43be48bbced1e0793975902fb49cad4b50ba8f73`

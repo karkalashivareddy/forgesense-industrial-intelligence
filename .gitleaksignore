@@ -1,0 +1,4 @@
+# Historical false positive: a deterministic, test-only JWT signing fixture
+# was replaced with SecureRandom in e83cf79fe2e83254f7a791a2c1a80c8be7adbf76.
+# This exact fingerprint is the sole exception; new findings remain blocking.
+994183fcf930c109e0014cc48cc0320d3d09b1ef:backend/src/test/java/com/forgesense/security/JwtServiceTest.java:generic-api-key:30

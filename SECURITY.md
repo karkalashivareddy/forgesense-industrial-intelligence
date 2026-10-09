@@ -85,15 +85,20 @@ Compose is a local integrated demo, not a hardened production deployment.
 
 ## Secrets
 
-- The CI hygiene job rejects selected tracked development credential defaults.
-  It is a narrow regression check, not a full secret scan; complete credential
-  history review remains unverified.
+- The CI workflow is configured to run Gitleaks against the full Git history.
+  A local full-history run reproduced one historical synthetic JWT test-key
+  pattern in commit `994183f`; after adding its exact fingerprint to the
+  ignore file, the scan returned no other findings. The fixture was removed
+  from current source and replaced by an ephemeral key. The exception does not
+  cover other findings in that file, rule, or commit. The new CI action has
+  not yet run for this candidate. History was not rewritten because this was
+  not a deployed credential.
 - CI database, demo-account, Grafana and JWT test credentials are generated
   per job, masked by the runner, and never reused as deployment credentials.
-- CI audits the locked npm tree and installed Python environment for published
-  advisories. Maven dependency scanning and a dedicated full-history secret
-  scanner are not currently configured; the repository hygiene check is not a
-  substitute for either.
+- The CI workflow audits npm and Python dependencies and scans supported
+  manifests, including the Maven `pom.xml`, against OSV advisories. The new OSV
+  job has not yet run remotely. Its local Maven query stalled before results;
+  see `docs/ENGINEERING_AUDIT.md` for the exact result and limitation.
 - Development credentials are development-only and must be overridden via
   `.env` for any real deployment.
 - Never reuse a development secret elsewhere.

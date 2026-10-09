@@ -18,4 +18,9 @@
   timeouts. CI now uses Maven clean verification, builds every Compose
   application image, and uploads the Playwright report from its workspace path.
 - Added the current engineering audit, security trust boundaries, and
-  verification evidence. Docker runtime and remote CI remain unverified.
+  verification evidence; at that audit point Docker runtime and the remote
+  workflow were not re-verified.
+- Added a full-history Gitleaks check with one exact historical test-fixture
+  fingerprint exception, an OSV manifest scan, and immutable SHA pins for CI
+  actions. The local historical scan was reproduced; remote execution of these
+  new CI steps remains pending.
