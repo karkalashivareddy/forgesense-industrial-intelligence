@@ -40,8 +40,11 @@ with HTTP 403 (`Must have admin rights to Repository`), but the same scan was
 reproduced locally and identified the vulnerable Maven transitive versions.
 This working-tree correction pins fixed releases. `mvnw clean verify` passed
 with 64 tests, zero failures/errors/skips, and the full transitive OSV rescan
-completed with `No issues found`. A corrective commit and its remote workflow
-are still pending; do not treat this candidate as remotely green yet.
+completed with `No issues found`. Corrective commit
+`87314a294b7d0a33ef5f74040cb4d5c3391c2c3e` is now on `main`; Actions run
+`37908716485` completed all seven jobs successfully, including dependency
+scanning, Docker build/topology, and Playwright E2E. The prior candidate's
+failed OSV result remains recorded above as historical evidence.
 
 Docker runtime, Python 3.13 compatibility, PostgreSQL migration/backup/restore,
 production TLS/secret management, and real industrial data/field validation

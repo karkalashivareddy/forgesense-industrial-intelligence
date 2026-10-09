@@ -5,7 +5,8 @@
 - Pinned patched transitive Tomcat, Jackson 2/3 and lz4-java releases after the
   first full Maven OSV scan found advisories; Maven clean verification and the
   full local transitive rescan pass. The first pushed candidate's OSV workflow
-  failed on these findings; corrective commit CI is pending.
+  failed on these findings; corrective run 37908716485 passed all seven jobs,
+  including the dependency scan.
 - Replaced row-random ML evaluation with deterministic machine-trajectory
   holdout; aligned RUL evaluation to the regressor's positive target cohort and
   documented the resulting synthetic-only metrics and limits.
