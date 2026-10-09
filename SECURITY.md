@@ -90,15 +90,18 @@ Compose is a local integrated demo, not a hardened production deployment.
   pattern in commit `994183f`; after adding its exact fingerprint to the
   ignore file, the scan returned no other findings. The fixture was removed
   from current source and replaced by an ephemeral key. The exception does not
-  cover other findings in that file, rule, or commit. The new CI action has
-  not yet run for this candidate. History was not rewritten because this was
-  not a deployed credential.
+  cover other findings in that file, rule, or commit. The full-history CI job
+  passed on the first hardened candidate. History was not rewritten because
+  this was not a deployed credential.
 - CI database, demo-account, Grafana and JWT test credentials are generated
   per job, masked by the runner, and never reused as deployment credentials.
 - The CI workflow audits npm and Python dependencies and scans supported
-  manifests, including the Maven `pom.xml`, against OSV advisories. The new OSV
-  job has not yet run remotely. Its local Maven query stalled before results;
-  see `docs/ENGINEERING_AUDIT.md` for the exact result and limitation.
+  manifests, including the Maven `pom.xml`, against OSV advisories. The initial
+  post-hardening run found vulnerable Maven transitive dependencies. Compatible
+  patched versions are now pinned; the full local transitive Maven scan reports
+  no known advisories. The first run's remote failure and the corrective
+  verification are recorded in `docs/ENGINEERING_AUDIT.md`; remote verification
+  of the corrective commit is still required.
 - Development credentials are development-only and must be overridden via
   `.env` for any real deployment.
 - Never reuse a development secret elsewhere.

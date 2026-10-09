@@ -26,20 +26,26 @@ interpreter is not installed locally. The Docker engine named pipe is absent.
 | `npm.cmd audit --audit-level=high` (`frontend/`) | Exit 0; 0 advisories. Initial sandbox network request failed; elevated rerun completed. |
 | `.\.venv\Scripts\python.exe -m pip_audit --local --cache-dir %TEMP%\forgesense-pip-audit-cache` (`ml-service/`) | Exit 0; no known vulnerabilities. Initial sandbox request to PyPI was denied; elevated rerun completed. |
 | Gitleaks `8.29.1 git --redact --report-format=json --report-path=- --timeout 120` | First full-history run exited 1 on one historical synthetic test-key pattern in commit `994183f`; finding value was redacted. Exact fingerprint was added to `.gitleaksignore`; rerun scanned 72 commits / 2.84 MB and exited 0 with no remaining findings. Binary SHA-256 matched official release checksums. |
-| OSV-Scanner `2.6.0 scan source --lockfile=backend/pom.xml` | Discovered 22 Maven packages, then did not return advisory results before being stopped. Maven vulnerability status is **unverified**, not clean. The CI workflow now runs the pinned OSV scanner across supported manifests; its result is pending a run for this candidate. |
+| OSV-Scanner `2.6.0 scan source --lockfile=backend/pom.xml` | Initial full transitive scan found 23 advisories across six Maven components. After pinning fixed versions, a full transitive rescan completed with `No issues found` (exit 0). The first pushed candidate's CI scan failed on these dependency findings; see current release-candidate addendum below. |
 | `docker compose --env-file .env.example config --quiet` | Exit 0. |
 | `docker info --format {{.ServerVersion}}` | Exit 1; Docker API named pipe `//./pipe/docker_engine` does not exist. Local image build and runtime cannot run. |
 | Current remote Actions run `37895292077` | Public API reports success on exact baseline `e83cf79`. Job API reports all six existing jobs successful (backend, frontend, ML, hygiene, Docker build/topology, and Playwright E2E). New Gitleaks/OSV steps in the working candidate are not included in that run. |
 | `git diff --check` (baseline) | Exit 0. |
 
-The current change adds Gitleaks full-history scanning and OSV dependency
-analysis to CI, and pins the workflow actions to immutable commits. Local
-Gitleaks covered history; OSV could not finish its remote advisory query here.
-Do not describe the candidate as remotely green until a run for its exact
-commit completes. Docker build/runtime, browser E2E for the candidate, Python
-3.13, PostgreSQL migration/backup/restore, and production TLS/secret-management
-remain unverified in this environment. No real industrial dataset or field
-validation is present; production readiness is not established.
+The initial hardened commit `09ee09b5da6af2ed10f166feb219e38174d231ad` was
+pushed to `main`. Its public Actions run `37905237940` completed frontend,
+backend, ML, repository hygiene, Docker build/topology, and Playwright E2E
+successfully; the OSV job failed. Authenticated job-log retrieval was denied
+with HTTP 403 (`Must have admin rights to Repository`), but the same scan was
+reproduced locally and identified the vulnerable Maven transitive versions.
+This working-tree correction pins fixed releases. `mvnw clean verify` passed
+with 64 tests, zero failures/errors/skips, and the full transitive OSV rescan
+completed with `No issues found`. A corrective commit and its remote workflow
+are still pending; do not treat this candidate as remotely green yet.
+
+Docker runtime, Python 3.13 compatibility, PostgreSQL migration/backup/restore,
+production TLS/secret management, and real industrial data/field validation
+remain unverified. Production readiness is not established.
 
 Audit date: 2026-10-09
 Baseline branch: `main`
