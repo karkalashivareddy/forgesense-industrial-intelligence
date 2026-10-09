@@ -3,6 +3,8 @@ package com.forgesense.security;
 import com.forgesense.common.config.ForgeSenseProperties;
 import org.junit.jupiter.api.Test;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,6 +18,12 @@ class JwtServiceTest {
                 new ForgeSenseProperties.Security(true, secret, 3600), List.of());
     }
 
+    private String ephemeralStrongSecret() {
+        byte[] key = new byte[48];
+        new SecureRandom().nextBytes(key);
+        return Base64.getEncoder().withoutPadding().encodeToString(key);
+    }
+
     @Test
     void explicitlyConfiguredShortSecretFailsClosedEvenInDemoMode() {
         JwtService service = new JwtService(properties(true, "short-secret"));
@@ -27,8 +35,7 @@ class JwtServiceTest {
 
     @Test
     void strongConfiguredSecretSignsAndVerifiesToken() {
-        String secret = "0123456789abcdef0123456789abcdef0123456789abcdef";
-        JwtService service = new JwtService(properties(false, secret));
+        JwtService service = new JwtService(properties(false, ephemeralStrongSecret()));
 
         String token = service.generate("operator", List.of("ROLE_OPERATOR"));
 

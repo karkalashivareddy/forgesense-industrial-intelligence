@@ -105,6 +105,18 @@ Google token prefixes, and PEM private-key headers. It found no matches. This
 narrow check is not equivalent to Gitleaks/TruffleHog and does not establish
 that repository history is secret-free.
 
+After the first push, the official Gitleaks 8.29.1 Windows binary was downloaded
+to a temporary directory and matched its published SHA-256 checksum. Its
+redacted full-history scan covered 71 commits / approximately 2.84 MB and found
+one `generic-api-key` pattern in the deterministic 48-byte test key in
+`backend/src/test/java/com/forgesense/security/JwtServiceTest.java` at commit
+`994183fcf930c109e0014cc48cc0320d3d09b1ef`. Inspection established that it was
+a synthetic JUnit-only signing fixture, never a deployment credential; no key
+rotation is indicated. The current test now generates an ephemeral key using
+`SecureRandom`, and a redacted Gitleaks directory scan of that current test file
+found no leaks. The historical test vector remains in public history; history
+was not rewritten.
+
 The release hardening diff adds read-only workflow permissions, finite job
 timeouts, npm audit at high severity, and a Python `pip-audit` check after
 upgrading pip to the fixed 26.2 line. The Maven dependency graph and full Git

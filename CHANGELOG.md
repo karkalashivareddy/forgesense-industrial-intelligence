@@ -11,7 +11,8 @@
   loopback, and CI asserts that network policy.
 - Fixed Windows Maven wrapper handling of a regular local cache directory.
 - Made explicitly configured JWT keys shorter than 48 bytes fail closed and
-  added signing/verification and missing-key regression tests.
+  added signing/verification and missing-key regression tests. Test signing
+  keys are generated ephemerally rather than stored as literals.
 - Updated the vulnerable pytest constraint to a fixed release and added npm
   and Python advisory checks, read-only workflow permissions, and finite CI job
   timeouts. CI now uses Maven clean verification, builds every Compose
